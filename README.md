@@ -1,10 +1,20 @@
 # 🌙 Moonlight City
 
-A Stardew Valley-inspired 2D game built by a dad and daughter team. 🌱
+A 2D city life & dungeon adventure game built by a dad and daughter team. 🌙
+
+> **No farming here** — this is a city life, social, housing, and adventure game!
+
+## 📄 Key Documents
+
+| Document | Description |
+|----------|-------------|
+| [DESIGN.md](./DESIGN.md) | Full game design document |
+| [TODO.md](./TODO.md) | Prioritised task list by phase |
+| [game.html](./game.html) | ▶️ Playable prototype — open in browser! |
 
 ---
 
-## 🗺️ High-Level Game Development Guide
+## 🗺️ High-Level Development Guide
 
 This guide walks through the major phases of building a 2D life-sim / farming game from scratch. Take it one step at a time — the journey is the fun part!
 
