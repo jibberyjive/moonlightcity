@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Moonlight City</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0f1d11;
+      font-family: "Trebuchet MS", Arial, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+
+      const TILE_SIZE = 32;
+      const MAP_W = 40;
+      const MAP_H = 40;
+      const WORLD_W = MAP_W * TILE_SIZE;
+      const WORLD_H = MAP_H * TILE_SIZE;
+
+      const TILE = {
+        GRASS: 0,
+        DARK_GRASS: 1,
+        TREE: 2,
+        WATER: 3,
+        PATH: 4,
+        ROCK: 5,
+        FLOWERS: 6
+      };
+
+      const BLOCKING = new Set([TILE.TREE, TILE.WATER, TILE.ROCK]);
+
+      const COLORS = {
+        grass: "#5a8a3c",
+        darkGrass: "#4b7432",
+        water: "#3a7bd5",
+        waterShimmer: "#8dc9ff",
+        path: "#c4a35a",
+        rock: "#8d9196",
+        trunk: "#6d4a2d",
+        leaves: "#285a2d",
+        leavesHi: "#4e8e4f"
+      };
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      window.addEventListener("resize", resize);
+      resize();
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function noise(x, y, seed = 0) {
+        const n = Math.sin((x + seed) * 127.1 + (y + seed * 3.1) * 311.7) * 43758.5453123;
+        return n - Math.floor(n);
+      }
+
+      function shade(hex, amt) {
+        const n = parseInt(hex.slice(1), 16);
+        const r = clamp(((n >> 16) & 255) + amt, 0, 255);
+        const g = clamp(((n >> 8) & 255) + amt, 0, 255);
+        const b = clamp((n & 255) + amt, 0, 255);
+        return `rgb(${r},${g},${b})`;
+      }
+
+      const map = Array.from({ length: MAP_H }, () => Array(MAP_W).fill(TILE.GRASS));
+
+      function setTile(x, y, type) {
+        if (x >= 0 && y >= 0 && x < MAP_W && y < MAP_H) {
+          map[y][x] = type;
+        }
+      }
+
+      function fillRectTiles(x, y, w, h, type) {
+        for (let yy = y; yy < y + h; yy++) {
+          for (let xx = x; xx < x + w; xx++) {
+            setTile(xx, yy, type);
+          }
+        }
+      }
+
+      function stampTiles(points, type) {
+        for (const [x, y] of points) {
+          setTile(x, y, type);
+        }
+      }
+
+      function paintLine(points, radius, type) {
+        for (let i = 0; i < points.length - 1; i++) {
+          const [x1, y1] = points[i];
+          const [x2, y2] = points[i + 1];
+          const steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1)) * 3 + 1;
+          for (let step = 0; step <= steps; step++) {
+            const t = step / steps;
+            const x = x1 + (x2 - x1) * t;
+            const y = y1 + (y2 - y1) * t;
+            for (let oy = -radius; oy <= radius; oy++) {
+              for (let ox = -radius; ox <= radius; ox++) {
+                if (ox * ox + oy * oy <= radius * radius + 0.2) {
+                  setTile(Math.round(x + ox), Math.round(y + oy), type);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      function buildMap() {
+        fillRectTiles(0, 0, MAP_W, 1, TILE.TREE);
+        fillRectTiles(0, MAP_H - 1, MAP_W, 1, TILE.TREE);
+        fillRectTiles(0, 0, 1, MAP_H, TILE.TREE);
+        fillRectTiles(MAP_W - 1, 0, 1, MAP_H, TILE.TREE);
+
+        fillRectTiles(2, 2, 8, 6, TILE.DARK_GRASS);
+        fillRectTiles(30, 3, 7, 5, TILE.DARK_GRASS);
+        fillRectTiles(3, 31, 7, 5, TILE.DARK_GRASS);
+        fillRectTiles(29, 30, 8, 6, TILE.DARK_GRASS);
+        fillRectTiles(13, 5, 5, 3, TILE.DARK_GRASS);
+        fillRectTiles(23, 26, 5, 4, TILE.DARK_GRASS);
+        fillRectTiles(7, 17, 5, 3, TILE.DARK_GRASS);
+        fillRectTiles(28, 14, 4, 3, TILE.DARK_GRASS);
+
+        paintLine(
+          [
+            [2, 29],
+            [6, 28],
+            [10, 28],
+            [14, 25],
+            [19, 24],
+            [23, 20],
+            [27, 18],
+            [31, 18],
+            [35, 15],
+            [37, 14]
+          ],
+          1,
+          TILE.PATH
+        );
+
+        paintLine(
+          [
+            [19, 24],
+            [19, 28],
+            [21, 32],
+            [24, 35]
+          ],
+          1,
+          TILE.PATH
+        );
+
+        fillRectTiles(25, 8, 6, 4, TILE.WATER);
+        stampTiles(
+          [
+            [24, 9], [24, 10], [25, 7], [26, 7], [27, 7], [28, 7], [29, 7], [30, 7],
+            [31, 9], [31, 10], [25, 12], [26, 12], [27, 12], [28, 12], [29, 12], [30, 12],
+            [24, 11], [30, 8], [31, 11]
+          ],
+          TILE.WATER
+        );
+
+        stampTiles(
+          [
+            [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1],
+            [2, 2], [3, 2], [4, 2], [5, 2], [6, 2], [7, 2], [8, 2],
+            [1, 3], [2, 3], [3, 3], [4, 3], [5, 3], [6, 3], [7, 3], [8, 3],
+            [1, 4], [2, 4], [3, 4], [4, 4], [5, 4], [6, 4], [7, 4],
+            [1, 5], [2, 5], [3, 5], [4, 5], [6, 5], [7, 5],
+            [31, 2], [32, 2], [33, 2], [34, 2], [35, 2], [36, 2], [37, 2],
+            [30, 3], [31, 3], [32, 3], [33, 3], [34, 3], [35, 3], [36, 3], [37, 3], [38, 3],
+            [31, 4], [32, 4], [33, 4], [34, 4], [35, 4], [36, 4], [37, 4],
+            [32, 5], [33, 5], [34, 5], [35, 5], [36, 5], [37, 5],
+            [2, 32], [3, 32], [4, 32], [5, 32], [6, 32], [7, 32],
+            [2, 33], [3, 33], [4, 33], [5, 33], [6, 33], [7, 33], [8, 33],
+            [1, 34], [2, 34], [3, 34], [4, 34], [5, 34], [6, 34], [7, 34], [8, 34],
+            [1, 35], [2, 35], [3, 35], [4, 35], [5, 35], [6, 35], [7, 35],
+            [32, 31], [33, 31], [34, 31], [35, 31], [36, 31], [37, 31],
+            [31, 32], [32, 32], [33, 32], [34, 32], [35, 32], [36, 32], [37, 32],
+            [31, 33], [32, 33], [33, 33], [34, 33], [35, 33], [36, 33], [37, 33], [38, 33],
+            [32, 34], [33, 34], [34, 34], [35, 34], [36, 34], [37, 34]
+          ],
+          TILE.TREE
+        );
+
+        stampTiles(
+          [
+            [13, 4], [14, 4], [16, 4], [18, 5], [19, 5], [21, 4], [23, 4], [24, 5], [26, 4],
+            [10, 10], [11, 10], [10, 11], [14, 12], [15, 12], [15, 13],
+            [7, 15], [8, 15], [7, 16], [31, 15], [32, 15], [31, 16],
+            [5, 20], [6, 20], [5, 21], [33, 21], [34, 21], [34, 22],
+            [9, 26], [10, 26], [9, 27], [28, 25], [29, 25], [29, 26],
+            [13, 31], [14, 31], [15, 31], [25, 31], [26, 31], [27, 31]
+          ],
+          TILE.TREE
+        );
+
+        stampTiles(
+          [
+            [11, 7], [12, 7], [17, 8], [18, 8], [20, 10], [22, 9],
+            [8, 18], [9, 18], [26, 18], [27, 18], [12, 22], [13, 22],
+            [30, 24], [16, 29], [17, 29], [22, 30], [24, 30], [11, 33], [28, 34]
+          ],
+          TILE.ROCK
+        );
+
+        stampTiles(
+          [
+            [11, 9], [12, 9], [13, 9], [23, 6], [24, 6], [7, 12], [8, 12], [9, 12],
+            [18, 15], [19, 15], [20, 15], [22, 16], [23, 16], [24, 16],
+            [15, 19], [16, 19], [17, 19], [25, 20], [26, 20], [27, 20],
+            [7, 24], [8, 24], [12, 26], [13, 26], [14, 26], [31, 27], [32, 27],
+            [18, 33], [19, 33], [20, 33], [27, 35], [28, 35]
+          ],
+          TILE.FLOWERS
+        );
+      }
+
+      buildMap();
+
+      const keys = Object.create(null);
+      const keyMap = {
+        ArrowUp: "up",
+        KeyW: "up",
+        ArrowDown: "down",
+        KeyS: "down",
+        ArrowLeft: "left",
+        KeyA: "left",
+        ArrowRight: "right",
+        KeyD: "right"
+      };
+
+      window.addEventListener("keydown", (event) => {
+        if (keyMap[event.code]) {
+          keys[keyMap[event.code]] = true;
+          event.preventDefault();
+        }
+      });
+
+      window.addEventListener("keyup", (event) => {
+        if (keyMap[event.code]) {
+          keys[keyMap[event.code]] = false;
+          event.preventDefault();
+        }
+      });
+
+      const player = {
+        x: 20 * TILE_SIZE + TILE_SIZE / 2,
+        y: 23 * TILE_SIZE + TILE_SIZE / 2,
+        vx: 0,
+        vy: 0,
+        radius: 9,
+        speed: 96,
+        accel: 700,
+        dir: "down",
+        walkTime: 0
+      };
+
+      const camera = {
+        x: 0,
+        y: 0
+      };
+
+      function getView() {
+        const zoom = Math.max(1, Math.ceil(Math.max(canvas.width / WORLD_W, canvas.height / WORLD_H)));
+        return {
+          zoom,
+          worldW: canvas.width / zoom,
+          worldH: canvas.height / zoom
+        };
+      }
+
+      function isBlockingTile(tx, ty) {
+        if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H) return true;
+        return BLOCKING.has(map[ty][tx]);
+      }
+
+      function collidesCircle(x, y, radius) {
+        const minX = Math.floor((x - radius) / TILE_SIZE);
+        const maxX = Math.floor((x + radius) / TILE_SIZE);
+        const minY = Math.floor((y - radius) / TILE_SIZE);
+        const maxY = Math.floor((y + radius) / TILE_SIZE);
+
+        for (let ty = minY; ty <= maxY; ty++) {
+          for (let tx = minX; tx <= maxX; tx++) {
+            if (!isBlockingTile(tx, ty)) continue;
+            const tileX = tx * TILE_SIZE;
+            const tileY = ty * TILE_SIZE;
+            const nearestX = clamp(x, tileX, tileX + TILE_SIZE);
+            const nearestY = clamp(y, tileY, tileY + TILE_SIZE);
+            const dx = x - nearestX;
+            const dy = y - nearestY;
+            if (dx * dx + dy * dy < radius * radius) {
+              return true;
+            }
+          }
+        }
+        return false;
+      }
+
+      function movePlayer(dt) {
+        let inputX = 0;
+        let inputY = 0;
+
+        if (keys.left) inputX -= 1;
+        if (keys.right) inputX += 1;
+        if (keys.up) inputY -= 1;
+        if (keys.down) inputY += 1;
+
+        const len = Math.hypot(inputX, inputY) || 1;
+        inputX /= len;
+        inputY /= len;
+
+        const targetVX = inputX * player.speed;
+        const targetVY = inputY * player.speed;
+        const step = player.accel * dt;
+
+        player.vx += clamp(targetVX - player.vx, -step, step);
+        player.vy += clamp(targetVY - player.vy, -step, step);
+
+        if (Math.abs(inputX) > 0.01 || Math.abs(inputY) > 0.01) {
+          if (Math.abs(inputX) > Math.abs(inputY)) {
+            player.dir = inputX > 0 ? "right" : "left";
+          } else {
+            player.dir = inputY > 0 ? "down" : "up";
+          }
+        }
+
+        const moving = Math.hypot(player.vx, player.vy) > 4;
+        if (moving) {
+          player.walkTime += dt * 9;
+        }
+
+        const nextX = player.x + player.vx * dt;
+        if (!collidesCircle(nextX, player.y, player.radius)) {
+          player.x = nextX;
+        } else {
+          player.vx = 0;
+        }
+
+        const nextY = player.y + player.vy * dt;
+        if (!collidesCircle(player.x, nextY, player.radius)) {
+          player.y = nextY;
+        } else {
+          player.vy = 0;
+        }
+
+        player.x = clamp(player.x, player.radius, WORLD_W - player.radius);
+        player.y = clamp(player.y, player.radius, WORLD_H - player.radius);
+      }
+
+      function drawGrass(x, y, tileX, tileY, base) {
+        ctx.fillStyle = base;
+        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+
+        for (let i = 0; i < 4; i++) {
+          const nx = noise(tileX * 2 + i, tileY, i);
+          const ny = noise(tileX, tileY * 3 + i, i + 11);
+          const px = x + 3 + Math.floor(nx * 24);
+          const py = y + 3 + Math.floor(ny * 24);
+          ctx.fillStyle = shade(base, i % 2 === 0 ? 10 : -12);
+          ctx.fillRect(px, py, 3 + (i % 2), 2 + ((i + 1) % 2));
+        }
+
+        ctx.fillStyle = "rgba(255,255,255,0.06)";
+        ctx.fillRect(x + 2, y + 2, 1, 1);
+        ctx.fillRect(x + 18, y + 8, 1, 1);
+        ctx.fillRect(x + 25, y + 20, 1, 1);
+      }
+
+      function drawPath(x, y, tileX, tileY) {
+        ctx.fillStyle = COLORS.path;
+        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+        ctx.fillStyle = "rgba(110,80,38,0.18)";
+        for (let i = 0; i < 5; i++) {
+          const px = x + 2 + Math.floor(noise(tileX, tileY, i + 20) * 26);
+          const py = y + 2 + Math.floor(noise(tileY, tileX, i + 30) * 26);
+          ctx.fillRect(px, py, 2, 2);
+        }
+        ctx.fillStyle = "rgba(255,230,180,0.10)";
+        ctx.fillRect(x + 5, y + 4, 18, 3);
+      }
+
+      function drawWater(x, y, tileX, tileY, time) {
+        ctx.fillStyle = COLORS.water;
+        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+
+        const shimmer = 0.18 + 0.12 * Math.sin(time * 2.8 + tileX * 0.8 + tileY * 0.45);
+        ctx.fillStyle = `rgba(141, 201, 255, ${shimmer.toFixed(3)})`;
+        ctx.fillRect(x + 3, y + 7, 22, 3);
+        ctx.fillRect(x + 10, y + 17, 16, 2);
+        ctx.fillRect(x + 6, y + 25, 12, 2);
+
+        ctx.strokeStyle = "rgba(255,255,255,0.10)";
+        ctx.beginPath();
+        ctx.moveTo(x + 4, y + 12);
+        ctx.quadraticCurveTo(x + 12, y + 8, x + 20, y + 12);
+        ctx.quadraticCurveTo(x + 25, y + 15, x + 29, y + 12);
+        ctx.stroke();
+      }
+
+      function drawFlowers(x, y, tileX, tileY) {
+        drawGrass(x, y, tileX, tileY, COLORS.grass);
+        const palette = ["#f1d84e", "#db5d5d", "#b777ea", "#ffef8f"];
+        for (let i = 0; i < 8; i++) {
+          const px = x + 4 + Math.floor(noise(tileX, tileY, i + 40) * 24);
+          const py = y + 4 + Math.floor(noise(tileY, tileX, i + 50) * 24);
+          ctx.fillStyle = palette[i % palette.length];
+          ctx.fillRect(px, py, 2, 2);
+        }
+      }
+
+      function drawGroundTile(tile, tileX, tileY, time) {
+        const x = tileX * TILE_SIZE;
+        const y = tileY * TILE_SIZE;
+
+        switch (tile) {
+          case TILE.DARK_GRASS:
+            drawGrass(x, y, tileX, tileY, COLORS.darkGrass);
+            break;
+          case TILE.PATH:
+            drawPath(x, y, tileX, tileY);
+            break;
+          case TILE.WATER:
+            drawWater(x, y, tileX, tileY, time);
+            break;
+          case TILE.FLOWERS:
+            drawFlowers(x, y, tileX, tileY);
+            break;
+          default:
+            drawGrass(x, y, tileX, tileY, COLORS.grass);
+            break;
+        }
+      }
+
+      function drawRock(tileX, tileY) {
+        const x = tileX * TILE_SIZE;
+        const y = tileY * TILE_SIZE;
+        ctx.fillStyle = COLORS.rock;
+        ctx.beginPath();
+        ctx.moveTo(x + 6, y + 24);
+        ctx.quadraticCurveTo(x + 5, y + 12, x + 13, y + 10);
+        ctx.quadraticCurveTo(x + 20, y + 4, x + 26, y + 11);
+        ctx.quadraticCurveTo(x + 30, y + 16, x + 27, y + 25);
+        ctx.quadraticCurveTo(x + 18, y + 29, x + 6, y + 24);
+        ctx.fill();
+
+        ctx.fillStyle = "rgba(255,255,255,0.20)";
+        ctx.beginPath();
+        ctx.ellipse(x + 15, y + 15, 7, 4, -0.4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(80,80,80,0.35)";
+        ctx.beginPath();
+        ctx.moveTo(x + 11, y + 13);
+        ctx.lineTo(x + 16, y + 18);
+        ctx.lineTo(x + 13, y + 23);
+        ctx.stroke();
+      }
+
+      function drawTree(tileX, tileY, time) {
+        const x = tileX * TILE_SIZE;
+        const y = tileY * TILE_SIZE;
+        const sway = Math.sin(time * 1.3 + tileX * 0.7 + tileY * 0.5) * 1.4;
+
+        ctx.fillStyle = "rgba(0,0,0,0.18)";
+        ctx.beginPath();
+        ctx.ellipse(x + 16, y + 23, 12, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = COLORS.trunk;
+        ctx.fillRect(x + 13, y + 15, 6, 13);
+
+        ctx.fillStyle = COLORS.leaves;
+        ctx.beginPath();
+        ctx.arc(x + 16 + sway, y + 10, 12, 0, Math.PI * 2);
+        ctx.arc(x + 10 + sway * 0.8, y + 14, 9, 0, Math.PI * 2);
+        ctx.arc(x + 22 + sway * 0.8, y + 14, 9, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = COLORS.leavesHi;
+        ctx.beginPath();
+        ctx.arc(x + 12 + sway, y + 8, 5, 0, Math.PI * 2);
+        ctx.arc(x + 20 + sway, y + 11, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawObstacle(tile, tileX, tileY, time) {
+        if (tile === TILE.TREE) drawTree(tileX, tileY, time);
+        if (tile === TILE.ROCK) drawRock(tileX, tileY);
+      }
+
+      function drawPlayer(time) {
+        const bob = Math.hypot(player.vx, player.vy) > 4 ? Math.sin(player.walkTime * Math.PI) * 0.5 : Math.sin(time * 2.3) * 0.45;
+        const x = player.x;
+        const y = player.y + bob;
+        const moving = Math.hypot(player.vx, player.vy) > 8;
+        const frame = moving ? Math.floor(player.walkTime) % 4 : 0;
+        const legSwing = [0, 1.5, 0, -1.5][frame];
+        const armSwing = [0, -1.2, 0, 1.2][frame];
+
+        ctx.fillStyle = "rgba(0,0,0,0.24)";
+        ctx.beginPath();
+        ctx.ellipse(x, y + 11, 8, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const px = x - 10;
+        const py = y - 16;
+
+        function rect(rx, ry, rw, rh, color) {
+          ctx.fillStyle = color;
+          ctx.fillRect(px + rx, py + ry, rw, rh);
+        }
+
+        rect(7, 14, 3, 6, "#5b3a24");
+        rect(10, 14, 3, 6, "#5b3a24");
+
+        if (player.dir === "down") {
+          rect(6.5 - armSwing, 8, 2, 7, "#e2b98b");
+          rect(11.5 + armSwing, 8, 2, 7, "#e2b98b");
+          rect(7, 7, 6, 8, "#2b9db1");
+          rect(7.5 - legSwing, 15, 3, 5, "#384c89");
+          rect(10.5 + legSwing, 15, 3, 5, "#384c89");
+          rect(6, 0, 8, 8, "#e2b98b");
+          rect(5, 0, 10, 3, "#6a4027");
+          rect(5, 2, 2, 3, "#6a4027");
+          rect(13, 2, 2, 3, "#6a4027");
+          rect(7, 4, 1, 1, "#1d1d1d");
+          rect(12, 4, 1, 1, "#1d1d1d");
+        } else if (player.dir === "up") {
+          rect(7, 7, 6, 8, "#25889b");
+          rect(6.5 + armSwing, 8, 2, 7, "#d3ad80");
+          rect(11.5 - armSwing, 8, 2, 7, "#d3ad80");
+          rect(7.5 - legSwing, 15, 3, 5, "#2f4174");
+          rect(10.5 + legSwing, 15, 3, 5, "#2f4174");
+          rect(6, 0, 8, 8, "#e2b98b");
+          rect(5, 0, 10, 5, "#6a4027");
+          rect(6, 5, 8, 1, "#6a4027");
+        } else if (player.dir === "left") {
+          rect(7, 7, 6, 8, "#2b9db1");
+          rect(6, 9 + armSwing * 0.4, 2, 6, "#e2b98b");
+          rect(11, 8 - armSwing * 0.4, 2, 6, "#cda77d");
+          rect(7.5 - legSwing, 15, 3, 5, "#384c89");
+          rect(10.5 + legSwing, 15, 3, 5, "#384c89");
+          rect(6, 0, 8, 8, "#e2b98b");
+          rect(5, 0, 8, 3, "#6a4027");
+          rect(5, 2, 2, 4, "#6a4027");
+          rect(8, 4, 1, 1, "#1d1d1d");
+        } else {
+          rect(7, 7, 6, 8, "#2b9db1");
+          rect(12, 9 - armSwing * 0.4, 2, 6, "#e2b98b");
+          rect(7, 8 + armSwing * 0.4, 2, 6, "#cda77d");
+          rect(7.5 - legSwing, 15, 3, 5, "#384c89");
+          rect(10.5 + legSwing, 15, 3, 5, "#384c89");
+          rect(6, 0, 8, 8, "#e2b98b");
+          rect(7, 0, 8, 3, "#6a4027");
+          rect(13, 2, 2, 4, "#6a4027");
+          rect(11, 4, 1, 1, "#1d1d1d");
+        }
+      }
+
+      function drawWorld(time, view) {
+        const startX = clamp(Math.floor(camera.x / TILE_SIZE) - 2, 0, MAP_W - 1);
+        const startY = clamp(Math.floor(camera.y / TILE_SIZE) - 2, 0, MAP_H - 1);
+        const endX = clamp(Math.ceil((camera.x + view.worldW) / TILE_SIZE) + 2, 0, MAP_W - 1);
+        const endY = clamp(Math.ceil((camera.y + view.worldH) / TILE_SIZE) + 2, 0, MAP_H - 1);
+
+        for (let y = startY; y <= endY; y++) {
+          for (let x = startX; x <= endX; x++) {
+            drawGroundTile(map[y][x], x, y, time);
+          }
+        }
+
+        const lateObstacles = [];
+        for (let y = startY; y <= endY; y++) {
+          for (let x = startX; x <= endX; x++) {
+            const tile = map[y][x];
+            if (tile !== TILE.TREE && tile !== TILE.ROCK) continue;
+            const baseY = y * TILE_SIZE + (tile === TILE.TREE ? 28 : 24);
+            if (baseY <= player.y + 4) {
+              drawObstacle(tile, x, y, time);
+            } else {
+              lateObstacles.push([tile, x, y]);
+            }
+          }
+        }
+
+        drawPlayer(time);
+
+        for (const [tile, x, y] of lateObstacles) {
+          drawObstacle(tile, x, y, time);
+        }
+      }
+
+      function drawUI(day) {
+        ctx.save();
+
+        ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+        ctx.fillRect(14, 12, 178, 36);
+        ctx.fillRect(canvas.width - 110, 12, 96, 36);
+
+        ctx.fillStyle = "#f3f7e8";
+        ctx.font = "bold 22px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("Moonlight City", 24, 37);
+
+        ctx.font = "bold 20px Trebuchet MS, Arial, sans-serif";
+        const dayText = `Day ${day}`;
+        const dayWidth = ctx.measureText(dayText).width;
+        ctx.fillText(dayText, canvas.width - 26 - dayWidth, 37);
+
+        const hint = "WASD or Arrow Keys to move";
+        ctx.font = "18px Trebuchet MS, Arial, sans-serif";
+        const hintWidth = ctx.measureText(hint).width;
+        const hintX = (canvas.width - hintWidth) / 2;
+        const hintY = canvas.height - 22;
+        ctx.fillStyle = "rgba(0, 0, 0, 0.34)";
+        ctx.fillRect(hintX - 12, hintY - 22, hintWidth + 24, 32);
+        ctx.fillStyle = "#f6f6ef";
+        ctx.fillText(hint, hintX, hintY);
+
+        ctx.restore();
+      }
+
+      let lastTime = performance.now();
+      let elapsed = 0;
+
+      function tick(now) {
+        const dt = Math.min((now - lastTime) / 1000, 0.033);
+        lastTime = now;
+        elapsed += dt;
+
+        movePlayer(dt);
+
+        const view = getView();
+        const targetX = clamp(player.x - view.worldW / 2, 0, Math.max(0, WORLD_W - view.worldW));
+        const targetY = clamp(player.y - view.worldH / 2, 0, Math.max(0, WORLD_H - view.worldH));
+        camera.x += (targetX - camera.x) * Math.min(1, dt * 6);
+        camera.y += (targetY - camera.y) * Math.min(1, dt * 6);
+        camera.x = clamp(camera.x, 0, Math.max(0, WORLD_W - view.worldW));
+        camera.y = clamp(camera.y, 0, Math.max(0, WORLD_H - view.worldH));
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#18281b";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.scale(view.zoom, view.zoom);
+        ctx.translate(-camera.x, -camera.y);
+        drawWorld(elapsed, view);
+        ctx.restore();
+
+        drawUI(1 + Math.floor(elapsed / 60));
+        requestAnimationFrame(tick);
+      }
+
+      requestAnimationFrame(tick);
+    })();
+  </script>
+</body>
+</html>
