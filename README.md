@@ -8,133 +8,46 @@ A 2D city life & dungeon adventure game built by a dad and daughter team. 🌙
 
 | Document | Description |
 |----------|-------------|
-| [DESIGN.md](./DESIGN.md) | Full game design document |
-| [TODO.md](./TODO.md) | Prioritised task list by phase |
-| [game.html](./game.html) | ▶️ Playable prototype — open in browser! |
+| [DESIGN.md](./DESIGN.md) | Full game design document — city, housing, combat, dungeons |
+| [STORY.md](./STORY.md) | 📖 Story, world mystery, NPC backstories & full quest arcs |
+| [BALANCE.md](./BALANCE.md) | ⚖️ Progression curves, XP tables, loot tables, class skill trees, boss stats |
+| [ROADMAP.md](./ROADMAP.md) | 🗺️ Milestones (v0.5 vertical slice → v1.0), risks & parent-child dev rhythm |
+| [TODO.md](./TODO.md) | ✅ Prioritised task list across all 9 phases |
+| [game.html](./game.html) | ▶️ Playable prototype — just open in any browser! |
 
 ---
 
-## 🗺️ High-Level Development Guide
+## 🎯 One-Sentence Pitch
 
-This guide walks through the major phases of building a 2D life-sim / farming game from scratch. Take it one step at a time — the journey is the fun part!
+> *Go down scary, come back rich, make home warmer, get noticed for it.*
 
----
+Moonlight City is a 2D city life + dungeon adventure. You live in a city, decorate your home, befriend characters, and descend into a 100-level dungeon beneath the streets — earning loot that makes your city life richer, and city friendships that make your dives deeper.
 
-## Phase 1: Pick Your Tools 🛠️
-
-Choose a game engine that's beginner-friendly and good for 2D games. Great options:
-
-| Engine | Language | Why it's great |
-|--------|----------|----------------|
-| [Godot](https://godotengine.org/) | GDScript (like Python) | Free, lightweight, perfect for 2D |
-| [Unity](https://unity.com/) | C# | Huge community, lots of tutorials |
-| [Pygame](https://www.pygame.org/) | Python | Great if you already know Python |
-
-**Recommendation for a parent/child team: Godot.** It's free, has a visual editor, and GDScript is easy to learn.
+**No farming. No energy timers. No missable content.** Just a warm city above and an adventure below.
 
 ---
 
-## Phase 2: Plan Your Game 📝
+## 🌙 The Core Loop
 
-Before writing any code, sketch out your ideas together:
+```
+  🏠 HOME  →  🏙️ CITY  →  🚽 DUNGEON  →  💰 HAUL  →  👑 SHOW OFF  ↩
+```
 
-- **Setting** — What's the world like? A cozy town? A magical farm? A city?
-- **Player character** — Who are you playing as? What do they look like?
-- **Core loop** — What does the player *do* every day? (e.g. farm, fish, talk to villagers)
-- **Goals** — What is the player working toward? (e.g. restore the town, make friends, build a farm)
-- **Villagers** — Who lives in the world? Give them names and personalities!
-
-> 💡 **Fun activity:** Draw your map and characters on paper first. This is a great thing to do together!
-
----
-
-## Phase 3: Build the Foundation 🧱
-
-Get the basics working before adding features:
-
-1. **Create a simple tile map** — a grid of ground/grass tiles the player can walk on
-2. **Add a player character** — a sprite that moves with arrow keys or WASD
-3. **Add a camera** — so the camera follows the player around the world
-4. **Add collision** — so the player can't walk through walls and trees
+- **Home** — gear up, sleep for Well-Rested bonus, decorate with dungeon loot
+- **City** — pick up quests, chat with NPCs, shop, build friendships that unlock power
+- **Dungeon** — 3–5 floors of real-time combat, chests, secrets, boss floors
+- **Haul** — bring back gold, gear, materials, and cosmetics
+- **Show off** — wear the Slime Crown, place trophies, watch NPCs react
 
 ---
 
-## Phase 4: Core Gameplay Systems 🌾
+## 📚 Resources
 
-Start layering in the features that make it feel like a life-sim:
-
-1. **Day/night cycle** — time passes, screen gets darker at night
-2. **Energy system** — player has limited energy each day
-3. **Inventory** — player can pick up and hold items
-4. **Farming** — till soil, plant seeds, water crops, harvest
-5. **Seasons** — crops grow differently in spring, summer, fall, winter
+- [Godot Engine](https://godotengine.org/) — recommended engine for this project
+- [GDQuest tutorials](https://www.gdquest.com/) — excellent free Godot tutorials
+- [OpenGameArt.org](https://opengameart.org/) — free music and sound effects
+- [itch.io free assets](https://itch.io/game-assets/free) — free pixel art packs
 
 ---
 
-## Phase 5: World & Characters 🏘️
-
-Make the world feel alive:
-
-1. **Build the town** — add buildings, paths, decorations
-2. **Add NPCs (villagers)** — characters that walk around and have schedules
-3. **Dialogue system** — player can talk to villagers
-4. **Friendship system** — give gifts, build relationships
-5. **Shops** — buy seeds, tools, and sell your crops
-
----
-
-## Phase 6: Audio & Art 🎨🎵
-
-Polish makes a huge difference:
-
-1. **Pixel art sprites** — player, NPCs, crops, tiles, items
-2. **Tileset** — a set of ground/floor/wall tiles for your maps
-3. **Sound effects** — footsteps, chopping, watering, UI clicks
-4. **Music** — calm background music for the farm, town, and night
-
-> 💡 **Free resources:** [itch.io](https://itch.io/game-assets/free) has tons of free pixel art assets. [OpenGameArt.org](https://opengameart.org/) has free music and sound effects.
-
----
-
-## Phase 7: Save & Load 💾
-
-Let the player save their progress:
-
-1. Save the game state (day, inventory, farm layout, friendships)
-2. Load it back when the game starts
-
----
-
-## Phase 8: Polish & Share 🚀
-
-Make it feel finished:
-
-1. **Main menu** — title screen with "New Game" and "Continue"
-2. **UI** — health/energy bar, calendar, inventory screen
-3. **Bug fixing** — play through and fix anything broken
-4. **Share it!** — Export the game and share with family and friends
-
----
-
-## 🌟 Suggested First Weekend Project
-
-To get started quickly, try building just this:
-
-- [ ] A grassy tile map (10x10 is fine!)
-- [ ] A player character that moves around
-- [ ] One tree the player can't walk through
-
-That's a real game world — everything else builds on top of it!
-
----
-
-## 📚 Helpful Resources
-
-- [Godot Docs](https://docs.godotengine.org/en/stable/) — official documentation
-- [GDQuest Godot tutorials](https://www.gdquest.com/) — excellent free tutorials
-- [Brackeys on YouTube](https://www.youtube.com/@Brackeys) — beginner-friendly game dev videos
-- [Stardew Valley wiki](https://stardewvalleywiki.com/) — great for inspiration on game systems
-
----
-
-*Happy farming! 🌻*
+*Moonlight City — where adventure lives around every corner.* 🌙
