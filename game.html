@@ -821,7 +821,8 @@
           skin:       s.skin       || 0,
           hairStyle:  s.hairStyle  || 0,
           hairColour: s.hairColour || 0,
-          outfit:     s.outfit     || 0
+          outfit:     s.outfit     || 0,
+          ageType:    s.ageType    || "adult"
         };
       }
 
@@ -1878,13 +1879,127 @@
           hair:      hairColor,
           torso:     outfit.torso,
           legs:      outfit.legs,
-          hairStyle: p.hairStyle || 0
+          hairStyle: p.hairStyle || 0,
+          ageType:   p.ageType   || "adult"
         });
       }
       // drawPlayer uses the live player object — called by city scene
       function drawPlayer(time) { drawPlayerSprite(time, player); }
 
+      function drawToddlerSprite(time, npc) {
+        const skin  = npc.skin,  hair = npc.hair;
+        const skinS = shade(skin, -15), hairD = shade(hair, -25);
+        const blush = shade(skin, 20);
+        const T = npc.torso, L = npc.legs, SH = "#3a2010";
+
+        const moving = Math.hypot(npc.vx, npc.vy) > 4;
+        // Toddlers waddle: wider, slower arm swing
+        const bob   = moving ? Math.sin(npc.walkTime * Math.PI) * 0.5 : Math.sin(time * 1.8 + (npc.homeX||0) * 0.01) * 0.3;
+        const frame = moving ? Math.floor(npc.walkTime) % 4 : 0;
+        const ls = [0, 2, 0, -2][frame] * 0.6;
+        const as = [0, -2,  0,  2][frame];  // arms swing wide
+        const x = npc.x, y = npc.y + bob, d = npc.dir;
+
+        // Shadow (smaller)
+        ctx.fillStyle = "rgba(0,0,0,0.15)";
+        ctx.beginPath();
+        ctx.ellipse(x, y + 10, 6, 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Toddler is centred at (x-8, y-14) — 16×22 cell
+        const px = x - 8, py = y - 14;
+        function r(rx, ry, rw, rh, c) {
+          ctx.fillStyle = c;
+          ctx.fillRect(Math.round(px + rx), Math.round(py + ry), rw, rh);
+        }
+
+        if (d === "down") {
+          // Shoes
+          r(2-ls, 19, 5, 3, SH); r(9+ls, 19, 5, 3, SH);
+          // Legs (short & stubby)
+          r(3-ls, 14, 4, 6, L);  r(9+ls, 14, 4, 6, L);
+          // Arms (spread out wide — toddler style)
+          r(-1-as*0.4, 10, 3, 6, skin); r(14+as*0.4, 10, 3, 6, skin);
+          // Tummy (round, chubby torso)
+          r(2, 9, 12, 6, T);
+          // Neck
+          r(6, 7, 4, 3, skin);
+          // Big round head
+          r(1, 0, 14, 12, skin);
+          // Side shading
+          r(0, 2, 2, 7, skinS); r(14, 2, 2, 7, skinS);
+          // Chubby cheeks (stronger blush on toddlers)
+          r(2, 7, 4, 3, blush); r(10, 7, 4, 3, blush);
+          // Big eyes
+          r(4, 2, 4, 5, "#fff"); r(9, 2, 4, 5, "#fff");
+          r(5, 3, 3, 4, "#1a1a2e"); r(10, 3, 3, 4, "#1a1a2e");
+          r(5, 3, 1, 1, "#fff");    r(10, 3, 1, 1, "#fff");
+          // Tiny smile
+          r(6, 9, 4, 1, skinS);
+          // Little ear nubs
+          r(0, 4, 1, 3, skin); r(15, 4, 1, 3, skin);
+        } else if (d === "up") {
+          r(2-ls, 19, 5, 3, SH); r(9+ls, 19, 5, 3, SH);
+          r(3-ls, 14, 4, 6, shade(L,-10)); r(9+ls, 14, 4, 6, shade(L,-10));
+          r(-1+as*0.4, 10, 3, 6, shade(skin,-12)); r(14-as*0.4, 10, 3, 6, shade(skin,-12));
+          r(2, 9, 12, 6, shade(T,-15));
+          r(6, 7, 4, 3, shade(skin,-15));
+          r(1, 0, 14, 12, shade(skin,-12));
+          r(0, 2, 2, 7, shade(skin,-22)); r(14, 2, 2, 7, shade(skin,-22));
+        } else if (d === "left") {
+          r(3-ls*0.5, 19, 5, 3, SH); r(8+ls*0.5, 19, 5, 3, SH);
+          r(4-ls*0.5, 14, 4, 6, L);  r(8+ls*0.5, 14, 4, 6, shade(L,-10));
+          r(0, 10+as*0.4, 3, 6, skin); r(13, 9-as*0.4, 3, 5, skinS);
+          r(2, 9, 12, 6, T); r(12, 9, 2, 6, shade(T,-15));
+          r(6, 7, 4, 3, skin); r(10, 7, 2, 3, skinS);
+          r(1, 0, 14, 12, skin); r(13, 0, 2, 12, skinS);
+          r(1, 2, 1, 6, skinS);
+          r(2, 7, 3, 3, blush);
+          r(4, 2, 4, 5, "#fff"); r(5, 3, 3, 4, "#1a1a2e"); r(5, 3, 1, 1, "#fff");
+        } else { // right
+          r(4-ls*0.5, 19, 5, 3, SH); r(9+ls*0.5, 19, 5, 3, SH);
+          r(4-ls*0.5, 14, 4, 6, shade(L,-10)); r(9+ls*0.5, 14, 4, 6, L);
+          r(13, 10-as*0.4, 3, 6, skin); r(1, 9+as*0.4, 3, 5, skinS);
+          r(2, 9, 12, 6, T); r(2, 9, 2, 6, shade(T,-15));
+          r(6, 7, 4, 3, skin); r(6, 7, 2, 3, skinS);
+          r(1, 0, 14, 12, skin); r(1, 0, 2, 12, skinS);
+          r(15, 2, 1, 6, skinS);
+          r(11, 7, 3, 3, blush);
+          r(9, 2, 4, 5, "#fff"); r(9, 3, 3, 4, "#1a1a2e"); r(11, 3, 1, 1, "#fff");
+        }
+
+        // Hair (simplified for toddler — just a little tuft)
+        const h = hair, hd = hairD;
+        if (d !== "up") {
+          if (npc.hairStyle <= 1) {
+            r(2, 0, 12, 3, h); r(1, 1, 2, 2, h); r(13, 1, 2, 2, h);
+          } else if (npc.hairStyle === 2) {
+            r(1, 0, 14, 4, h); r(0, 1, 2, 3, h); r(14, 1, 2, 3, h);
+          } else {
+            r(2, 0, 12, 5, h); r(6, 0, 4, 2, hd);
+          }
+        } else {
+          r(1, 0, 14, 4, shade(h, -12));
+        }
+
+        // Name tag (only for named NPCs)
+        if (npc.name) {
+          const dist = Math.hypot(npc.x - player.x, npc.y - player.y);
+          if (dist < 80) {
+            ctx.fillStyle = "rgba(0,0,0,0.6)";
+            ctx.font = "9px Trebuchet MS, Arial, sans-serif";
+            ctx.textAlign = "center";
+            const tw = ctx.measureText(npc.name).width + 6;
+            ctx.fillRect(x - tw/2, y - 26, tw, 12);
+            ctx.fillStyle = "#ffe8c0";
+            ctx.fillText(npc.name, x, y - 17);
+            ctx.textAlign = "left";
+          }
+        }
+      }
+
       function drawNpcSprite(time, npc) {
+        if (npc.ageType === "toddler") { drawToddlerSprite(time, npc); return; }
         const skin  = npc.skin;
         const hair  = npc.hair;
         const skinS = shade(skin, -15);
@@ -2661,14 +2776,14 @@
         hairStyle: 0,
         hairColour: 0,
         outfit: 0,
+        ageType: "adult",
         classId: "adventurer",
-        // which column the cursor is in: "name"|"skin"|"hair"|"hairColour"|"outfit"|"done"
         field: "skin",
         nameEditing: false,
         typedName: "Hero"
       };
 
-      const CC_FIELDS = ["name", "skin", "hairColour", "hairStyle", "outfit", "done"];
+      const CC_FIELDS = ["name", "skin", "hairColour", "hairStyle", "outfit", "age", "done"];
 
       function updateCharacterCreation() {
         // Navigate fields with left/right
@@ -2688,6 +2803,7 @@
           if (cc.field === "hairColour") cc.hairColour = (cc.hairColour + dir + HAIR_COLORS.length)   % HAIR_COLORS.length;
           if (cc.field === "outfit")     cc.outfit     = (cc.outfit     + dir + OUTFIT_COLORS.length) % OUTFIT_COLORS.length;
           if (cc.field === "hairStyle")  cc.hairStyle  = (cc.hairStyle  + dir + HAIR_STYLE_COUNT)     % HAIR_STYLE_COUNT;
+          if (cc.field === "age")        cc.ageType    = cc.ageType === "adult" ? "toddler" : "adult";
         }
 
         // Confirm / done
@@ -2699,6 +2815,7 @@
           game.save.player.hairColour = cc.hairColour;
           game.save.player.outfit     = cc.outfit;
           game.save.player.classId    = cc.classId;
+          game.save.player.ageType    = cc.ageType;
           // Assign a house based on character name — same name always gets same house
           const _ns = cc.name.split('').reduce((s, c) => s + c.charCodeAt(0), 0);
           game.save.player.houseNum = (_ns % 6) + 1;
@@ -2750,7 +2867,8 @@
           radius: 9, speed: 0, accel: 0,
           dir: "down", walkTime: time * 2,
           skin: cc.skin, hairStyle: cc.hairStyle,
-          hairColour: cc.hairColour, outfit: cc.outfit
+          hairColour: cc.hairColour, outfit: cc.outfit,
+          ageType: cc.ageType
         };
         ctx.save();
         ctx.scale(3, 3);
@@ -2758,25 +2876,27 @@
         drawPlayerSprite(time, previewP);
         ctx.restore();
 
-        // Option panels
+        // Option panels (7 columns, narrower)
+        const pw = 110; // panel half-width
         const panels = [
-          { key: "name",      label: "Name",       value: cc.name, x: w * 0.09 },
-          { key: "skin",      label: "Skin",        value: `${cc.skin + 1} / ${SKIN_TONES.length}`, x: w * 0.24 },
-          { key: "hairColour",label: "Hair Colour", value: `${cc.hairColour + 1} / ${HAIR_COLORS.length}`, x: w * 0.39 },
-          { key: "hairStyle", label: "Hair Style",  value: HAIR_STYLE_NAMES[cc.hairStyle], x: w * 0.54 },
-          { key: "outfit",    label: "Outfit",      value: `${cc.outfit + 1} / ${OUTFIT_COLORS.length}`, x: w * 0.69 },
-          { key: "done",      label: "▶ Play!",     value: "",  x: w * 0.86 }
+          { key: "name",       label: "Name",        value: cc.name,                                        x: w * 0.08 },
+          { key: "skin",       label: "Skin",         value: `${cc.skin + 1}/${SKIN_TONES.length}`,         x: w * 0.22 },
+          { key: "hairColour", label: "Hair Col",     value: `${cc.hairColour + 1}/${HAIR_COLORS.length}`,  x: w * 0.36 },
+          { key: "hairStyle",  label: "Hair Style",   value: HAIR_STYLE_NAMES[cc.hairStyle],                x: w * 0.50 },
+          { key: "outfit",     label: "Outfit",       value: `${cc.outfit + 1}/${OUTFIT_COLORS.length}`,    x: w * 0.64 },
+          { key: "age",        label: "Age",          value: cc.ageType === "toddler" ? "🧒 Toddler" : "🧑 Adult", x: w * 0.78 },
+          { key: "done",       label: "▶ Play!",      value: "",                                            x: w * 0.92 }
         ];
 
         const panelY = h * 0.72;
         panels.forEach(p => {
           const sel = cc.field === p.key;
           ctx.fillStyle = sel ? "rgba(240,232,200,0.18)" : "rgba(0,0,0,0.35)";
-          ctx.fillRect(p.x - 70, panelY - 40, 140, 80);
+          ctx.fillRect(p.x - pw/2, panelY - 40, pw, 80);
           if (sel) {
             ctx.strokeStyle = "#f0e8c8";
             ctx.lineWidth = 2;
-            ctx.strokeRect(p.x - 70, panelY - 40, 140, 80);
+            ctx.strokeRect(p.x - pw/2, panelY - 40, pw, 80);
           }
           ctx.fillStyle = sel ? "#f0e8c8" : "#889aaa";
           ctx.font = "bold 16px Trebuchet MS, Arial, sans-serif";
@@ -2784,7 +2904,6 @@
           ctx.font = sel ? "bold 20px Trebuchet MS, Arial, sans-serif" : "18px Trebuchet MS, Arial, sans-serif";
           ctx.fillStyle = sel ? "#ffe090" : "#c0c8d0";
           if (p.key === "skin") {
-            // Show swatch
             ctx.fillStyle = SKIN_TONES[cc.skin];
             ctx.fillRect(p.x - 12, panelY + 6, 24, 16);
           } else if (p.key === "hairColour") {
@@ -2794,9 +2913,10 @@
             ctx.fillStyle = OUTFIT_COLORS[cc.outfit].torso;
             ctx.fillRect(p.x - 14, panelY + 6, 13, 16);
             ctx.fillStyle = OUTFIT_COLORS[cc.outfit].legs;
-            ctx.fillRect(p.x + 1, panelY + 6, 13, 16);
+            ctx.fillRect(p.x + 1,  panelY + 6, 13, 16);
           } else {
             ctx.fillStyle = sel ? "#ffe090" : "#c0c8d0";
+            ctx.font = sel ? "bold 14px Trebuchet MS, Arial, sans-serif" : "13px Trebuchet MS, Arial, sans-serif";
             ctx.fillText(p.value + (p.key === "name" && sel ? "▌" : ""), p.x, panelY + 22);
           }
         });
