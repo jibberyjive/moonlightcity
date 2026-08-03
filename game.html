@@ -133,12 +133,48 @@
       };
       // Named NPC definitions — position is their home wander centre
       const NPC_DATA = [
-        { id: "ella",   name: "Ella",   homeX: 20*32+16, homeY: 22*32+16, skin: "#e8c49a", hair: "#b85c2a", torso: "#f5e6c8", legs: "#8b5e3c", hairStyle: 1 },
-        { id: "will",   name: "Will",   homeX: 48*32+16, homeY: 22*32+16, skin: "#7a4a2e", hair: "#1a0f00", torso: "#2c3e6b", legs: "#1a2440", hairStyle: 0 },
-        { id: "pipper", name: "Pipper", homeX: 24*32+16, homeY: 30*32+16, skin: "#f5d5a0", hair: "#e84a10", torso: "#4a9a3c", legs: "#3a6fcd", hairStyle: 3 },
-        { id: "rose",   name: "Rose",   homeX: 47*32+16, homeY: 52*32+16, skin: "#d4b8c4", hair: "#0a0a1a", torso: "#2a1a3a", legs: "#1a0a2a", hairStyle: 2 },
-        { id: "lumi",   name: "Lumi",   homeX: 57*32+16, homeY: 22*32+16, skin: "#f0e8d8", hair: "#d8d8f0", torso: "#c8b8e0", legs: "#8898a8", hairStyle: 4 },
-        { id: "rex",    name: "Rex",    homeX:  3*32+16, homeY: 40*32+16, skin: "#8a5a3a", hair: "#5a5050", torso: "#5a3a1a", legs: "#2a2010", hairStyle: 5 },
+        { id: "ella",   name: "Ella",   homeX: 20*32+16, homeY: 22*32+16, skin: "#e8c49a", hair: "#b85c2a", torso: "#f5e6c8", legs: "#8b5e3c", hairStyle: 1,
+          lines: [
+            "Oh! A new face! Welcome to Ella's Marvellous Mixtures — that's me, I'm Ella, this is the shop, you've got the full tour now!",
+            "Everything here is fresh, fizzy, and if it isn't... you didn't buy it from me. Ha!",
+            "Come back soon. I might have something special brewing. 🧪"
+          ]
+        },
+        { id: "will",   name: "Will",   homeX: 48*32+16, homeY: 22*32+16, skin: "#7a4a2e", hair: "#1a0f00", torso: "#2c3e6b", legs: "#1a2440", hairStyle: 0,
+          lines: [
+            "Hey. You new? I'm Will. I keep things running in the district.",
+            "Pipes, fuses, locks that stick — I fix it. That's all there is to it.",
+            "Try not to touch the junction box on Oak Lane. That one's mine."
+          ]
+        },
+        { id: "pipper", name: "Pipper", homeX: 24*32+16, homeY: 30*32+16, skin: "#f5d5a0", hair: "#e84a10", torso: "#4a9a3c", legs: "#3a6fcd", hairStyle: 3,
+          lines: [
+            "OHHH a new person!! Are you an adventurer?! I want to be an adventurer someday!!",
+            "I found a shiny rock near the sewer entrance yesterday but mum said to put it back. I put it back. Mostly.",
+            "If you find treasure down there, will you show me? Please? I'll wait right here."
+          ]
+        },
+        { id: "rose",   name: "Rose",   homeX: 47*32+16, homeY: 52*32+16, skin: "#d4b8c4", hair: "#0a0a1a", torso: "#2a1a3a", legs: "#1a0a2a", hairStyle: 2,
+          lines: [
+            "You found me. Most don't bother looking.",
+            "Three questions. Choose them carefully.",
+            "...I'll be here tomorrow night, if you think of better ones."
+          ]
+        },
+        { id: "lumi",   name: "Lumi",   homeX: 57*32+16, homeY: 22*32+16, skin: "#f0e8d8", hair: "#d8d8f0", torso: "#c8b8e0", legs: "#8898a8", hairStyle: 4,
+          lines: [
+            "Oh! I— hello. Sorry. I was painting. You can look. If you want. You don't have to.",
+            "I keep dreaming about tunnels. Green ones, dripping. I've never been underground.",
+            "...They feel very real. That probably means nothing. Probably."
+          ]
+        },
+        { id: "rex",    name: "Rex",    homeX:  3*32+16, homeY: 40*32+16, skin: "#8a5a3a", hair: "#5a5050", torso: "#5a3a1a", legs: "#2a2010", hairStyle: 5,
+          lines: [
+            "Sit down. Don't touch the lantern.",
+            "You're thinking about the sewers, aren't you. Everyone does their first week.",
+            "Don't go in. ...Fine. But come back and tell me what floor you reached."
+          ]
+        },
       ];
 
       const DTILE_SIZE = 32;
@@ -773,6 +809,7 @@
 
       let player = createPlayer(null);
       let npcs = [];
+      let dialogue = { active: false, npc: null, lineIndex: 0 };
       let dungeon = {
         floor: 1,
         data: null,
@@ -997,6 +1034,27 @@
           player.y = game.houseExitY || 24 * 32 + 16;
           player.vx = 0; player.vy = 0;
         });
+      }
+
+      function openDialogue(npc) {
+        dialogue.active    = true;
+        dialogue.npc       = npc;
+        dialogue.lineIndex = 0;
+        // NPC turns to face the player
+        const dx = player.x - npc.x, dy = player.y - npc.y;
+        npc.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+        npc.vx = 0; npc.vy = 0;
+        npc.wanderTimer = 4; // pause wander after chat
+        player.vx = 0; player.vy = 0;
+      }
+
+      function advanceDialogue() {
+        if (!dialogue.active) return;
+        dialogue.lineIndex++;
+        if (dialogue.lineIndex >= (dialogue.npc.lines || []).length) {
+          dialogue.active = false;
+          dialogue.npc    = null;
+        }
       }
 
       function dungeonTileAt(wx, wy) {
@@ -2194,9 +2252,19 @@
       // ---- CITY SCENE (wraps existing world code) ------
 
       function updateCity(dt) {
-        if (justPressedKeys.pause) {
-          // Push pause overlay — not yet implemented, just ignore for now
+        // ── Dialogue mode — freeze world, handle input ──────────────────────
+        if (dialogue.active) {
+          if (justPressedKeys.interact || justPressedKeys.attack || justPressedKeys.confirm || justPressedKeys.pause) {
+            advanceDialogue();
+          }
+          // still update camera smoothly while chatting
+          const view = getView();
+          camera.x += (clamp(player.x - view.worldW / 2, 0, Math.max(0, WORLD_W - view.worldW)) - camera.x) * Math.min(1, dt * 6);
+          camera.y += (clamp(player.y - view.worldH / 2, 0, Math.max(0, WORLD_H - view.worldH)) - camera.y) * Math.min(1, dt * 6);
+          return;
         }
+
+        if (justPressedKeys.pause) { /* pause not yet implemented */ }
         movePlayer(dt);
         updateNpcs(dt);
 
@@ -2231,7 +2299,18 @@
           const _door = HOUSE_DOORS[_hn];
           if (_door && Math.hypot(player.x - _door.px, player.y - _door.py) < 60 && justPressedKeys.interact) {
             enterHouse();
+            return;
           }
+        }
+
+        // Check NPC interaction (talk)
+        if (justPressedKeys.interact) {
+          let nearest = null, nearestDist = Infinity;
+          for (const npc of npcs) {
+            const d = Math.hypot(player.x - npc.x, player.y - npc.y);
+            if (d < 52 && d < nearestDist) { nearest = npc; nearestDist = d; }
+          }
+          if (nearest) openDialogue(nearest);
         }
       }
 
@@ -2243,7 +2322,7 @@
         drawWorld(time, view);
         ctx.restore();
         drawCityHUD(game.save);
-        if (Math.hypot(player.x - SEWER_ENTRANCE.x, player.y - SEWER_ENTRANCE.y) < 60) {
+        if (!dialogue.active && Math.hypot(player.x - SEWER_ENTRANCE.x, player.y - SEWER_ENTRANCE.y) < 60) {
           ctx.fillStyle = "rgba(0,0,0,0.55)";
           ctx.fillRect(canvas.width / 2 - 112, canvas.height - 42, 224, 24);
           ctx.fillStyle = "#d8ddd0";
@@ -2251,6 +2330,23 @@
           ctx.textAlign = "center";
           ctx.fillText("Press E or Space to enter sewer", canvas.width / 2, canvas.height - 25);
           ctx.textAlign = "left";
+        }
+
+        // NPC talk prompt
+        if (!dialogue.active) {
+          for (const npc of npcs) {
+            const dist = Math.hypot(player.x - npc.x, player.y - npc.y);
+            if (dist < 52) {
+              ctx.fillStyle = "rgba(0,0,0,0.55)";
+              ctx.fillRect(canvas.width / 2 - 110, canvas.height - 42, 220, 24);
+              ctx.fillStyle = npcNameColour(npc.id);
+              ctx.font = "bold 12px Trebuchet MS, Arial, sans-serif";
+              ctx.textAlign = "center";
+              ctx.fillText(`Press E to talk to ${npc.name}`, canvas.width / 2, canvas.height - 25);
+              ctx.textAlign = "left";
+              break;
+            }
+          }
         }
 
         // Player's house door — name label above it + enter prompt when nearby
@@ -2284,9 +2380,107 @@
           }
         }
         drawNotice();
+        if (dialogue.active) drawDialogueBox(time);
       }
 
-      function updateDungeonScene(dt) {
+      function drawDialogueBox(time) {
+        const npc  = dialogue.npc;
+        const line = (npc.lines || [])[dialogue.lineIndex] || "";
+        const isLast = dialogue.lineIndex >= (npc.lines || []).length - 1;
+
+        const W = canvas.width, H = canvas.height;
+        const boxH  = 130;
+        const boxY  = H - boxH - 10;
+        const pad   = 16;
+        const portSize = 88;
+
+        // Box background
+        ctx.fillStyle = "rgba(10, 14, 22, 0.93)";
+        roundRect(ctx, 10, boxY, W - 20, boxH, 10);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(200,200,160,0.35)";
+        ctx.lineWidth = 1.5;
+        roundRect(ctx, 10, boxY, W - 20, boxH, 10);
+        ctx.stroke();
+
+        // NPC portrait panel
+        ctx.fillStyle = "rgba(0,0,0,0.4)";
+        roundRect(ctx, 22, boxY + 10, portSize, portSize, 6);
+        ctx.fill();
+
+        // Draw NPC mini-sprite scaled up inside portrait
+        ctx.save();
+        const portCX = 22 + portSize / 2;
+        const portCY = boxY + 10 + portSize / 2 + 8;
+        ctx.scale(2.6, 2.6);
+        drawNpcSprite(0, {
+          ...npc,
+          x: portCX / 2.6, y: portCY / 2.6,
+          vx: 0, vy: 0, dir: "down",
+          walkTime: 0, homeX: portCX / 2.6
+        });
+        ctx.restore();
+
+        // NPC name tag
+        ctx.fillStyle = npcNameColour(npc.id);
+        ctx.font = "bold 15px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(npc.name, 22 + portSize + pad, boxY + 26);
+
+        // Divider under name
+        ctx.fillStyle = "rgba(200,200,160,0.25)";
+        ctx.fillRect(22 + portSize + pad, boxY + 30, W - 80 - portSize, 1);
+
+        // Dialogue text with word wrap
+        ctx.fillStyle = "#f0ede4";
+        ctx.font = "14px Trebuchet MS, Arial, sans-serif";
+        const maxW  = W - 80 - portSize - pad * 2;
+        const textX = 22 + portSize + pad;
+        const textY = boxY + 52;
+        wrapText(ctx, line, textX, textY, maxW, 22);
+
+        // Advance hint
+        const hint = isLast ? "Press E to close  ✕" : "Press E to continue  ▼";
+        ctx.fillStyle = "rgba(200,200,140,0.7)";
+        ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(hint, W - 22, boxY + boxH - 10);
+        ctx.textAlign = "left";
+      }
+
+      function npcNameColour(id) {
+        return { ella:"#f5c870", will:"#7ab8f5", pipper:"#f57a3a", rose:"#c47af5", lumi:"#b8f0e0", rex:"#d48a58" }[id] || "#f0ede4";
+      }
+
+      function roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.arcTo(x + w, y, x + w, y + r, r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+        ctx.lineTo(x + r, y + h);
+        ctx.arcTo(x, y + h, x, y + h - r, r);
+        ctx.lineTo(x, y + r);
+        ctx.arcTo(x, y, x + r, y, r);
+        ctx.closePath();
+      }
+
+      function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+        const words = text.split(" ");
+        let line = "";
+        let cy = y;
+        for (const word of words) {
+          const test = line ? line + " " + word : word;
+          if (ctx.measureText(test).width > maxWidth && line) {
+            ctx.fillText(line, x, cy);
+            line = word;
+            cy += lineHeight;
+          } else {
+            line = test;
+          }
+        }
+        if (line) ctx.fillText(line, x, cy);
+      }
         updateDungeon(dt);
       }
 
