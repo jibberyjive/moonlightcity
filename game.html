@@ -2176,8 +2176,28 @@
             player.dir = dy > 0 ? "down" : "up";
         }
 
-        // Exit only via Esc or E (no accidental walk-out)
-        if (justPressedKeys.pause || justPressedKeys.interact) exitHouse();
+        if (justPressedKeys.pause) { exitHouse(); return; }
+
+        if (justPressedKeys.interact) {
+          // Bed centre in interior coords (left side, rows 2–5)
+          const bedX = ts + ts, bedY = ts * 2 + ts * 2;            // ≈ 72, 144
+          // Chest centre in interior coords (right side, row 5)
+          const chestX = ts * 8 + ts, chestY = ts * 5 + ts / 2;   // ≈ 324, 198
+
+          if (Math.hypot(player.x - bedX, player.y - bedY) < 55) {
+            // Sleep in bed — restore HP, show notice
+            player.hp = player.maxHp;
+            if (game.save) {
+              game.save.player.hp = player.maxHp;
+              writeSave(game.save);
+            }
+            showNotice("You sleep soundly. HP fully restored! 💤", 2.5);
+          } else if (Math.hypot(player.x - chestX, player.y - chestY) < 50) {
+            showNotice("Storage chest — coming in a future update! 📦", 2);
+          } else {
+            exitHouse();
+          }
+        }
       }
 
       function drawHouseInterior(time) {
@@ -2331,12 +2351,22 @@
         ctx.fillText(`🏠  ${pName}'s Home`, w / 2, oy + 22);
 
         // ── Interaction hints ─────────────────────────────
+        // ── Context-sensitive hints ───────────────────────
+        const ts2 = ts; // alias for clarity
+        const bedX = ts2 + ts2, bedY = ts2 * 2 + ts2 * 2;
+        const chestX = ts2 * 8 + ts2, chestY = ts2 * 5 + ts2 / 2;
+        let hintText = "E — Leave home   Esc — Leave home";
+        if (Math.hypot(player.x - bedX, player.y - bedY) < 55)
+          hintText = "E — Sleep  (restores HP)";
+        else if (Math.hypot(player.x - chestX, player.y - chestY) < 50)
+          hintText = "E — Open storage chest";
+
         ctx.fillStyle = "rgba(0,0,0,0.5)";
-        ctx.fillRect(w / 2 - 140, h - 40, 280, 24);
+        ctx.fillRect(w / 2 - 160, h - 40, 320, 24);
         ctx.fillStyle = "#aaa";
         ctx.font = "12px Arial";
         ctx.textAlign = "center";
-        ctx.fillText("Arrow keys / WASD — Move     E or Esc — Leave home", w / 2, h - 22);
+        ctx.fillText(hintText, w / 2, h - 22);
 
         ctx.textAlign = "left";
         drawFade();
