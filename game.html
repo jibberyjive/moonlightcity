@@ -133,12 +133,13 @@
         "58,53": "south",                    // Sweet Dreams candy store — south door
         "35,48": "south",                    // Moonlight Academy — south door
         "49,21": "south",                    // Prestige Furnishings — south door
-        "58,51": "south",                    // Moonlight Mansion — south door
+        "58,51": "south",   // old mansion (kept in case legacy save)
+        "73,16": "south",   // Moonlight Mansion — south door
       };
       const CANDY_STORE = { x1: 56, y1: 49, x2: 60, y2: 53 };
       const SCHOOL = { x1: 30, y1: 41, x2: 41, y2: 48 };
       const PRESTIGE_STORE = { x1: 44, y1: 15, x2: 55, y2: 21 };
-      const MANSION = { x1: 54, y1: 44, x2: 62, y2: 51 };
+      const MANSION = { x1: 68, y1: 5, x2: 79, y2: 16 };
 
       const CANDY_ITEMS = [
         { id: "gobstopper",   emoji: "🟠", name: "Gobstopper",    desc: "Restores 3 HP",          price:  3, hp: 3  },
@@ -694,13 +695,16 @@
         fillRectTiles(54, 39, 7, 6, TILE.STONE); // House 6
 
         // ══════════════════════════════════════════════════════════
-        // MOONLIGHT MANSION  (x:54-62, y:44-51)
+        // MOONLIGHT MANSION  (x:68-79, y:5-16) — Eastern Hills
         // Grand estate — only accessible if player buys the deed
         // ══════════════════════════════════════════════════════════
-        fillRectTiles(54, 44, 9, 8, TILE.STONE);   // mansion footprint
-        // Grand garden path leading to door
-        fillRectTiles(57, 52, 3, 1, TILE.PATH);    // doorstep path
-        stampTiles([[53,44],[63,44],[53,51],[63,51],[56,52],[59,52],[62,52]], TILE.FLOWERS);
+        fillRectTiles(66, 3, 16, 16, TILE.DARK_GRASS); // estate grounds
+        fillRectTiles(68, 5, 12, 12, TILE.STONE);       // mansion footprint
+        fillRectTiles(72, 17, 3, 2, TILE.PATH);          // doorstep path
+        // Garden path from estate to main road
+        paintLine([[73,17],[73,19],[73,21],[56,21],[56,23]], 0, TILE.PATH);
+        stampTiles([[65,3],[82,3],[65,19],[82,19],[70,20],[73,20],[76,20]], TILE.FLOWERS);
+        stampTiles([[65,4],[66,5],[65,18],[66,19],[82,4],[81,5],[82,18],[81,19]], TILE.TREE);
 
         // Garden flowers & yard trees
         stampTiles([[47,15],[56,15],[47,24],[57,24],
@@ -852,6 +856,72 @@
         fillRectTiles(54, 46, 7, 5, TILE.STONE);     // House 8
         fillRectTiles(56, 51, 2, 1, TILE.PATH);      // gate path south
         stampTiles([[54,45],[56,45],[59,45],[61,45]], TILE.FLOWERS);
+
+        // ══════════════════════════════════════════════════════════
+        // EASTERN HILLS  (x:64-95, y:0-63)
+        // Rolling countryside, forest, mansion estate to the east
+        // ══════════════════════════════════════════════════════════
+        fillRectTiles(64, 0, 32, 64, TILE.DARK_GRASS);  // base — dark grass
+
+        // Rolling meadow patches
+        fillRectTiles(64, 0,  10, 6,  TILE.GRASS);
+        fillRectTiles(80, 20, 15, 12, TILE.GRASS);
+        fillRectTiles(64, 35, 12, 8,  TILE.GRASS);
+
+        // Eastern road connecting city to mansion
+        fillRectTiles(64, 12,  5, 3, TILE.PATH);   // extension of Main Street
+        paintLine([[64,13],[67,13],[72,13],[72,17]], 0, TILE.PATH);
+
+        // River running south through eastern hills
+        fillRectTiles(88, 0, 3, 40, TILE.WATER);
+        fillRectTiles(85, 30, 6, 3, TILE.WATER);   // river bend
+        fillRectTiles(84, 33, 4, 30, TILE.WATER);  // continues south
+
+        // River bank flowers
+        stampTiles([[87,5],[87,12],[87,20],[87,28],[83,35],[83,42],[83,50],[83,58]], TILE.FLOWERS);
+        stampTiles([[91,5],[91,12],[91,20],[91,28]], TILE.FLOWERS);
+
+        // Forest patches east
+        fillRectTiles(64, 24, 8, 10, TILE.TREE);
+        fillRectTiles(76, 32, 7, 8,  TILE.TREE);
+        fillRectTiles(64, 42, 10, 12, TILE.TREE);
+        fillRectTiles(78, 48, 5,  8,  TILE.TREE);
+
+        // Clearings and rocks in forest
+        setTile(67, 28, TILE.GRASS); setTile(68, 28, TILE.GRASS);
+        setTile(67, 29, TILE.GRASS); setTile(68, 29, TILE.GRASS);
+        stampTiles([[69,33],[72,38],[65,46],[70,52],[80,50]], TILE.ROCK);
+
+        // Hill path through forest
+        paintLine([[64,45],[68,45],[68,48],[72,48],[72,55],[68,55],[64,55]], 0, TILE.PATH);
+
+        // ══════════════════════════════════════════════════════════
+        // SOUTHERN COAST  (x:0-95, y:64-95)
+        // Sandy beach, ocean, extended harbour
+        // ══════════════════════════════════════════════════════════
+        // Sandy beach strip
+        fillRectTiles(0, 64, 96, 4, TILE.PATH);    // beach sand (pale PATH colour)
+        // Ocean
+        fillRectTiles(0, 68, 96, 27, TILE.WATER);  // deep ocean
+
+        // Beach cliffs/rocks on west side
+        stampTiles([[1,64],[2,64],[4,65],[1,66],[6,64],[8,65]], TILE.ROCK);
+        stampTiles([[90,64],[92,65],[94,64],[91,66],[93,67]], TILE.ROCK);
+
+        // Beach flowers / seagrass
+        stampTiles([[10,64],[15,64],[22,64],[30,64],[38,64],[46,64],[54,64],[62,64],[70,64],[78,64],[86,64]], TILE.FLOWERS);
+
+        // Extended dock piers into ocean
+        fillRectTiles(47, 64, 2, 6, TILE.PATH);
+        fillRectTiles(53, 64, 2, 6, TILE.PATH);
+        fillRectTiles(59, 64, 2, 5, TILE.PATH);
+
+        // Small sandy island
+        fillRectTiles(20, 72, 7, 5, TILE.PATH);    // island sand
+        stampTiles([[19,72],[27,72],[19,76],[27,76],[22,71],[24,71]], TILE.TREE);
+
+        // Path from docks to beach
+        fillRectTiles(47, 62, 2, 3, TILE.PATH);
       }
 
       // ==================================================
@@ -1335,8 +1405,8 @@
           showNotice("🏰 For sale: 5000⬡ at 💎 Prestige Furnishings!", 3);
           return;
         }
-        game.houseExitX = 58 * 32 + 16;
-        game.houseExitY = 52 * 32 + 16;
+        game.houseExitX = 73 * 32 + 16;
+        game.houseExitY = 17 * 32 + 16;
         game.inMansion = true;
         game.inCandyStore = false;
         game.inSchool = false;
@@ -2571,11 +2641,13 @@
           { text: "Park",           tx: 34, ty: 30 },
           { text: "Residential",    tx: 50, ty: 20 },
           { text: "💎 Prestige",    tx: 50, ty: 17 },
-          { text: "🏰 Mansion",     tx: 58, ty: 47 },
+          { text: "🏰 Mansion",     tx: 73, ty:  4 },
           { text: "Slums",          tx:  5, ty: 38 },
           { text: "Docks",          tx: 48, ty: 55 },
           { text: "Sweet Dreams 🍬",tx: 58, ty: 51 },
           { text: "🎓 School",      tx: 35, ty: 44 },
+          { text: "Eastern Hills",  tx: 80, ty: 30 },
+          { text: "Southern Coast", tx: 48, ty: 75 },
         ];
         ctx.font = `bold ${Math.max(7, ts + 2)}px Trebuchet MS, Arial, sans-serif`;
         ctx.textAlign = "center";
@@ -3493,8 +3565,8 @@
           return;
         }
 
-        // Check Mansion door (tile 58,51 → player stands at y:52)
-        const _mansionDoorX = 58 * 32 + 16, _mansionDoorY = 52 * 32 + 16;
+        // Check Mansion door (tile 73,16 → player stands at y:17)
+        const _mansionDoorX = 73 * 32 + 16, _mansionDoorY = 17 * 32 + 16;
         if (Math.hypot(player.x - _mansionDoorX, player.y - _mansionDoorY) < 52 && justPressedKeys.interact) {
           enterMansion();
           return;
