@@ -131,8 +131,10 @@
         "47,25": "north", "57,25": "north",  // Row 2 — door faces Elm Road from below
         "47,39": "north", "57,39": "north",  // Row 3 — door faces Blossom Lane
         "58,53": "south",                    // Sweet Dreams candy store — south door
+        "35,48": "south",                    // Moonlight Academy — south door
       };
       const CANDY_STORE = { x1: 56, y1: 49, x2: 60, y2: 53 };
+      const SCHOOL = { x1: 30, y1: 41, x2: 41, y2: 48 };
 
       const CANDY_ITEMS = [
         { id: "gobstopper",   emoji: "🟠", name: "Gobstopper",    desc: "Restores 3 HP",          price:  3, hp: 3  },
@@ -364,6 +366,7 @@
             hairStyle: 0,
             hairColour: 0,
             outfit: 0,
+            ageType: "adult",
             classId: "adventurer",
             houseNum: 0,
             level: 1,
@@ -454,7 +457,9 @@
         noticeTimer: 0,
         fadeAlpha: 0,
         fadeDir: 0,           // -1 fade out, +1 fade in, 0 idle
-        fadeCallback: null
+        fadeCallback: null,
+        inCandyStore: false,
+        inSchool: false
       };
 
       const camera = { x: 0, y: 0 };
@@ -711,6 +716,17 @@
         // -- Sweet Dreams Candy Store -- (x:56-60, y:49-53, docks side-street)
         fillRectTiles(56, 49, 5, 5, TILE.STONE);
         stampTiles([[55,49],[55,53],[61,49],[61,53],[57,54],[58,54],[59,54]], TILE.FLOWERS);
+
+        // ══════════════════════════════════════════════════════════
+        // MOONLIGHT ACADEMY — School (x:30-41, y:41-48)
+        // South of park, connected via path
+        // ══════════════════════════════════════════════════════════
+        fillRectTiles(28, 40, 16, 10, TILE.DARK_GRASS);   // school grounds
+        fillRectTiles(30, 41, 12, 8, TILE.STONE);          // main building
+        // Playground paths
+        fillRectTiles(30, 49, 12, 2, TILE.PATH);           // south path/playground
+        paintLine([[35,39],[35,40],[35,41]], 0, TILE.PATH); // connect from park path
+        stampTiles([[29,41],[42,41],[29,48],[42,48],[31,50],[35,50],[39,50]], TILE.FLOWERS);
 
         // ══════════════════════════════════════════════════════════
         // DISTRICT CONNECTOR PATHS
@@ -1248,7 +1264,21 @@
       function enterCandyStore() {
         game.houseExitX = 58 * 32 + 16;  // tile 58,54 — just south of door
         game.houseExitY = 54 * 32 + 16;
+        game.inSchool = false;
         game.inCandyStore = true;
+        switchScene(SCENE.HOUSE_INTERIOR, () => {
+          player.x = 5 * 36 + 18;
+          player.y = 6 * 36 + 18;
+          player.vx = 0; player.vy = 0;
+          player.dir = "up";
+        });
+      }
+
+      function enterSchool() {
+        game.houseExitX = 35 * 32 + 16;
+        game.houseExitY = 49 * 32 + 16;
+        game.inCandyStore = false;
+        game.inSchool = true;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           player.x = 5 * 36 + 18;
           player.y = 6 * 36 + 18;
@@ -1262,6 +1292,8 @@
         const door = HOUSE_DOORS[hn];
         game.houseExitX = door ? door.px : 47 * 32 + 16;
         game.houseExitY = door ? door.py : 24 * 32 + 16;
+        game.inCandyStore = false;
+        game.inSchool = false;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           // Place player at interior spawn (near door, bottom centre)
           player.x = 5 * 36 + 18;
@@ -1273,10 +1305,12 @@
 
       function exitHouse() {
         const wasCandyStore = game.inCandyStore;
+        const wasSchool = game.inSchool;
         game.inCandyStore = false;
+        game.inSchool = false;
         switchScene(SCENE.CITY, () => {
-          player.x = wasCandyStore ? 58 * 32 + 16 : (game.houseExitX || 47 * 32 + 16);
-          player.y = wasCandyStore ? 54 * 32 + 16 : (game.houseExitY || 24 * 32 + 16);
+          player.x = wasCandyStore ? 58 * 32 + 16 : wasSchool ? 35 * 32 + 16 : (game.houseExitX || 47 * 32 + 16);
+          player.y = wasCandyStore ? 54 * 32 + 16 : wasSchool ? 49 * 32 + 16 : (game.houseExitY || 24 * 32 + 16);
           player.vx = 0; player.vy = 0;
         });
       }
@@ -1592,6 +1626,8 @@
       function drawStone(x, y, tileX, tileY) {
         const isCandy = tileX >= CANDY_STORE.x1 && tileX <= CANDY_STORE.x2 &&
                         tileY >= CANDY_STORE.y1 && tileY <= CANDY_STORE.y2;
+        const isSchool = tileX >= SCHOOL.x1 && tileX <= SCHOOL.x2 &&
+                         tileY >= SCHOOL.y1 && tileY <= SCHOOL.y2;
 
         if (isCandy) {
           // ── Candy Store roof — pink tiles ───────────────────────
@@ -1655,6 +1691,9 @@
           }
 
         } else {
+          const roofColor = isSchool ? "#6b2a1a" : COLORS.stone;
+          ctx.fillStyle = roofColor;
+          ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
 
         // Horizontal shingle lines
         ctx.fillStyle = "rgba(0,0,0,0.22)";
@@ -1673,30 +1712,44 @@
         const southTile = (tileY + 1 < MAP_H) ? map[tileY + 1][tileX] : -1;
         const isEdge = southTile !== TILE.STONE;
         if (isEdge) {
-          // Cream/stone wall strip
-          ctx.fillStyle = "#d2c49a";
+          const wallColor = isSchool ? "#8b3a2a" : "#d2c49a";
+          const trimColor = isSchool ? "#e8d080" : "#d2c49a";
+          const frameColor = isSchool ? "rgba(90,40,20,0.75)" : "rgba(80,50,20,0.6)";
+          // Wall strip
+          ctx.fillStyle = wallColor;
           ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 9);
           // Dark line where roof overhangs wall
-          ctx.fillStyle = "rgba(0,0,0,0.35)";
+          ctx.fillStyle = isSchool ? "rgba(60,20,10,0.45)" : "rgba(0,0,0,0.35)";
+          ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 2);
+          // Trim band
+          ctx.fillStyle = trimColor;
           ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 2);
           // Small windows
-          ctx.fillStyle = "#a8c8e8";
-          ctx.fillRect(x + 5,            y + TILE_SIZE - 8, 5, 5);
+          ctx.fillStyle = "#a8d8ff";
+          ctx.fillRect(x + 5,             y + TILE_SIZE - 8, 5, 5);
           ctx.fillRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 5, 5);
           // Window frames
-          ctx.fillStyle = "rgba(80,50,20,0.6)";
-          ctx.strokeStyle = "rgba(80,50,20,0.6)";
+          ctx.fillStyle = frameColor;
+          ctx.strokeStyle = frameColor;
           ctx.lineWidth = 1;
-          ctx.strokeRect(x + 5,            y + TILE_SIZE - 8, 5, 5);
+          ctx.strokeRect(x + 5,             y + TILE_SIZE - 8, 5, 5);
           ctx.strokeRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 5, 5);
+
+          if (isSchool && tileX === 35 && tileY === 48) {
+            ctx.fillStyle = "#e8d080";
+            ctx.font = "bold 7px Trebuchet MS, Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("🎓 Moonlight Academy", x + TILE_SIZE / 2, y + TILE_SIZE - 11);
+            ctx.textAlign = "left";
+          }
         }
 
         // West-edge wall face
         const westTile = (tileX - 1 >= 0) ? map[tileY][tileX - 1] : -1;
         if (westTile !== TILE.STONE) {
-          ctx.fillStyle = "#b8a882";
+          ctx.fillStyle = isSchool ? "#7a3022" : "#b8a882";
           ctx.fillRect(x, y, 4, TILE_SIZE);
-          ctx.fillStyle = "rgba(0,0,0,0.2)";
+          ctx.fillStyle = isSchool ? "rgba(70,20,10,0.28)" : "rgba(0,0,0,0.2)";
           ctx.fillRect(x, y, 1, TILE_SIZE);
         }
         } // end else (non-candy buildings)
@@ -1716,6 +1769,15 @@
             ctx.fillRect(x + 18, doorY + 3, 2, 2);
             ctx.fillStyle = "rgba(255,220,240,0.3)";
             ctx.fillRect(x + 12, doorY + 1, 3, doorH - 2);
+          } else if (isSchool) {
+            ctx.fillStyle = "#5a1810";
+            ctx.fillRect(x + 10, doorY, 12, doorH);
+            ctx.fillStyle = "#8f2a1e";
+            ctx.fillRect(x + 11, doorY + 1, 10, doorH - 1);
+            ctx.fillStyle = "#e8d080";
+            ctx.fillRect(doorFacing === "south" ? x + 18 : x + 12, doorY + 3, 2, 2);
+            ctx.fillStyle = "rgba(255,235,190,0.2)";
+            ctx.fillRect(x + 12, doorY + 1, 3, doorH - 2);
           } else {
             // Regular brown door
             ctx.fillStyle = "#3a1e08";
@@ -1730,7 +1792,7 @@
         }
 
         // Highlight top-left corner (light source hint)
-        ctx.fillStyle = isCandy ? "rgba(255,200,230,0.12)" : "rgba(255,255,220,0.08)";
+        ctx.fillStyle = isCandy ? "rgba(255,200,230,0.12)" : isSchool ? "rgba(255,230,180,0.12)" : "rgba(255,255,220,0.08)";
         ctx.fillRect(x, y, TILE_SIZE, 3);
       }
 
@@ -1998,8 +2060,99 @@
         }
       }
 
+      function drawChildSprite(time, npc) {
+        const skin = npc.skin, hair = npc.hair;
+        const skinS = shade(skin, -14), hairD = shade(hair, -22);
+        const blazer = "#1e3a8a", blazerS = "#172c68";
+        const bottoms = "#4a4a5a", bottomsS = "#373744";
+        const tie = "#b42028", shoes = "#1a1a1a", bag = "#4a2e1d";
+
+        const moving = Math.hypot(npc.vx, npc.vy) > 4;
+        const bob = moving ? Math.sin(npc.walkTime * Math.PI) * 0.55 : Math.sin(time * 1.7 + (npc.homeX || 0) * 0.01) * 0.35;
+        const frame = moving ? Math.floor(npc.walkTime) % 4 : 0;
+        const ls = [0, 1.5, 0, -1.5][frame];
+        const as = [0, -1.2, 0, 1.2][frame];
+        const x = npc.x, y = npc.y + bob, d = npc.dir;
+
+        ctx.fillStyle = "rgba(0,0,0,0.17)";
+        ctx.beginPath();
+        ctx.ellipse(x, y + 12, 7, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const px = x - 9, py = y - 18;
+        function r(rx, ry, rw, rh, c) {
+          ctx.fillStyle = c;
+          ctx.fillRect(Math.round(px + rx), Math.round(py + ry), rw, rh);
+        }
+
+        if (d === "down") {
+          r(3-ls, 24, 5, 4, shoes); r(10+ls, 24, 5, 4, shoes);
+          r(4-ls, 18, 4, 7, bottoms); r(10+ls, 18, 4, 7, bottoms);
+          r(1-as*0.5, 13, 3, 8, skin); r(15+as*0.5, 13, 3, 8, skin);
+          r(3, 11, 12, 8, blazer); r(3, 11, 2, 8, blazerS); r(13, 11, 2, 8, blazerS);
+          r(7, 11, 4, 2, "#ffffff"); r(8, 13, 2, 4, tie);
+          r(6, 8, 6, 3, skin);
+          r(3, 0, 12, 11, skin); r(3, 0, 2, 11, skinS); r(13, 0, 2, 11, skinS);
+          r(0, 3, 2, 4, skin); r(16, 3, 2, 4, skin);
+          r(6, 3, 3, 4, "#fff"); r(10, 3, 3, 4, "#fff");
+          r(7, 4, 2, 3, "#1a1a2e"); r(10, 4, 2, 3, "#1a1a2e");
+          r(7, 4, 1, 1, "#fff"); r(10, 4, 1, 1, "#fff");
+          r(7, 8, 4, 1, skinS);
+        } else if (d === "up") {
+          r(3-ls, 24, 5, 4, shoes); r(10+ls, 24, 5, 4, shoes);
+          r(4-ls, 18, 4, 7, bottomsS); r(10+ls, 18, 4, 7, bottomsS);
+          r(1+as*0.5, 13, 3, 8, shade(skin, -10)); r(15-as*0.5, 13, 3, 8, shade(skin, -10));
+          r(2, 10, 14, 10, blazerS);
+          r(6, 11, 6, 6, bag);
+          r(6, 8, 6, 3, shade(skin, -12));
+          r(3, 0, 12, 11, shade(skin, -12)); r(3, 0, 2, 11, shade(skin, -22)); r(13, 0, 2, 11, shade(skin, -22));
+        } else if (d === "left") {
+          r(4-ls*0.5, 24, 5, 4, shoes); r(9+ls*0.5, 24, 5, 4, shoes);
+          r(4-ls*0.5, 18, 4, 7, bottoms); r(9+ls*0.5, 18, 4, 7, bottomsS);
+          r(0, 13+as*0.4, 3, 7, skin); r(14, 12-as*0.4, 3, 6, skinS);
+          r(3, 11, 11, 8, blazer); r(12, 11, 2, 8, blazerS);
+          r(7, 11, 3, 2, "#ffffff"); r(7, 13, 2, 4, tie);
+          r(6, 8, 5, 3, skin); r(10, 8, 2, 3, skinS);
+          r(3, 0, 12, 11, skin); r(13, 0, 2, 11, skinS);
+          r(2, 4, 1, 4, skinS); r(6, 3, 3, 4, "#fff"); r(7, 4, 2, 3, "#1a1a2e"); r(7, 4, 1, 1, "#fff");
+        } else {
+          r(4-ls*0.5, 24, 5, 4, shoes); r(9+ls*0.5, 24, 5, 4, shoes);
+          r(4-ls*0.5, 18, 4, 7, bottomsS); r(9+ls*0.5, 18, 4, 7, bottoms);
+          r(15, 13-as*0.4, 3, 7, skin); r(1, 12+as*0.4, 3, 6, skinS);
+          r(4, 11, 11, 8, blazer); r(4, 11, 2, 8, blazerS);
+          r(8, 11, 3, 2, "#ffffff"); r(9, 13, 2, 4, tie);
+          r(7, 8, 5, 3, skin); r(7, 8, 2, 3, skinS);
+          r(3, 0, 12, 11, skin); r(3, 0, 2, 11, skinS);
+          r(15, 4, 1, 4, skinS); r(9, 3, 3, 4, "#fff"); r(9, 4, 2, 3, "#1a1a2e"); r(10, 4, 1, 1, "#fff");
+        }
+
+        if (d !== "up") {
+          r(3, 0, 12, npc.hairStyle >= 2 ? 4 : 3, hair);
+          r(3, 0, 2, 4, hairD); r(13, 0, 2, 4, hairD);
+          if (npc.hairStyle >= 3) r(7, 0, 4, 2, hairD);
+        } else {
+          r(3, 0, 12, 4, shade(hair, -12));
+          r(5, 0, 8, 2, hairD);
+        }
+
+        if (npc.name) {
+          const dist = Math.hypot(npc.x - player.x, npc.y - player.y);
+          if (dist < 80) {
+            ctx.fillStyle = "rgba(0,0,0,0.6)";
+            ctx.font = "9px Trebuchet MS, Arial, sans-serif";
+            ctx.textAlign = "center";
+            const tw = ctx.measureText(npc.name).width + 6;
+            ctx.fillRect(x - tw/2, y - 30, tw, 12);
+            ctx.fillStyle = "#ffe8c0";
+            ctx.fillText(npc.name, x, y - 21);
+            ctx.textAlign = "left";
+          }
+        }
+      }
+
       function drawNpcSprite(time, npc) {
         if (npc.ageType === "toddler") { drawToddlerSprite(time, npc); return; }
+        if (npc.ageType === "child")   { drawChildSprite(time, npc);   return; }
         const skin  = npc.skin;
         const hair  = npc.hair;
         const skinS = shade(skin, -15);
@@ -2176,6 +2329,7 @@
           { text: "Slums",          tx:  5, ty: 38 },
           { text: "Docks",          tx: 48, ty: 55 },
           { text: "Sweet Dreams 🍬",tx: 58, ty: 51 },
+          { text: "🎓 School",      tx: 35, ty: 44 },
         ];
         ctx.font = `bold ${Math.max(7, ts + 2)}px Trebuchet MS, Arial, sans-serif`;
         ctx.textAlign = "center";
@@ -2803,7 +2957,11 @@
           if (cc.field === "hairColour") cc.hairColour = (cc.hairColour + dir + HAIR_COLORS.length)   % HAIR_COLORS.length;
           if (cc.field === "outfit")     cc.outfit     = (cc.outfit     + dir + OUTFIT_COLORS.length) % OUTFIT_COLORS.length;
           if (cc.field === "hairStyle")  cc.hairStyle  = (cc.hairStyle  + dir + HAIR_STYLE_COUNT)     % HAIR_STYLE_COUNT;
-          if (cc.field === "age")        cc.ageType    = cc.ageType === "adult" ? "toddler" : "adult";
+          if (cc.field === "age") {
+            const ages = ["adult", "toddler", "child"];
+            const i = ages.indexOf(cc.ageType);
+            cc.ageType = ages[(i + dir + ages.length) % ages.length];
+          }
         }
 
         // Confirm / done
@@ -2884,7 +3042,7 @@
           { key: "hairColour", label: "Hair Col",     value: `${cc.hairColour + 1}/${HAIR_COLORS.length}`,  x: w * 0.36 },
           { key: "hairStyle",  label: "Hair Style",   value: HAIR_STYLE_NAMES[cc.hairStyle],                x: w * 0.50 },
           { key: "outfit",     label: "Outfit",       value: `${cc.outfit + 1}/${OUTFIT_COLORS.length}`,    x: w * 0.64 },
-          { key: "age",        label: "Age",          value: cc.ageType === "toddler" ? "🧒 Toddler" : "🧑 Adult", x: w * 0.78 },
+          { key: "age",        label: "Age",          value: cc.ageType === "toddler" ? "🧒 Toddler" : cc.ageType === "child" ? "🎒 Child" : "🧑 Adult", x: w * 0.78 },
           { key: "done",       label: "▶ Play!",      value: "",                                            x: w * 0.92 }
         ];
 
@@ -2979,6 +3137,12 @@
         const _candyDoorX = 58 * 32 + 16, _candyDoorY = 54 * 32 + 16;
         if (Math.hypot(player.x - _candyDoorX, player.y - _candyDoorY) < 52 && justPressedKeys.interact) {
           enterCandyStore();
+          return;
+        }
+
+        const _schoolDoorX = 35 * 32 + 16, _schoolDoorY = 49 * 32 + 16;
+        if (Math.hypot(player.x - _schoolDoorX, player.y - _schoolDoorY) < 52 && justPressedKeys.interact) {
+          enterSchool();
           return;
         }
 
@@ -3235,6 +3399,11 @@
           return;
         }
 
+        if (game.inSchool) {
+          if (justPressedKeys.interact) { exitHouse(); return; }
+          return;
+        }
+
         if (justPressedKeys.interact) {
           // Bed centre in interior coords (left side, rows 2–5)
           const bedX = ts + ts, bedY = ts * 2 + ts * 2;            // ≈ 72, 144
@@ -3479,8 +3648,137 @@
         }
       }
 
+      function drawSchoolInterior(time) {
+        const w = canvas.width, h = canvas.height;
+        const ts = 36, roomW = 11, roomH = 8;
+        const ox = Math.floor((w - roomW * ts) / 2);
+        const oy = Math.floor((h - roomH * ts) / 2);
+
+        ctx.fillStyle = "#120f18";
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.fillStyle = "#eadc9f";
+        ctx.fillRect(ox + ts, oy, (roomW - 2) * ts, ts * 2);
+        ctx.fillStyle = "#7a5630";
+        for (let ty = 1; ty < roomH - 1; ty++) {
+          for (let tx = 1; tx < roomW - 1; tx++) {
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? "#c89a62" : "#d7aa72";
+            ctx.fillRect(ox + tx * ts, oy + ty * ts, ts, ts);
+            ctx.fillStyle = "rgba(90,60,28,0.14)";
+            ctx.fillRect(ox + tx * ts, oy + ty * ts + ts - 3, ts, 2);
+          }
+        }
+
+        ctx.fillStyle = "#6e4a28";
+        for (let ty = 0; ty < roomH; ty++) {
+          ctx.fillRect(ox, oy + ty * ts, ts, ts);
+          ctx.fillRect(ox + (roomW - 1) * ts, oy + ty * ts, ts, ts);
+        }
+        ctx.fillRect(ox + ts, oy + (roomH - 1) * ts, (roomW - 2) * ts, ts);
+        ctx.fillStyle = "#8f6438";
+        ctx.fillRect(ox + ts, oy + (roomH - 2) * ts + ts - 6, (roomW - 2) * ts, 6);
+
+        const boardX = ox + ts * 2;
+        const boardY = oy + ts * 0.7;
+        const boardW = ts * 7;
+        const boardH = ts * 1.7;
+        ctx.fillStyle = "#1f4f34";
+        roundRect(ctx, boardX, boardY, boardW, boardH, 8);
+        ctx.fill();
+        ctx.strokeStyle = "#8d6030";
+        ctx.lineWidth = 5;
+        roundRect(ctx, boardX, boardY, boardW, boardH, 8);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.font = "bold 15px Trebuchet MS, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Welcome to Moonlight Academy", boardX + boardW / 2, boardY + 24);
+        ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("A B C   ★   2 + 3 = 5   ★   1 2 3", boardX + boardW / 2, boardY + 46);
+        ctx.fillText("Dream big • Learn bright", boardX + boardW / 2, boardY + 66);
+        ctx.textAlign = "left";
+
+        [[2,2.2],[7.4,2.2]].forEach(([wx, wy]) => {
+          const winX = ox + ts * wx, winY = oy + ts * wy;
+          ctx.fillStyle = "#9fd8ff";
+          ctx.fillRect(winX, winY, ts * 1.2, ts * 1.3);
+          ctx.strokeStyle = "#f6f0d0";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(winX, winY, ts * 1.2, ts * 1.3);
+          ctx.beginPath();
+          ctx.moveTo(winX + ts * 0.6, winY); ctx.lineTo(winX + ts * 0.6, winY + ts * 1.3);
+          ctx.moveTo(winX, winY + ts * 0.65); ctx.lineTo(winX + ts * 1.2, winY + ts * 0.65);
+          ctx.stroke();
+          ctx.fillStyle = "rgba(255,240,150,0.7)";
+          ctx.beginPath();
+          ctx.arc(winX + ts * 0.28, winY + ts * 0.28, 6, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        const deskRows = [3.0, 4.2, 5.4];
+        const deskCols = [3.0, 6.2];
+        for (const row of deskRows) {
+          for (const col of deskCols) {
+            const dx = ox + ts * col;
+            const dy = oy + ts * row;
+            ctx.fillStyle = "#9b6a3c";
+            ctx.fillRect(dx, dy, ts * 1.2, ts * 0.65);
+            ctx.fillStyle = "#6f4a28";
+            ctx.fillRect(dx + 4, dy + 4, ts * 1.2 - 8, ts * 0.65 - 8);
+            ctx.fillStyle = "#c88bd8";
+            ctx.fillRect(dx + ts * 0.28, dy + ts * 0.78, ts * 0.7, ts * 0.25);
+            ctx.fillStyle = "#8a5b2e";
+            ctx.fillRect(dx + 6, dy + ts * 0.65, 4, ts * 0.45);
+            ctx.fillRect(dx + ts * 1.2 - 10, dy + ts * 0.65, 4, ts * 0.45);
+          }
+        }
+
+        const tdx = ox + ts * 4.15;
+        const tdy = oy + ts * 2.2;
+        ctx.fillStyle = "#8b5b34";
+        ctx.fillRect(tdx, tdy, ts * 1.8, ts * 0.7);
+        ctx.fillStyle = "#6b4526";
+        ctx.fillRect(tdx + 6, tdy + 5, ts * 1.8 - 12, ts * 0.7 - 10);
+        ctx.fillRect(tdx + 10, tdy + ts * 0.7, 5, ts * 0.45);
+        ctx.fillRect(tdx + ts * 1.8 - 15, tdy + ts * 0.7, 5, ts * 0.45);
+        ctx.fillStyle = "#ffd6f0";
+        ctx.fillRect(tdx + 18, tdy + 10, 18, 8);
+
+        [[1.6,3.4,"#ff8fb1"],[8.2,3.9,"#8fd3ff"],[1.7,5.6,"#ffe07a"],[8.3,5.4,"#c69cff"]].forEach(([cx, cy, color]) => {
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(ox + ts * cx, oy + ts * cy, 8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,0.55)";
+          ctx.fillRect(ox + ts * cx - 2, oy + ts * cy - 2, 4, 4);
+        });
+
+        const dX = ox + ts * 5, dY = oy + (roomH - 1) * ts;
+        ctx.fillStyle = "#8f2a1e";
+        ctx.fillRect(dX, dY - ts + 4, ts, ts);
+        ctx.fillStyle = "#5a1810";
+        ctx.fillRect(dX + 2, dY - ts + 4, ts - 4, 4);
+        ctx.fillStyle = "#e8d080";
+        ctx.fillRect(dX + ts - 12, dY - ts / 2, 6, 6);
+
+        drawPlayerSprite(time, { ...player, x: ox + player.x, y: oy + player.y });
+
+        const nearDoor = Math.hypot(player.x - ts * 5 - ts / 2, player.y - ts * (roomH - 1)) < 52;
+        if (nearDoor) {
+          ctx.fillStyle = "rgba(0,0,0,0.72)";
+          roundRect(ctx, w / 2 - 88, h - 50, 176, 28, 8);
+          ctx.fill();
+          ctx.fillStyle = "#f6e9b8";
+          ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Press E to leave school", w / 2, h - 31);
+          ctx.textAlign = "left";
+        }
+      }
+
       function drawHouseInterior(time) {
         if (game.inCandyStore) { drawCandyStoreInterior(time); return; }
+        if (game.inSchool) { drawSchoolInterior(time); return; }
         const w = canvas.width, h = canvas.height;
         const ts = 36; // interior tile size (slightly larger for cozy feel)
         const roomW = 11, roomH = 8;
