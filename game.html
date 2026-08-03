@@ -124,7 +124,13 @@
         { px: 47*32+16, py: 38*32+16 }, // 5 — Row 3 left
         { px: 57*32+16, py: 38*32+16 }, // 6 — Row 3 right
       ];
-      const CLASS_OPTIONS = [{ id: "adventurer", label: "Adventurer" }];
+      // Tile coords of door within each building → facing direction
+      // "south": door on bottom face of STONE tile; "north": on top face
+      const BUILDING_DOOR_TILES = {
+        "47,20": "south", "57,20": "south",  // Row 1 — door faces Elm Road from above
+        "47,25": "north", "57,25": "north",  // Row 2 — door faces Elm Road from below
+        "47,39": "north", "57,39": "north",  // Row 3 — door faces Blossom Lane
+      };
       const DTILE_SIZE = 32;
       const SEWER_ENTRANCE = { x: 19 * TILE_SIZE + TILE_SIZE / 2, y: 58 * TILE_SIZE + TILE_SIZE / 2 };
 
@@ -1187,6 +1193,25 @@
           ctx.fillRect(x, y, 1, TILE_SIZE);
         }
 
+        // Door on this tile (if it's a designated door tile)
+        const doorFacing = BUILDING_DOOR_TILES[`${tileX},${tileY}`];
+        if (doorFacing) {
+          const doorY = doorFacing === "south" ? y + TILE_SIZE - 9 : y;
+          const doorH = 9;
+          // Door frame
+          ctx.fillStyle = "#3a1e08";
+          ctx.fillRect(x + 10, doorY, 12, doorH);
+          // Door panel
+          ctx.fillStyle = "#7a4a18";
+          ctx.fillRect(x + 11, doorY + 1, 10, doorH - 1);
+          // Door handle
+          ctx.fillStyle = "#ffd700";
+          ctx.fillRect(doorFacing === "south" ? x + 18 : x + 12, doorY + 3, 2, 2);
+          // Highlight on door
+          ctx.fillStyle = "rgba(255,255,255,0.15)";
+          ctx.fillRect(x + 12, doorY + 1, 3, doorH - 2);
+        }
+
         // Highlight top-left corner (light source hint)
         ctx.fillStyle = "rgba(255,255,220,0.08)";
         ctx.fillRect(x, y, TILE_SIZE, 3);
@@ -1249,6 +1274,17 @@
         if (tile !== TILE.STONE && tileY > 0 && map[tileY - 1][tileX] === TILE.STONE) {
           ctx.fillStyle = "rgba(0,0,0,0.25)";
           ctx.fillRect(x, y, TILE_SIZE, 7);
+        }
+
+        // Doorstep — draw a welcome mat on the tile just outside a door
+        const southDoor = BUILDING_DOOR_TILES[`${tileX},${tileY - 1}`];
+        const northDoor = BUILDING_DOOR_TILES[`${tileX},${tileY + 1}`];
+        if (southDoor === "south" || northDoor === "north") {
+          const matY = southDoor === "south" ? y + 2 : y + TILE_SIZE - 9;
+          ctx.fillStyle = "#8a3010";
+          ctx.fillRect(x + 8, matY, 16, 6);
+          ctx.fillStyle = "#c05020";
+          ctx.fillRect(x + 10, matY + 1, 12, 4);
         }
       }
 
@@ -1985,7 +2021,7 @@
         const _hn = game.save && game.save.player ? (game.save.player.houseNum || 0) : 0;
         if (_hn > 0) {
           const _door = HOUSE_DOORS[_hn];
-          if (_door && Math.hypot(player.x - _door.px, player.y - _door.py) < 44 && justPressedKeys.interact) {
+          if (_door && Math.hypot(player.x - _door.px, player.y - _door.py) < 60 && justPressedKeys.interact) {
             enterHouse();
           }
         }
