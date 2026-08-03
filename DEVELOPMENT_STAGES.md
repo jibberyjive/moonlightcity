@@ -15,6 +15,11 @@
 
 Target rhythm from [ROADMAP.md §4](./ROADMAP.md): short shared sessions, visible wins, and a playable build after every coding day.
 
+### 🕹️ Live game link
+
+Every stage ships to **[https://jibberyjive.github.io/moonlightcity/game.html](https://jibberyjive.github.io/moonlightcity/game.html)** automatically on push to `main`.
+When a stage is complete, that link is updated — send it to anyone and they can play the latest build in their browser, no install needed.
+
 ---
 
 ## Stage 0 — "The Walking World" [tag: v0.0-stage0]

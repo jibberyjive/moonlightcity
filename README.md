@@ -4,6 +4,21 @@ A 2D city life & dungeon adventure game built by a dad and daughter team. 🌙
 
 > **No farming here** — this is a city life, social, housing, and adventure game!
 
+## ▶️ Play it now
+
+### 🕹️ [**Play Moonlight City**](https://jibberyjive.github.io/moonlightcity/game.html)
+
+> Opens in any browser — no install, no download. Just click and play.
+
+### Milestone builds
+
+| Tag | What it includes | Link |
+|-----|-----------------|------|
+| Stage 0 — Walking World | Walk around, camera, trees, water | *(prototype)* |
+| Stage 1 — A Face in the Crowd | Title screen · Character creation · Save/load | [▶ Play Stage 1](https://jibberyjive.github.io/moonlightcity/game.html) |
+
+---
+
 ## 📄 Key Documents
 
 | Document | Description |
@@ -13,7 +28,11 @@ A 2D city life & dungeon adventure game built by a dad and daughter team. 🌙
 | [BALANCE.md](./BALANCE.md) | ⚖️ Progression curves, XP tables, loot tables, class skill trees, boss stats |
 | [ROADMAP.md](./ROADMAP.md) | 🗺️ Milestones (v0.5 vertical slice → v1.0), risks & parent-child dev rhythm |
 | [TODO.md](./TODO.md) | ✅ Prioritised task list across all 9 phases |
-| [game.html](./game.html) | ▶️ Playable prototype — just open in any browser! |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | 🏗️ Code structure blueprint — sections, save schema, scene state machine |
+| [DEVELOPMENT_STAGES.md](./DEVELOPMENT_STAGES.md) | 🚧 Stage-by-stage build plan — Stage 0 (done) → Stage 5 (v0.5 Demo Day) |
+| [DUNGEONS.md](./DUNGEONS.md) | 🏰 Dungeon design — floor layouts, room templates, enemy stats, mini-bosses |
+| [THINKING_SESSIONS.md](./THINKING_SESSIONS.md) | 🧠 Long-running design sessions (A+B done, C planned) |
+| [game.html](./game.html) | ▶️ The game — open in any browser |
 
 ---
 
