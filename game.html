@@ -846,7 +846,10 @@
         Enter: "confirm",
         Backspace: "back",
         Digit6: "d6",
-        Digit7: "d7"
+        Digit7: "d7",
+        Comma:  "prev_item",
+        Period: "next_item",
+        Tab:    "tab"
       };
 
       window.addEventListener("keydown", (e) => {
@@ -3680,6 +3683,153 @@
         }
       }
 
+      // ── Build mode draw functions ────────────────────────────────────────────
+      function drawBuildItems(time) {
+        if (!game.save || !game.save.buildItems) return;
+        const T = TILE_SIZE;
+        // Draw placed items
+        game.save.buildItems.forEach(item => {
+          const def = BUILD_CATALOG.find(b => b.id === item.id);
+          if (!def) return;
+          const sx = item.tx * T, sy = item.ty * T;
+          ctx.fillStyle = def.color + "aa";
+          ctx.fillRect(sx, sy, T, T);
+          ctx.font = `${Math.round(T * 0.65)}px serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(def.emoji, sx + T / 2, sy + T * 0.55);
+          ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        });
+        // Draw cursor + ghost if build mode active
+        if (buildMode.active) {
+          const catItems = BUILD_CATALOG.filter(b => b.cat === BUILD_CATS[buildMode.selCat]);
+          const selDef = catItems[buildMode.selItem];
+          const cx = buildMode.curTx * T, cy = buildMode.curTy * T;
+          // Ghost preview
+          if (selDef) {
+            ctx.globalAlpha = 0.55;
+            ctx.fillStyle = selDef.color;
+            ctx.fillRect(cx, cy, T, T);
+            ctx.font = `${Math.round(T * 0.65)}px serif`;
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(selDef.emoji, cx + T / 2, cy + T * 0.55);
+            ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+            ctx.globalAlpha = 1;
+          }
+          // Animated cursor ring
+          const pulse = 0.5 + 0.5 * Math.sin(time * 6);
+          ctx.strokeStyle = `rgba(255,255,100,${0.7 + pulse * 0.3})`;
+          ctx.lineWidth = 2 + pulse;
+          ctx.strokeRect(cx + 1, cy + 1, T - 2, T - 2);
+          ctx.strokeStyle = "rgba(0,0,0,0.5)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(cx, cy, T, T);
+        }
+      }
+
+      function drawBuildHUD() {
+        const W = canvas.width, H = canvas.height;
+        const catItems = BUILD_CATALOG.filter(b => b.cat === BUILD_CATS[buildMode.selCat]);
+        const selDef = catItems[buildMode.selItem] || null;
+
+        // ── Top category bar ─────────────────────────────────────────────────
+        const catH = 30;
+        ctx.fillStyle = "rgba(10,14,30,0.88)";
+        ctx.fillRect(0, 0, W, catH);
+        ctx.font = "bold 11px monospace";
+        const catW = Math.floor(W / BUILD_CATS.length);
+        BUILD_CATS.forEach((cat, i) => {
+          const bx = i * catW;
+          if (i === buildMode.selCat) {
+            ctx.fillStyle = "#2a6adf";
+            ctx.fillRect(bx, 0, catW, catH);
+            ctx.fillStyle = "rgba(255,255,255,0.15)";
+            ctx.fillRect(bx, 0, catW, 4);
+          }
+          ctx.fillStyle = i === buildMode.selCat ? "#fff" : "#aab";
+          ctx.textAlign = "center";
+          ctx.fillText(cat, bx + catW / 2, 19);
+        });
+        ctx.textAlign = "left";
+
+        // ── Selected item info below category bar ─────────────────────────────
+        if (selDef) {
+          const info = `${selDef.emoji}  ${selDef.name}  —  ${selDef.price}⬡`;
+          ctx.font = "bold 11px monospace";
+          const tw = ctx.measureText(info).width + 20;
+          ctx.fillStyle = "rgba(0,0,0,0.65)";
+          ctx.fillRect(W / 2 - tw / 2, catH + 3, tw, 20);
+          ctx.fillStyle = "#f0d060";
+          ctx.textAlign = "center";
+          ctx.fillText(info, W / 2, catH + 16);
+          ctx.textAlign = "left";
+        }
+
+        // ── Gold display (top right) ──────────────────────────────────────────
+        const gold = game.save?.gold?.carried || 0;
+        ctx.font = "bold 12px monospace";
+        const gw = ctx.measureText(`${gold}⬡`).width + 14;
+        ctx.fillStyle = "rgba(0,0,0,0.65)";
+        ctx.fillRect(W - gw - 4, catH + 3, gw + 4, 20);
+        ctx.fillStyle = "#f0c040";
+        ctx.textAlign = "right";
+        ctx.fillText(`${gold}⬡`, W - 8, catH + 16);
+        ctx.textAlign = "left";
+
+        // ── Bottom item bar ───────────────────────────────────────────────────
+        const IW = 52, IH = 52, gap = 4;
+        const maxVisible = Math.floor((W - 16) / (IW + gap));
+        const showCount = Math.min(maxVisible, catItems.length);
+        const barY = H - IH - 28;
+        ctx.fillStyle = "rgba(10,14,30,0.88)";
+        ctx.fillRect(0, barY - 6, W, IH + 34);
+        const startIdx = Math.max(0, Math.min(buildMode.selItem - Math.floor(showCount / 2), catItems.length - showCount));
+        const barStartX = Math.round((W - showCount * (IW + gap) + gap) / 2);
+        for (let i = 0; i < showCount; i++) {
+          const idx = startIdx + i;
+          if (idx >= catItems.length) break;
+          const it = catItems[idx];
+          const bx = barStartX + i * (IW + gap);
+          const sel = idx === buildMode.selItem;
+          ctx.fillStyle = sel ? "#2a6adf" : "rgba(255,255,255,0.08)";
+          ctx.fillRect(bx, barY, IW, IH);
+          if (sel) {
+            ctx.fillStyle = "rgba(255,255,255,0.18)";
+            ctx.fillRect(bx, barY, IW, 4);
+          }
+          ctx.strokeStyle = sel ? "#6aafff" : "rgba(255,255,255,0.15)";
+          ctx.lineWidth = sel ? 2 : 1;
+          ctx.strokeRect(bx, barY, IW, IH);
+          ctx.font = "20px serif";
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(it.emoji, bx + IW / 2, barY + IH * 0.42);
+          ctx.textBaseline = "alphabetic";
+          ctx.fillStyle = sel ? "#fff" : "#aab";
+          ctx.font = "7px monospace";
+          ctx.fillText(it.name.length > 8 ? it.name.substring(0, 8) : it.name, bx + IW / 2, barY + IH - 18);
+          ctx.fillStyle = "#f0c040";
+          ctx.fillText(`${it.price}⬡`, bx + IW / 2, barY + IH - 8);
+          ctx.textAlign = "left";
+        }
+
+        // ── Scroll arrows if items overflow ───────────────────────────────────
+        if (catItems.length > showCount) {
+          ctx.fillStyle = "rgba(255,255,255,0.5)";
+          ctx.font = "bold 14px monospace";
+          ctx.textAlign = "center";
+          if (startIdx > 0)                      ctx.fillText("◀", 10, barY + IH / 2 + 5);
+          if (startIdx + showCount < catItems.length) ctx.fillText("▶", W - 10, barY + IH / 2 + 5);
+          ctx.textAlign = "left";
+        }
+
+        // ── Controls hint at very bottom ──────────────────────────────────────
+        ctx.fillStyle = "rgba(255,255,255,0.45)";
+        ctx.font = "9px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("Arrows: cursor  •  ,/.: item  •  Tab: category  •  E: place  •  X: remove  •  B: exit", W / 2, H - 8);
+        ctx.textAlign = "left";
+      }
+
       function drawCityHUD(save) {
         ctx.save();
         const day = save ? save.time.currentDay : 1;
@@ -4468,6 +4618,71 @@
           return;
         }
 
+
+        // ── Build mode — cursor-based placement ────────────────────────────────
+        if (buildMode.active) {
+          // Exit
+          if (justPressedKeys.build || justPressedKeys.pause) {
+            buildMode.active = false;
+            showNotice("Build mode OFF", 1);
+            return;
+          }
+          // Cursor movement (1 tile per press)
+          if (justPressedKeys.up)    buildMode.curTy = Math.max(0, buildMode.curTy - 1);
+          if (justPressedKeys.down)  buildMode.curTy = Math.min(MAP_H - 1, buildMode.curTy + 1);
+          if (justPressedKeys.left)  buildMode.curTx = Math.max(0, buildMode.curTx - 1);
+          if (justPressedKeys.right) buildMode.curTx = Math.min(MAP_W - 1, buildMode.curTx + 1);
+          // Category / item cycle
+          if (justPressedKeys.tab) {
+            buildMode.selCat  = (buildMode.selCat + 1) % BUILD_CATS.length;
+            buildMode.selItem = 0;
+          }
+          const _bCatItems = BUILD_CATALOG.filter(b => b.cat === BUILD_CATS[buildMode.selCat]);
+          if (justPressedKeys.prev_item) buildMode.selItem = (buildMode.selItem - 1 + _bCatItems.length) % _bCatItems.length;
+          if (justPressedKeys.next_item) buildMode.selItem = (buildMode.selItem + 1) % _bCatItems.length;
+          // Place
+          if (justPressedKeys.interact || (mouse.clicked && !buildMode._wasMousePlaced)) {
+            buildMode._wasMousePlaced = true;
+            const _bItem = _bCatItems[buildMode.selItem];
+            if (_bItem) {
+              const _bExist = game.save.buildItems.find(b => b.tx === buildMode.curTx && b.ty === buildMode.curTy);
+              if (_bExist) {
+                showNotice("Already something there! Press X to remove first.", 1.5);
+              } else if ((game.save.gold.carried || 0) < _bItem.price) {
+                showNotice(`Not enough gold! Need ${_bItem.price}⬡`, 1.5);
+              } else {
+                game.save.gold.carried -= _bItem.price;
+                game.save.buildItems.push({ id: _bItem.id, tx: buildMode.curTx, ty: buildMode.curTy });
+                writeSave(game.save);
+                showNotice(`${_bItem.emoji} Placed ${_bItem.name} (${_bItem.price}⬡)`, 1.5);
+              }
+            }
+          } else {
+            buildMode._wasMousePlaced = false;
+          }
+          // Remove (X key = "map" action)
+          if (justPressedKeys.map) {
+            const _bIdx = game.save.buildItems.findIndex(b => b.tx === buildMode.curTx && b.ty === buildMode.curTy);
+            if (_bIdx >= 0) {
+              const _bRem = game.save.buildItems.splice(_bIdx, 1)[0];
+              const _bDef = BUILD_CATALOG.find(b => b.id === _bRem.id);
+              const refund = Math.floor((_bDef?.price || 0) * 0.5);
+              addCarriedGold(refund);
+              writeSave(game.save);
+              showNotice(`Removed! +${refund}⬡ refund`, 1.5);
+            } else {
+              showNotice("Nothing here to remove.", 1);
+            }
+          }
+          // Camera follows cursor
+          const _bCurSX = buildMode.curTx * TILE_SIZE + TILE_SIZE / 2;
+          const _bCurSY = buildMode.curTy * TILE_SIZE + TILE_SIZE / 2;
+          const _bView = getView();
+          camera.x += (clamp(_bCurSX - _bView.worldW / 2, 0, Math.max(0, WORLD_W - _bView.worldW)) - camera.x) * 0.1;
+          camera.y += (clamp(_bCurSY - _bView.worldH / 2, 0, Math.max(0, WORLD_H - _bView.worldH)) - camera.y) * 0.1;
+          return;
+        }
+
         if (justPressedKeys.pause) { /* pause not yet implemented */ }
         if (workState.active) {
           workState.timer += dt;
@@ -4716,6 +4931,7 @@
         ctx.scale(view.zoom, view.zoom);
         ctx.translate(-camera.x + shake.x, -camera.y + shake.y);
         drawWorld(time, view);
+        drawBuildItems(time);
         ctx.restore();
         drawWeather();
         // Night-time blue tint (8 PM → midnight → 3 AM, fades back at 6 AM)
@@ -4727,6 +4943,7 @@
           else if (_nh <= 8)  _na = Math.max(0, (8 - _nh) / 5 * 0.45);
           if (_na > 0) { ctx.fillStyle = `rgba(8,12,48,${_na})`; ctx.fillRect(0,0,canvas.width,canvas.height); }
         }
+        if (buildMode.active) drawBuildHUD();
         drawCityHUD(game.save);
         if (!dialogue.active && Math.hypot(player.x - SEWER_ENTRANCE.x, player.y - SEWER_ENTRANCE.y) < 60) {
           ctx.fillStyle = "rgba(0,0,0,0.55)";
@@ -6772,6 +6989,20 @@
         if (justPressedKeys.inventory && game.scene !== SCENE.TITLE && game.scene !== SCENE.CHARACTER_CREATION) {
           inventory.open = !inventory.open;
           worldMapOpen = false;
+        }
+
+        // Build mode toggle (works in city scene only)
+        if (justPressedKeys.build && game.scene === SCENE.CITY && !dialogue.active && !proposal.active) {
+          buildMode.active = !buildMode.active;
+          if (buildMode.active) {
+            const tileX = Math.floor(player.x / TILE_SIZE);
+            const tileY = Math.floor(player.y / TILE_SIZE);
+            buildMode.curTx = clamp(tileX, 0, MAP_W - 1);
+            buildMode.curTy = clamp(tileY, 0, MAP_H - 1);
+            showNotice("🔨 Build Mode ON — Arrows: move  ,/.: items  Tab: category  E: place  X: remove  B: exit", 3);
+          } else {
+            showNotice("Build mode OFF", 1);
+          }
         }
 
         // Inventory navigation (runs while open, separate from toggle)
