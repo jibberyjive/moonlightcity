@@ -55,11 +55,11 @@ A player should be able to sit down, play for ten minutes, and stand up having *
 | Time | Beat | Feeling |
 |------|------|---------|
 | 0:00–1:00 | **Wake up.** Bed → wardrobe → grab potions from the storage chest. Read any note left on the door. | Cosy, in control |
-| 1:00–2:30 | **One errand.** Check the bulletin board, talk to *one* NPC, buy potions from Mara. Pick up a "fetch me 5 slime globs" request. | Purposeful |
+| 1:00–2:30 | **One errand.** Check the bulletin board, talk to *one* NPC, buy potions from Ella. Pick up a "fetch me 5 slime globs" request. | Purposeful |
 | 2:30–3:00 | **The descent.** Walk through the Slums, down the sewer grate, ride the Depth Elevator to your deepest checkpoint. | Anticipation |
 | 3:00–8:00 | **The dive.** Clear 3–5 floors. Fight, dodge, smash barrels, find the hidden side room, open the chest. One "ooh!" moment guaranteed per floor (a chest, a rare drop, a mini-boss, a lore scrawl). | Tension + delight |
 | 8:00–9:00 | **The extraction.** Hit the next checkpoint, warp home. Bank the gold. | Relief, pride |
-| 9:00–10:00 | **The spend.** Buy the hat. Place the new lamp. Hand the slime globs to Mara. Watch the friendship bar tick up. | Reward, ownership |
+| 9:00–10:00 | **The spend.** Buy the hat. Place the new lamp. Hand the slime globs to Ella. Watch the friendship bar tick up. | Reward, ownership |
 
 **Core micro-loop inside the dungeon (~30–60 seconds):**
 `enter room → assess enemies → attack / dodge / use skill → clear → loot the room → choose the next door`
@@ -83,7 +83,7 @@ A player should be able to sit down, play for ten minutes, and stand up having *
 | 🌄 **Morning** | 06:00–11:00 | Shops open. Bulletin board refreshes with 3 new requests. NPCs on their commute — best time for quick chats. Furniture deliveries arrive at your door. |
 | ☀️ **Afternoon** | 11:00–17:00 | Prime dive window. Guild hall open for class training. Park and docks busy — Lumi is painting, traders at the wharf. |
 | 🌆 **Evening** | 17:00–21:00 | The social hour. Tavern fills up. NPC hangout events, cooking at home, invite a friend over to see your house. Highest relationship gains. |
-| 🌙 **Night** | 21:00–06:00 | The city changes character. Black Market opens in the Slums. Shade appears at the docks with dungeon lore and maps. Rare night-only NPCs and stargazing spots. Sewer enemies are ~15% tougher but drop *Moonlit* material variants. |
+| 🌙 **Night** | 21:00–06:00 | The city changes character. Black Market opens in the Slums. Rose appears at the docks with dungeon lore and maps. Rare night-only NPCs and stargazing spots. Sewer enemies are ~15% tougher but drop *Moonlit* material variants. |
 
 **Sleep is the ritual.** Getting into your own bed = save the game, skip to morning, and gain the **Well-Rested** buff (+10% XP and +1 potion slot for the next dive). Sleeping in a bed you *bought and placed yourself*, in a room you decorated, is the moment the two halves of the game shake hands.
 
@@ -118,10 +118,10 @@ If either half can be skipped, the design has failed. Five hard couplings, in bo
 - **Gold is the artery.** Dungeon gold is the *only* meaningful income. Furniture, house upgrades, clothes and gifts all cost gold. Every lamp in your house is a slime that died for it.
 - **Materials become furniture and gifts.** Sewer materials (slime globs, cracked pipes, rat pelts, glowing fungus) are shop-sold, quest-turned-in, and — in the crafting phase — become *decor*. A Fungus Lantern in your living room is a souvenir.
 - **Cosmetics become identity.** Boss drops are worn in the city. The wardrobe is the trophy case.
-- **Lore flows upward.** Scrawls and artefacts found below unlock new dialogue with Shade and Rex. The dungeon is where the city's story is buried.
+- **Lore flows upward.** Scrawls and artefacts found below unlock new dialogue with Rose and Rex. The dungeon is where the city's story is buried.
 
 **City → Dungeon (the city must make you stronger):**
-- **Friendship unlocks power.** Mara at Friend sells greater potions; Rex at Friend teaches a class technique and marks a secret room on your map; Shade at Friend sells floor maps that reveal chest locations. **Being sociable is a build choice.**
+- **Friendship unlocks power.** Ella at Friend sells greater potions; Rex at Friend teaches a class technique and marks a secret room on your map; Rose at Friend sells floor maps that reveal chest locations. **Being sociable is a build choice.**
 - **Home grants buffs.** Sleeping in your bed = Well-Rested. A cooked meal from your kitchen = a temporary stat buff. A decorated "Trophy Room" grants a small permanent bonus. Decorating is not a side hobby — it is *pre-dive preparation*.
 - **Quests aim the dive.** The bulletin board and NPC requests turn an aimless grind into a mission: *"Bring Lumi 5 glowing fungi and she'll paint your living room."* You go down with a shopping list.
 - **Shops gate depth.** You cannot survive floor 20 in floor-5 gear. The economy forces you back up into the market.
@@ -229,14 +229,14 @@ The overworld is a living city with distinct districts:
 
 | Name | Personality | Location | Hook |
 |------|-------------|----------|------|
-| Mara | Cheerful shopkeeper | Downtown market | Sells potions |
+| Ella | Cheerful shopkeeper | Downtown market | Sells potions |
 | Rex | Gruff ex-adventurer | The Slums tavern | Hints about sewers |
 | Lumi | Shy artist | Residential park | Gives decoration items |
-| Shade | Mysterious figure | Docks at night | Dungeon lore |
+| Rose | Mysterious figure | Docks at night | Dungeon lore |
 | Mayor Aldric | Pompous | City Hall | City quests |
-| Pip | Excitable kid | Downtown fountain | Bulletin board & crayon maps |
+| Pipper | Excitable kid | Downtown fountain | Bulletin board & crayon maps |
 | Auntie Fen | Warm herbalist | Slums clinic | Free healing |
-| Bex | Snarky rival | Guild Hall | Speedrun challenges |
+| Will | Snarky rival | Guild Hall | Speedrun challenges |
 
 ---
 

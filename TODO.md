@@ -61,7 +61,7 @@ A prioritised task list for building Moonlight City. Work through phases in orde
 - [ ] NPCs remember relationship level across days
 - [ ] Dialogue changes based on relationship level
 - [ ] Dialogue changes based on time of day
-- [ ] Implement initial NPC cast: Mara, Rex, Lumi, Shade, Mayor Aldric
+- [ ] Implement initial NPC cast: Ella, Rex, Lumi, Rose, Mayor Aldric
 - [ ] NPC schedules (each NPC moves to different locations through the day)
 
 ---

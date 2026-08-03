@@ -81,11 +81,11 @@ Neither doc gives a developer the **room-level grammar** or **encounter pacing r
 - **Quest board system** — how "fetch me 5 slime globs" requests are generated, tracked, and completed; the data format for a quest object
 - **The 10-minute errand pattern** — the repeatable template `{giver, wantItem, wantQty, goldReward, friendshipReward, flavourText}` as a reusable quest type
 - **Time-of-day dialogue variants** — how the same NPC serves different lines at morning/evening/night without exploding the tree size
-- **v0.5 dialogue content** — the actual flat dialogue trees for Mara, Rex, and Lumi at all 3 relationship levels, ready to paste into code
+- **v0.5 dialogue content** — the actual flat dialogue trees for Ella, Rex, and Lumi at all 3 relationship levels, ready to paste into code
 
 ### Outputs
 - `DIALOGUE_SPEC.md` — new document with schema, state machine, quest format
-- Updates to `STORY.md` — Mara/Rex/Lumi dialogue formatted in the new schema
+- Updates to `STORY.md` — Ella/Rex/Lumi dialogue formatted in the new schema
 
 ---
 

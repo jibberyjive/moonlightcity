@@ -176,7 +176,7 @@
             floorColour: 0,
             placedFurniture: []
           },
-          relationships: { mara: 0, rex: 0, lumi: 0 },
+          relationships: { ella: 0, rex: 0, lumi: 0 },
           time: { currentDay: 1, currentHour: 8, currentMinute: 0 },
           flags: {
             bossDefeated: false,
@@ -195,7 +195,7 @@
           switch (save.version) {
             case 0:
               save.gold        = save.gold        || { carried: 0, banked: 0 };
-              save.relationships = save.relationships || { mara: 0, rex: 0, lumi: 0 };
+              save.relationships = save.relationships || { ella: 0, rex: 0, lumi: 0 };
               save.version = 1;
               break;
             default:
@@ -376,7 +376,7 @@
 
         // South-of-Main-Street buildings
         fillRectTiles(2,  15, 10, 8, TILE.STONE); // SW residential block
-        fillRectTiles(15, 15, 11, 7, TILE.STONE); // Mara's / south shops
+        fillRectTiles(15, 15, 11, 7, TILE.STONE); // Ella's / south shops
 
         // -- Market Square (open air, keep as PATH + decoration) --
         fillRectTiles(16, 5, 9, 6, TILE.PATH);    // open square
@@ -517,7 +517,7 @@
         // NPC HOUSES — named residences with distinctive gardens
         // ══════════════════════════════════════════════════════════
 
-        // -- MARA'S FLAT --
+        // -- ELLA'S FLAT --
         // The south-shops block (x:15-25, y:15-21) is her building.
         // Flower boxes along Main Street face + back entrance.
         stampTiles([[15,14],[17,14],[19,14],[21,14],[23,14],[25,14]], TILE.FLOWERS);
@@ -530,20 +530,20 @@
         fillRectTiles(56, 21, 2, 1, TILE.PATH);     // gate path to Elm Road
         stampTiles([[53,19],[61,19]], TILE.ROCK);    // stone garden posts
 
-        // -- BEX'S HOUSE -- Guild rival townhouse (x:45-50, y:15-21)
+        // -- WILL'S HOUSE -- Guild rival townhouse (x:45-50, y:15-21)
         // Lives just south of the Guild Hall — close by choice.
         fillRectTiles(45, 15, 6, 7, TILE.STONE);
         fillRectTiles(47, 15, 2, 1, TILE.PATH);     // entrance from Main Street
         stampTiles([[45,14],[46,14],[50,14],[51,14]], TILE.FLOWERS);
 
-        // -- PIP'S HOUSE -- Excitable kid, near the park (x:22-26, y:24-28)
+        // -- PIPPER'S HOUSE -- Excitable kid, near the park (x:22-26, y:24-28)
         fillRectTiles(22, 24, 5, 5, TILE.STONE);
         fillRectTiles(24, 23, 2, 1, TILE.PATH);     // gate toward downtown
         fillRectTiles(24, 29, 2, 1, TILE.PATH);     // back path into park
         stampTiles([[21,24],[22,23],[24,23],[26,23],[27,24],  // wild kid's garden
                     [21,28],[22,29],[26,29],[27,28]], TILE.FLOWERS);
 
-        // -- SHADE'S HOUSE -- Near the docks, no garden (x:45-49, y:46-50)
+        // -- ROSE'S HOUSE -- Near the docks, no garden (x:45-49, y:46-50)
         // Mysterious — rocks only, no flowers.
         fillRectTiles(45, 46, 5, 5, TILE.STONE);
         fillRectTiles(47, 51, 2, 1, TILE.PATH);     // path toward Docks
@@ -566,7 +566,7 @@
         // ══════════════════════════════════════════════════════════
         // RESIDENTIAL ROW 4 — fill out lower residential
         // ══════════════════════════════════════════════════════════
-        // x:54-60, y:46-50 (Row 4 east, Shade's row)
+        // x:54-60, y:46-50 (Row 4 east, Rose's row)
         fillRectTiles(54, 46, 7, 5, TILE.STONE);     // House 8
         fillRectTiles(56, 51, 2, 1, TILE.PATH);      // gate path south
         stampTiles([[54,45],[56,45],[59,45],[61,45]], TILE.FLOWERS);

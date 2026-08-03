@@ -183,7 +183,7 @@ const Scenes = {
 - **Handles input:** click topic, advance line, close
 - **Transitions:**
   - close → pop overlay back to underlying scene
-  - shop topic with Mara → swap to `INVENTORY` in shop mode
+  - shop topic with Ella → swap to `INVENTORY` in shop mode
 
 #### `INVENTORY`
 - **Owns state:** mode (`inventory`, `shopBuy`, `shopSell`, `furniturePick`), cursor slot, selected item, tooltip text
@@ -265,7 +265,7 @@ const SCHEMA_VERSION = 1;
     ]
   },
   relationships: {
-    mara: 0,
+    ella: 0,
     rex: 0,
     lumi: 0
   },
@@ -306,7 +306,7 @@ function migrateSave(rawSave) {
     switch (save.version) {
       case 0:
         save.gold = save.gold || { carried: 0, banked: 0 };
-        save.relationships = save.relationships || { mara: 0, rex: 0, lumi: 0 };
+        save.relationships = save.relationships || { ella: 0, rex: 0, lumi: 0 };
         save.version = 1;
         break;
       default:
@@ -394,17 +394,17 @@ Use plain JS objects plus factory functions.
 ```js
 {
   kind: "npc",
-  id: "mara",
+  id: "ella",
   x: 0, y: 0,
   radius: 10,
   facing: "down",
-  dialogueId: "mara",
+  dialogueId: "ella",
   relationshipLevel: 0,
   schedule: {
     daySpot: { x: 0, y: 0 },
     nightSpot: { x: 0, y: 0 }
   },
-  shopId: "mara-shop"
+  shopId: "ella-shop"
 }
 ```
 

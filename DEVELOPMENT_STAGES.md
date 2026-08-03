@@ -125,7 +125,7 @@ When a stage is complete, that link is updated — send it to anyone and they ca
 ## Stage 3 — "Pockets Full" [tag: v0.3-stage3]
 
 **Goal:** Make loot matter so dungeon runs feed the city loop.
-**Playable at end:** The player can earn gold and junk, open an inventory, buy and sell at Mara’s shop, use potions, and bank money back home.
+**Playable at end:** The player can earn gold and junk, open an inventory, buy and sell at Ella’s shop, use potions, and bank money back home.
 **Estimated sessions:** 5
 
 ### Tasks
@@ -134,8 +134,8 @@ When a stage is complete, that link is updated — send it to anyone and they ca
 - [ ] Add junk drops — *start with Slime Glob and Rat Pelt*
 - [ ] Add random gold pickup values — *small floor-scaled amounts feel better than a flat 1 coin*
 - [ ] Add barrel breakables — *attack or click to smash; 50% chance to drop loot*
-- [ ] Put Mara in the city at a fixed shop spot — *her dialogue can stay minimal until Stage 5*
-- [ ] Build Mara’s shop mode inside the inventory overlay — *same UI shell, different stock list*
+- [ ] Put Ella in the city at a fixed shop spot — *her dialogue can stay minimal until Stage 5*
+- [ ] Build Ella’s shop mode inside the inventory overlay — *same UI shell, different stock list*
 - [ ] Add 3 potions — *HP restore now; extra effects can remain future-proofed*
 - [ ] Add 5 furniture items for sale — *these are mostly preparing Stage 4*
 - [ ] Add sell-junk flow — *select junk item, receive gold*
@@ -148,7 +148,7 @@ When a stage is complete, that link is updated — send it to anyone and they ca
 - Inventory opens and closes cleanly from gameplay
 - At least two junk items drop and stack properly
 - Barrels can be broken and sometimes reward loot
-- Mara’s shop can buy and sell items without corrupting inventory
+- Ella’s shop can buy and sell items without corrupting inventory
 - Potions can be used and affect HP
 - Banked gold is saved separately from carried gold
 - After one dungeon run, the player has a clear reason to come back to the city
@@ -196,17 +196,17 @@ When a stage is complete, that link is updated — send it to anyone and they ca
 ## Stage 5 — "Warm Lights, New Friends" [tag: v0.5-stage5]
 
 **Goal:** Close the full demo loop with NPCs, dialogue, sound, title polish, and game-feel.
-**Playable at end:** The player can start at a polished title screen, talk to Mara/Rex/Lumi, build small relationships, fight and shop with sound and feedback, pause the game, and enjoy a complete 10-minute demo-day play session.
+**Playable at end:** The player can start at a polished title screen, talk to Ella/Rex/Lumi, build small relationships, fight and shop with sound and feedback, pause the game, and enjoy a complete 10-minute demo-day play session.
 **Estimated sessions:** 5
 
 ### Tasks
-- [ ] Add 3 NPC sprites in fixed city positions — *Mara, Rex, Lumi*
+- [ ] Add 3 NPC sprites in fixed city positions — *Ella, Rex, Lumi*
 - [ ] Add click-to-talk interaction — *bubble prompt or hover highlight helps discoverability*
 - [ ] Build the dialogue overlay — *greeting line, 2–3 topic buttons, close action*
 - [ ] Write flat v0.5 topic sets — *short, warm, flavourful; save branching for later*
 - [ ] Add relationship tracking with 3 visible levels — *different greeting line at each level*
 - [ ] Save relationship state per NPC — *simple `{npcId: level}` map in save data*
-- [ ] Connect Mara’s dialogue to shop opening — *talking to her should lead naturally into buying*
+- [ ] Connect Ella’s dialogue to shop opening — *talking to her should lead naturally into buying*
 - [ ] Add 6–8 sound effects — *footstep, swing, hit, coin, door, UI click, buy, potion*
 - [ ] Add 1 city music loop — *start after first user input to satisfy browser audio rules*
 - [ ] Polish the title screen — *logo, animated background, Start/Continue/Credits*
@@ -218,7 +218,7 @@ When a stage is complete, that link is updated — send it to anyone and they ca
 - [ ] Do a playtest polish pass — *fix friction before adding anything new*
 
 ### Acceptance criteria
-- Mara, Rex, and Lumi are visible and clickable in the city
+- Ella, Rex, and Lumi are visible and clickable in the city
 - Dialogue opens as an overlay and closes cleanly
 - Relationship level changes at least one greeting per NPC
 - Relationship values persist after reload
@@ -229,7 +229,7 @@ When a stage is complete, that link is updated — send it to anyone and they ca
 - The build is confident enough for **Demo Day**
 
 ### Session pickup note
-> This stage is about warmth. The systems already exist; now they need personality, sound, and “juice.” Small touches matter a lot here: a nice click sound, a kind greeting from Mara, a tiny screen shake on a good hit. This is where the prototype starts feeling loved.
+> This stage is about warmth. The systems already exist; now they need personality, sound, and “juice.” Small touches matter a lot here: a nice click sound, a kind greeting from Ella, a tiny screen shake on a good hit. This is where the prototype starts feeling loved.
 
 ---
 
@@ -240,7 +240,7 @@ A good Demo Day playtest lasts about **10 minutes**:
 1. The player sees a welcoming title screen
 2. They start or continue a save
 3. They walk through a readable city with three districts
-4. They talk to Mara, Rex, or Lumi and feel the city has people in it
+4. They talk to Ella, Rex, or Lumi and feel the city has people in it
 5. They enter the sewer and clear a floor or two
 6. They come back with gold and loot
 7. They buy a potion or furniture item

@@ -70,31 +70,31 @@ Every NPC follows the same structure:
 
 ---
 
-### 🧪 Mara — The Cheerful Shopkeeper
+### 🧪 Ella — The Cheerful Shopkeeper
 
-> *"Welcome to Mara's! Everything's fresh, everything's fizzy, and if it isn't, you didn't buy it from me."*
+> *"Welcome to Ella's! Everything's fresh, everything's fizzy, and if it isn't, you didn't buy it from me."*
 
 **Personality type:** Friendly · **Home turf:** Downtown Market (day) · Her flat above the shop (night)
 
 #### Backstory
 
-Mara is the third Mara to run **Mara's Marvellous Mixtures**. Her grandmother, **Granny Bell**, founded it, and the family's famous potions all share one secret ingredient: a splash of real **moonwater**, tapped from a little brass pipe in the shop cellar.
+Ella is the third Ella to run **Ella's Marvellous Mixtures**. Her grandmother, **Granny Bell**, founded it, and the family's famous potions all share one secret ingredient: a splash of real **moonwater**, tapped from a little brass pipe in the shop cellar.
 
-The pipe stopped running four years ago. Since then Mara has been quietly cutting her potions with ordinary well water, and they're... fine. They're fine! They're just not *marvellous*. Her bottles have gone cloudy, her healing potions take three sips instead of one, and she has started laughing a little too loudly when customers mention it.
+The pipe stopped running four years ago. Since then Ella has been quietly cutting her potions with ordinary well water, and they're... fine. They're fine! They're just not *marvellous*. Her bottles have gone cloudy, her healing potions take three sips instead of one, and she has started laughing a little too loudly when customers mention it.
 
-Mara is the most cheerful person in the city and she is holding it together with tape. Her arc is about letting a friend see the cellar.
+Ella is the most cheerful person in the city and she is holding it together with tape. Her arc is about letting a friend see the cellar.
 
 #### Personal Quest Arc — *"The Fizz Went Out"*
 
 | Stage | Name | Unlocks at | What happens |
 |-------|------|-----------|--------------|
-| **1** | **Cloudy Bottles** | Acquaintance | Mara asks you to fetch 5 × *Clean Slime Jelly* from floors 1–5 to test a new recipe. It fails hilariously — the potion turns into jam. She laughs. You notice she doesn't stop laughing for a while. |
+| **1** | **Cloudy Bottles** | Acquaintance | Ella asks you to fetch 5 × *Clean Slime Jelly* from floors 1–5 to test a new recipe. It fails hilariously — the potion turns into jam. She laughs. You notice she doesn't stop laughing for a while. |
 | **2** | **Granny's Missing Page** | Friend | She admits the moonwater pipe is dry and shows you the cellar. Page 41 of Granny Bell's recipe book is missing — Granny tore it out and took it down into the channels years ago. Find it in a flooded side room on **Floor 12**. It reads: *"If the moon runs dry, don't fake it. Go and unclog it, you daft girl."* |
-| **3** | **The Moonwater Tap** | Best Friend *(requires Floor 25 cleared)* | With moonwater flowing again, Mara reopens the cellar tap and runs a stall at the Moon Festival. She names the new drink after the player. It is aggressively fizzy. |
+| **3** | **The Moonwater Tap** | Best Friend *(requires Floor 25 cleared)* | With moonwater flowing again, Ella reopens the cellar tap and runs a stall at the Moon Festival. She names the new drink after the player. It is aggressively fizzy. |
 
 #### Dungeon Connection
 
-Mara is your **supply line**. She is the reason you can afford to go down. Story-wise, her failing shop is the player's first *proof* that the Dimming is real and hurting people — before any big speech from the Mayor.
+Ella is your **supply line**. She is the reason you can afford to go down. Story-wise, her failing shop is the player's first *proof* that the Dimming is real and hurting people — before any big speech from the Mayor.
 
 #### Gifts & Rewards
 
@@ -176,7 +176,7 @@ Lumi is the **oracle**. Her paintings are the in-fiction reason the player gets 
 
 ---
 
-### 🌑 Shade — The Mysterious Figure
+### 🌑 Rose — The Mysterious Figure
 
 > *"You're loud. Even standing still, you're loud. ...Sit. Watch the water. I'll answer three things."*
 
@@ -184,31 +184,31 @@ Lumi is the **oracle**. Her paintings are the in-fiction reason the player gets 
 
 #### Backstory
 
-Shade wears a deep hood and speaks in short sentences and everyone in the Slums has a rumour about them. All the rumours are wrong.
+Rose wears a deep hood and speaks in short sentences and everyone in the Slums has a rumour about them. All the rumours are wrong.
 
-Shade is the last **Moonwarden** — the order that once maintained the Moonwater Channels, opening and closing the great brass valves so the city got exactly enough light. The Wardens worked by moonwater, drank moonwater, and slowly *became a little bit made of it*.
+Rose is the last **Moonwarden** — the order that once maintained the Moonwater Channels, opening and closing the great brass valves so the city got exactly enough light. The Wardens worked by moonwater, drank moonwater, and slowly *became a little bit made of it*.
 
-That's why Shade only comes out at night. And it's why Shade is **fading** — as the moon dims, so do they. Their hands have gone faintly see-through. The hood isn't hiding something scary. It's hiding something *beautiful*: a face full of drifting silver freckles like a slow snowfall of stars, which Shade thinks makes people stare.
+That's why Rose only comes out at night. And it's why Rose is **fading** — as the moon dims, so do they. Their hands have gone faintly see-through. The hood isn't hiding something scary. It's hiding something *beautiful*: a face full of drifting silver freckles like a slow snowfall of stars, which Rose thinks makes people stare.
 
-Shade knows exactly what's on Floor 25 — and Shade's position is that the King should be **moved, not hurt**. *"It isn't wicked. It's a mouth. Mouths aren't wicked."*
+Rose knows exactly what's on Floor 25 — and Rose's position is that the King should be **moved, not hurt**. *"It isn't wicked. It's a mouth. Mouths aren't wicked."*
 
 #### Personal Quest Arc — *"The Last Warden"*
 
 | Stage | Name | Unlocks at | What happens |
 |-------|------|-----------|--------------|
-| **1** | **Three Questions** | Stranger → Acquaintance | Shade won't take gold, only trades. Bring one **Moonglass Shard** per question. Ask about the sewers, about Wren, about the moon. The answers are true, useful, and infuriatingly short. |
-| **2** | **The Warden's Keys** | Friend | Three brass **valve keys** are still in the channels — Floors 10, 15 and 20. Each one you turn re-opens a channel and **relights a district of the city above** (Docks → Slums → Downtown). Shade grows visibly more solid with each one. |
-| **3** | **Unhooded** | Best Friend | At the Moon Festival, Shade lowers the hood in front of the whole city. There's a long silence. Then Pip says *"WHOA, COOL"* and everyone agrees. Shade gives you the **Moonwarden's Lantern** and — for the first time — smiles. |
+| **1** | **Three Questions** | Stranger → Acquaintance | Rose won't take gold, only trades. Bring one **Moonglass Shard** per question. Ask about the sewers, about Wren, about the moon. The answers are true, useful, and infuriatingly short. |
+| **2** | **The Warden's Keys** | Friend | Three brass **valve keys** are still in the channels — Floors 10, 15 and 20. Each one you turn re-opens a channel and **relights a district of the city above** (Docks → Slums → Downtown). Rose grows visibly more solid with each one. |
+| **3** | **Unhooded** | Best Friend | At the Moon Festival, Rose lowers the hood in front of the whole city. There's a long silence. Then Pipper says *"WHOA, COOL"* and everyone agrees. Rose gives you the **Moonwarden's Lantern** and — for the first time — smiles. |
 
 #### Dungeon Connection
 
-Shade is the **lore-keeper and the moral compass**. They provide: the truth that the sewers are channels, the valve-key objectives that link floor progress to visible city change, and the plan for the boss fight that isn't "hit it until it stops."
+Rose is the **lore-keeper and the moral compass**. They provide: the truth that the sewers are channels, the valve-key objectives that link floor progress to visible city change, and the plan for the boss fight that isn't "hit it until it stops."
 
 #### Gifts & Rewards
 
 - **Loves:** Moonglass Shard, Deep Pearl, Silver Key, being left alone in a companionable way
 - **Dislikes:** Prying questions before Friend level, torches shoved in their face
-- **Rewards:** Free channel fast-travel between valve rooms · **Moonwarden's Lantern** (reveals hidden doors) · night-market access · Shade's true name, which they only tell a Best Friend: **Sable**
+- **Rewards:** Free channel fast-travel between valve rooms · **Moonwarden's Lantern** (reveals hidden doors) · night-market access · Rose's true name, which they only tell a Best Friend: **Sable**
 
 ---
 
@@ -255,7 +255,7 @@ Aldric is the **gatekeeper**. He's why the sewer entrance is barred at the start
                         /        |         \
                    partner    left note    knew
                       /          |            \
-                   REX ------ MAYOR ALDRIC     SHADE
+                   REX ------ MAYOR ALDRIC     ROSE
                     |   (blames)     |        (Moonwarden)
               patched by         sealed       teaches
                     |            the gate        |
@@ -264,7 +264,7 @@ Aldric is the **gatekeeper**. He's why the sewer entrance is barred at the start
               Granny Bell's  ----------------  paints
                  recipes                     the deeps
                     |
-                  MARA -- big sister energy --> PIP -- hero-worships --> BEX
+                  ELLA -- big sister energy --> PIPPER -- hero-worships --> WILL
 ```
 
 ---
@@ -283,22 +283,22 @@ A city-wide meter shown on the map screen, from **0% (only 3 lamps lit)** to **1
 
 | Meter | What changes in the city |
 |-------|--------------------------|
-| 0–20% | Dark streets. Shops close early. NPCs stay indoors. Mara's potions are cloudy. |
-| 21–40% | The Docks relight. Night fishing opens. Shade becomes more solid. |
+| 0–20% | Dark streets. Shops close early. NPCs stay indoors. Ella's potions are cloudy. |
+| 21–40% | The Docks relight. Night fishing opens. Rose becomes more solid. |
 | 41–60% | The Slums relight. Black Market moves into a real shop front. Rex starts standing up. |
 | 61–80% | Downtown relights. Fountains shimmer. Festival preparations begin. Housing Tier 3 unlocked. |
 | 81–100% | Full glow. Night becomes a *second daytime* with its own NPC schedules and events. |
 
-The meter rises from **valve keys** (Shade), **cleared floor milestones**, and **completed friendships** — city life and dungeon feeding the same bar.
+The meter rises from **valve keys** (Rose), **cleared floor milestones**, and **completed friendships** — city life and dungeon feeding the same bar.
 
 ---
 
 ### 🎬 Prologue — *"Welcome to the Dark"* (No dungeon)
 
 **Beats:**
-1. Arrive at the Docks at night. Read Wren's letter. Meet **Shade** on the pier for eight seconds before they vanish.
+1. Arrive at the Docks at night. Read Wren's letter. Meet **Rose** on the pier for eight seconds before they vanish.
 2. Find the house. It's dusty. Gerald the plant is *alive but furious.* Water Gerald — first quest complete.
-3. Morning. Meet **Mara** (buys your first potion), **Pip** (sells you a crayon map), **Mayor Aldric** (makes you hold a ribbon).
+3. Morning. Meet **Ella** (buys your first potion), **Pipper** (sells you a crayon map), **Mayor Aldric** (makes you hold a ribbon).
 4. Go to the sewer entrance in the Slums. It's **sealed** — Aldric's decree nailed to the grate.
 5. **Rex** is watching from the tavern doorway. *"That grate's been shut twenty years. ...Wren, was it? Yeah. I knew her."*
 
@@ -330,7 +330,7 @@ The meter rises from **valve keys** (Shade), **cleared floor milestones**, and *
 | Floor | Story beat |
 |-------|-----------|
 | **10** | **Valve Key #1.** Turn the wheel. Cut to the surface: a whole street of lamps flickers on and people run outside to look. |
-| **12** | Granny Bell's missing **Page 41** *(Mara Quest 2)*, in a flooded reading nook with a teacup still on the shelf. |
+| **12** | Granny Bell's missing **Page 41** *(Ella Quest 2)*, in a flooded reading nook with a teacup still on the shelf. |
 | **15** | **Valve Key #2.** Also: the first **Toxic Slimes**, and the first hint of scale — a footprint. Not a footprint. A *sit*print. Twelve metres across. |
 | **17** | ⭐ **THE DEEPWATCH CAMP.** Four bedrolls. A cold kettle. Rex's half-map completes here. On the wall, in chalk, in Wren's hand: *"Rex — went on ahead. Not your fault. Feed my plant."* |
 
@@ -349,12 +349,12 @@ The meter rises from **valve keys** (Shade), **cleared floor milestones**, and *
 |-------|-----------|
 | **18** | The tunnels get *wider* and *cleaner* — because something enormous has been squeezing through them, polishing the walls. |
 | **20** | **Valve Key #3** — but the wheel is jammed with jelly. Downtown relights only *partially*. Something is pulling harder than you are. |
-| **21** | **Giant Slime mini-boss.** It splits. Then those split. Pip's crayon map says "EASY :)". Pip was wrong. |
+| **21** | **Giant Slime mini-boss.** It splits. Then those split. Pipper's crayon map says "EASY :)". Pipper was wrong. |
 | **22** | **Deepwatch Landmark #4** — Wren's pack, her boots, her journal. **No Wren.** The last entry: *"Found the Heart. Found the King. He's not cruel — he's just BIG and he's SITTING ON IT. Can't move him alone. Going round to the moon door. Back soon."* |
 | **23** | The **Moon Door** — silver, carved with a crescent, sealed, warm to the touch. **It does not open.** Not this zone. *(Zone 2 hook.)* |
-| **24** | The **Hall of Lanterns** — a thousand dead Moonwarden lamps. Shade meets you here, fully solid for the first time, and says: *"Don't kill it. Wake it up. There's a difference."* |
+| **24** | The **Hall of Lanterns** — a thousand dead Moonwarden lamps. Rose meets you here, fully solid for the first time, and says: *"Don't kill it. Wake it up. There's a difference."* |
 
-**Meanwhile, on the surface:** the **Moon Festival** happens and **the lanterns won't light.** The city stands in the dark square in silence. Then Aldric gives **The Speech**, Lumi unveils **The Mural**, and Mara hands out fizzy drinks to a crowd that badly needed one. It's the warmest scene in the game — and it happens at the darkest moment. The whole city then walks you to the sewer entrance.
+**Meanwhile, on the surface:** the **Moon Festival** happens and **the lanterns won't light.** The city stands in the dark square in silence. Then Aldric gives **The Speech**, Lumi unveils **The Mural**, and Ella hands out fizzy drinks to a crowd that badly needed one. It's the warmest scene in the game — and it happens at the darkest moment. The whole city then walks you to the sewer entrance.
 
 **City change:** Moonlight Meter caps at 60% and *will not rise further* until Floor 25.
 
@@ -366,7 +366,7 @@ The meter rises from **valve keys** (Shade), **cleared floor milestones**, and *
 
 **The arena:** the **Moon Heart Chamber** — a vast round cavern with a silver spring at the centre... entirely covered by a slime the size of a house, wearing a crown of fused brass valve-wheels and old crockery it has swallowed. It is **glowing from the inside** with all the light it has drunk. Honestly? It's kind of magnificent.
 
-**Escort NPCs (if befriended):** Rex fights beside you. Shade shields you from slime waves. Both are optional — and both make the fight noticeably easier *and* funnier (Rex has barks for every phase).
+**Escort NPCs (if befriended):** Rex fights beside you. Rose shields you from slime waves. Both are optional — and both make the fight noticeably easier *and* funnier (Rex has barks for every phase).
 
 | Phase | HP | Behaviour | Story flavour |
 |-------|-----|-----------|---------------|
@@ -379,7 +379,7 @@ The meter rises from **valve keys** (Shade), **cleared floor milestones**, and *
 ### After the Boss — *"The Lights Come On"*
 
 1. The moonwater surges upward. **The entire city relights in a single wave**, district by district, in a long silent camera pan from the Slums to the Docks. Moonlight Meter → 100%.
-2. Left in the middle of the chamber: a **very small, very confused, apologetic green slime**, wearing a crown three sizes too big. Shade: *"Told you. It was just a mouth."*
+2. Left in the middle of the chamber: a **very small, very confused, apologetic green slime**, wearing a crown three sizes too big. Rose: *"Told you. It was just a mouth."*
 3. You may pick him up. He is now **Prince Gloop**, your house pet. He follows you. He eats furniture if you don't feed him. He is Bubbles' best friend immediately.
 4. Loot: big gold, rare chest, **👑 The Slime Crown** (wearable cosmetic — a dripping green crown that *actually drips*, cosmetically, forever), and the **Key to Zone 2**.
 5. **The stairs down are now visible** behind the Moon Heart — the Underground Crypts.
@@ -397,7 +397,7 @@ The meter rises from **valve keys** (Shade), **cleared floor milestones**, and *
 >
 > *P.S. If a small slime has adopted you, feed him. Not furniture. He'll tell you furniture. He's lying.*
 
-7. **Homecoming scene:** you climb out of the storm drain into a Moonlight City that is *silver*. Every NPC you befriended is in the square. Mara's stall is running. Lumi's mural is glowing because the pigment finally has live moonwater. Rex lights his lantern. Shade lowers the hood. Aldric hands you the Deepwatch Hall key. Pip demands you sign her map.
+7. **Homecoming scene:** you climb out of the storm drain into a Moonlight City that is *silver*. Every NPC you befriended is in the square. Ella's stall is running. Lumi's mural is glowing because the pigment finally has live moonwater. Rex lights his lantern. Rose lowers the hood. Aldric hands you the Deepwatch Hall key. Pipper demands you sign her map.
 8. **New systems unlock:** Old Deepwatch Hall (guild), night city (a whole second set of NPC schedules), Tier 3–4 housing, and the descent to Floors 26–50.
 
 ---
@@ -408,13 +408,13 @@ Chosen to fill three gaps in the current cast: **a kid the player's age**, **a w
 
 ---
 
-### 🎒 Pip — The Junior Deepwatch Captain (age 10)
+### 🎒 Pipper — The Junior Deepwatch Captain (age 10)
 
 > *"I'm not ALLOWED in the sewers. But you are! So technically if you go, I've been. That's how it works. I checked."*
 
 **Personality:** Excitable · **Location:** Downtown fountain & the bulletin board · **Why she matters:** She's the same age as the player playing beside a parent, and she's the one who thinks *you* are the coolest person alive.
 
-- **Backstory:** Pip appointed herself Captain of the Deepwatch (membership: one). She sells **crayon maps** of the sewers for 5 gold. They are roughly 60% accurate, which is *unsettlingly* good for someone who has never been down there — because she gets her details from listening to Rex talk in the tavern doorway.
+- **Backstory:** Pipper appointed herself Captain of the Deepwatch (membership: one). She sells **crayon maps** of the sewers for 5 gold. They are roughly 60% accurate, which is *unsettlingly* good for someone who has never been down there — because she gets her details from listening to Rex talk in the tavern doorway.
 - **Runs:** the **Bulletin Board** — daily bounties, community tasks, "wanted" posters she drew herself.
 - **Quest arc:** (1) *Map Correction Service* — mark 5 real landmarks so she can fix her maps. (2) *Captain's Badge* — she wants a real one; Rex has one in a drawer and needs persuading. (3) *The Junior Deepwatch* — she recruits the city's kids to relight and maintain the lamps, and gives you the honorary rank of **First Mate** (she outranks you and mentions it constantly).
 - **Rewards:** free daily bounty · a genuinely useful map upgrade · a growing wall of her drawings *of you* in your house.
@@ -434,14 +434,14 @@ Chosen to fill three gaps in the current cast: **a kid the player's age**, **a w
 
 ---
 
-### ⚔️ Bex — The Rival (age 15)
+### ⚔️ Will — The Rival (age 15)
 
 > *"Floor twelve. Four minutes, nine seconds. — Oh, hi! Didn't see you there. What was YOUR time? Say it louder, I'm writing it down."*
 
 **Personality:** Snarky, competitive, secretly a total softie · **Location:** Guild Hall, sewer entrance, or wherever you are (annoyingly) · **Why she matters:** friendly rivalry = replay motivation, and a great character for a kid to beat.
 
-- **Backstory:** Bex is a Blade Dancer who has been trying to be the youngest person to clear Floor 25 since she was twelve, and she has failed **nineteen times**, because she always goes alone. She has Rex's poster on her wall and would rather eat the poster than admit it.
-- **Mechanic:** every floor has a **ghost time**. Beat Bex's, and she posts a new one, with commentary. Lose, and she leaves you a healing potion "out of pity" that is definitely just kindness with a hat on.
+- **Backstory:** Will is a Blade Dancer who has been trying to be the youngest person to clear Floor 25 since she was twelve, and she has failed **nineteen times**, because she always goes alone. She has Rex's poster on her wall and would rather eat the poster than admit it.
+- **Mechanic:** every floor has a **ghost time**. Beat Will's, and she posts a new one, with commentary. Lose, and she leaves you a healing potion "out of pity" that is definitely just kindness with a hat on.
 - **Quest arc:** (1) *Rival's Challenge* — beat her time on Floor 5. (2) *Twenty Times Unlucky* — you find her at the Floor 18 checkpoint, out of potions, out of pride, and have to **team up** to get out; the game's first co-op-flavoured floor. (3) *Two Names on the Board* — she stops racing you and asks to come with you, and the Floor 25 leaderboard gets **two** names on it.
 - **Rewards:** Blade Dancer techniques · speedrun cosmetics · escort ally · and at Best Friend, the single most awkward thank-you speech in the entire game.
 
@@ -455,37 +455,37 @@ Chosen to fill three gaps in the current cast: **a kid the player's age**, **a w
 
 ---
 
-### 🧪 MARA — Cheerful Shopkeeper
+### 🧪 ELLA — Cheerful Shopkeeper
 
 #### 🩶 STRANGER (0–2 ♥)
 
-> **Mara:** *Oooh, a new face! Hello hello! Welcome to Mara's Marvellous Mixtures — that's me, I'm Mara, this is the shop, you've got the full tour now.*
+> **Ella:** *Oooh, a new face! Hello hello! Welcome to Ella's Marvellous Mixtures — that's me, I'm Ella, this is the shop, you've got the full tour now.*
 >
 > ▸ **"Nice to meet you!"** — *And you! Very polite. I like you already.* `+2 ♥`
 > ▸ **"What do you sell?"** — *Potions, tonics, bandages, and one jar of pickled something that's been here since before I was born. Not for sale. Emotional support jar.* `+1 ♥`
 > ▸ **"Are your potions any good?"** — *...HA! Ha ha. Yes! Absolutely! Ha. ...Anyway.* `+0 ♥` *(she starts wiping a clean counter)*
 
-> **Mara (repeat):** *Back again! Take your time, browse away. Don't touch the jar.*
+> **Ella (repeat):** *Back again! Take your time, browse away. Don't touch the jar.*
 
-> **Mara (if you leave without buying):** *No worries at all! Come back any time! Genuinely! Please do!*
+> **Ella (if you leave without buying):** *No worries at all! Come back any time! Genuinely! Please do!*
 
 ---
 
 #### 💛 BEST FRIEND (10 ♥ · after "The Fizz Went Out")
 
-> **Mara:** *There you are! I saved you the first bottle off the new tap. Don't argue, it's already got your name on it. Literally. I printed labels.*
+> **Ella:** *There you are! I saved you the first bottle off the new tap. Don't argue, it's already got your name on it. Literally. I printed labels.*
 >
 > ▸ **"You printed labels?"** — *I printed two hundred labels. I got excited. You're going to be seeing your name on shelves for YEARS.*
 > ▸ **"How's the shop?"** — *Marvellous. Actually marvellous, for the first time since I took it over. Granny would've been unbearable about it.*
 > ▸ **"Are you okay?"** — *...You know, four years I stood behind this counter laughing at my own jokes so nobody would ask me that. And then you asked me. In a sewer. Covered in slime.* 😊 *Yeah. I'm okay now.*
 
-> **Mara (evening, after the boss):** *Look out the window. Go on. — Twenty years I've never seen the market lit up like that. My gran described it to me once and I thought she was exaggerating. She was UNDERSELLING it.*
+> **Ella (evening, after the boss):** *Look out the window. Go on. — Twenty years I've never seen the market lit up like that. My gran described it to me once and I thought she was exaggerating. She was UNDERSELLING it.*
 
-> **Mara (if you visit while hurt):** *Nope. Sit. Free potion, don't argue, friends-and-family rate, and the rate is zero.*
+> **Ella (if you visit while hurt):** *Nope. Sit. Free potion, don't argue, friends-and-family rate, and the rate is zero.*
 
-> **Mara (random Best Friend barks):**
+> **Ella (random Best Friend barks):**
 > - *"You're not going back down there without soup in you. I don't make the rules."*
-> - *"Pip drew a picture of you fighting the King. You've got about nine arms in it. I've framed it."*
+> - *"Pipper drew a picture of you fighting the King. You've got about nine arms in it. I've framed it."*
 > - *"Gerald's looking well! You've been watering him! Wren owes me five gold, I bet her you would."*
 
 ---
@@ -519,7 +519,7 @@ Chosen to fill three gaps in the current cast: **a kid the player's age**, **a w
 > **Rex (looking at the relit city):** *Look at that. — I used to tell people the city never really glowed, that it was just old folks remembering it better than it was. — I was lying. To myself, mostly. It glowed exactly like this.*
 
 > **Rex (random Best Friend barks):**
-> - *"Pip's been telling everyone she trained you. I've decided not to correct her."*
+> - *"Pipper's been telling everyone she trained you. I've decided not to correct her."*
 > - *"Aldric came in here yesterday. Sat down. Ordered a stew. Neither of us said anything for an hour. It was... alright, actually."*
 > - *"Gloop ate my hat. I'm not even angry. Look at him. Look at his little face."*
 > - *"Floor twenty-six tomorrow? — Don't answer yet. Sleep first. Then yes."*

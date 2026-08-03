@@ -836,7 +836,7 @@ A named elite Sewer Rat wearing bolted pipe armour and dragging a valve-wheel co
 - **Phase 2 (50%–0%)** — armour cracks off, it gets angrier and starts ricocheting between arena walls. After every second ricochet it summons **2 Sewer Rats**.
 - **Special ability:** **Valve Burst** — a 1-second whistle telegraph, then four cardinal steam jets fire at once.
 - **Loot:** guaranteed Tier-2 chest roll, `Pipewarden Plate` unlock chance, `Cracked Pipe Bundle ×3`, medium gold pile.
-- **Dialogue unlock:** Rex gets a new tavern line about “the one rat even the old crews left alone,” and Shade hints that something larger is organising the moonwater below.
+- **Dialogue unlock:** Rex gets a new tavern line about “the one rat even the old crews left alone,” and Rose hints that something larger is organising the moonwater below.
 
 ### Floor 20 mini-boss — **The Slime Mother**
 An enormous Toxic Slime with little bright eyes floating inside it — the first clear sign that the Slime King may have a whole happy family.
@@ -851,7 +851,7 @@ An enormous Toxic Slime with little bright eyes floating inside it — the first
 - **Phase 2 (60%–0%)** — every 12 seconds it spawns **2 Small Slimes** or **1 Toxic Slime**, then does a belly-flop shockwave that rewards diagonal dodging.
 - **Special ability:** **Nursery Call** — all active puddles briefly pulse, then release tiny harmless bubbles as a warning before new adds appear.
 - **Loot:** guaranteed Tier-3 chest roll, `Toxic Goop Bundle ×3`, `Glowing Fungus ×2`, high gold pile, small chance at a cosmetic slime bow.
-- **Dialogue unlock:** Shade softens his tone and notes that the “king” below might be less a tyrant and more a very messy guardian; one child-friendly clue toward the warm twist of Floor 25.
+- **Dialogue unlock:** Rose softens his tone and notes that the “king” below might be less a tyrant and more a very messy guardian; one child-friendly clue toward the warm twist of Floor 25.
 
 ---
 

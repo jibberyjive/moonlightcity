@@ -46,11 +46,11 @@ Every arrow in that diagram must work. Nothing outside that diagram belongs in v
 |---|---|---|
 | **Character creation** | Name, 4 skin tones, 6 hair styles, 8 hair colours, 3 outfits, 1 class. Saved to local storage. | Face sliders, body shape/height, gradients, accessories, expression styles, wardrobe changes |
 | **City** | **One contiguous map**, ~64×64 tiles, visually split into Downtown / Residential / Slums. No zone loading. | The Docks, screen transitions, festivals |
-| **NPCs** | **3 NPCs** (Mara, Rex, Lumi) standing in fixed spots. Click → dialogue bubble → 2–3 flat topic choices. A 3-level relationship counter that changes their greeting. | Schedules, pathing, branching trees, memory of past conversations, night-only NPCs |
+| **NPCs** | **3 NPCs** (Ella, Rex, Lumi) standing in fixed spots. Click → dialogue bubble → 2–3 flat topic choices. A 3-level relationship counter that changes their greeting. | Schedules, pathing, branching trees, memory of past conversations, night-only NPCs |
 | **Housing** | **One pre-owned Starter Shack**, one interior room, grid snap placement of **8 furniture items**, wall + floor colour swatches. Saves and reloads correctly. | Buying plots, upgrades/tiers, rotation, storage chests, NPC visits, exterior variations |
 | **Combat** | **One class**. Move, basic attack, dash. HP/MP bars, damage numbers, death → wake up at home minus some gold. | Spells, techniques, status effects, 4 classes, equipment slots |
 | **Dungeon** | **Sewer floors 1–5**, hand-designed layouts, stairs unlock when the floor is cleared. 2 enemy types (Small Slime, Sewer Rat). Breakable barrels. Deepest floor saved. | Floors 6–25, procedural generation, hazards, hidden rooms, minibosses |
-| **Economy** | Gold in HUD. **One shop** (Mara's) selling 3 potions + 5 furniture items. Loot drops gold + junk-to-sell. | Multiple shops, selling UI beyond one button, quest board, black market |
+| **Economy** | Gold in HUD. **One shop** (Ella's) selling 3 potions + 5 furniture items. Loot drops gold + junk-to-sell. | Multiple shops, selling UI beyond one button, quest board, black market |
 | **System** | Title screen, save/load (single slot, **versioned save data**), pause, game over. | Settings, options, multiple slots, mobile controls |
 | **Feel** | 6–8 sound effects + 1 music loop. Hit-stop on attacks. Screen shake on boss-ish hits. | Full soundtrack, ambient city audio |
 
