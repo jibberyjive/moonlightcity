@@ -847,6 +847,8 @@
         Backspace: "back",
         Digit6: "d6",
         Digit7: "d7",
+        Digit0: "d0", Digit1: "d1", Digit2: "d2", Digit3: "d3",
+        Digit4: "d4", Digit5: "d5", Digit8: "d8", Digit9: "d9",
         Comma:  "prev_item",
         Period: "next_item",
         Tab:    "tab"
@@ -1307,6 +1309,7 @@
       let candyShop = { open: false, selected: 0 };
       let inventory = { open: false, selected: 0 };
       let cheatBox  = { open: false, selected: 0, flash: "" };
+      let cheatPassword = { active: false, input: "", shake: 0, wrongTimer: 0 };
       let prestigeShop = { open: false, selected: 0 };
       let petShopState = { open: false, selected: 0 };
       let proposal  = { active: false, npc: null, selected: 0 }; // 0=Yes 1=No
@@ -3558,8 +3561,75 @@
       function drawCheatBox(time) {
         const W = canvas.width, H = canvas.height;
 
-        // Cheat toggle: 6 held + 7 pressed
-        if (keys.d6 && justPressedKeys.d7) { cheatBox.open = !cheatBox.open; cheatBox.selected = 0; }
+        // Cheat toggle: 6 held + 7 pressed → open password prompt
+        if (keys.d6 && justPressedKeys.d7) {
+          if (!cheatBox.open) {
+            cheatPassword.active = true;
+            cheatPassword.input = "";
+            cheatPassword.shake = 0;
+            cheatPassword.wrongTimer = 0;
+          } else {
+            cheatBox.open = false;
+          }
+        }
+
+        // ── Password prompt ───────────────────────────────────────────────────
+        if (cheatPassword.active) {
+          if (cheatPassword.wrongTimer > 0) cheatPassword.wrongTimer -= 1/60;
+          // Accept digit keypresses
+          for (let d = 0; d <= 9; d++) {
+            if (justPressedKeys[`d${d}`] && cheatPassword.input.length < 4) {
+              cheatPassword.input += String(d);
+            }
+          }
+          if (justPressedKeys.back) cheatPassword.input = cheatPassword.input.slice(0, -1);
+          if (justPressedKeys.pause || justPressedKeys.map) {
+            cheatPassword.active = false; cheatPassword.input = ""; return;
+          }
+          // Auto-check once 4 digits entered
+          if (cheatPassword.input.length === 4) {
+            if (cheatPassword.input === "2016") {
+              cheatPassword.active = false; cheatPassword.input = "";
+              cheatBox.open = true; cheatBox.selected = 0;
+            } else {
+              cheatPassword.wrongTimer = 1.2;
+              cheatPassword.shake = 6;
+              cheatPassword.input = "";
+            }
+          }
+          // Draw password modal
+          const shake = cheatPassword.shake > 0 ? (Math.random() - 0.5) * cheatPassword.shake * 4 : 0;
+          if (cheatPassword.shake > 0) cheatPassword.shake = Math.max(0, cheatPassword.shake - 0.4);
+          const bw = 220, bh = 130, bx = W/2 - bw/2 + shake, by = H/2 - bh/2;
+          ctx.fillStyle = "rgba(0,0,0,0.72)"; ctx.fillRect(0,0,W,H);
+          ctx.fillStyle = cheatPassword.wrongTimer > 0 ? "#3a0808" : "#1a1a2e";
+          ctx.fillRect(bx, by, bw, bh);
+          ctx.strokeStyle = cheatPassword.wrongTimer > 0 ? "#e04040" : "#5a3a8a";
+          ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, bh);
+          ctx.font = "bold 14px monospace"; ctx.textAlign = "center";
+          ctx.fillStyle = "#d8b4fe";
+          ctx.fillText("🔒 CHEAT CODE", W/2 + shake, by + 24);
+          ctx.fillStyle = "#888"; ctx.font = "10px monospace";
+          ctx.fillText("Enter the 4-digit password", W/2 + shake, by + 42);
+          // Dots display
+          const dotY = by + 74, dotSpacing = 28;
+          for (let i = 0; i < 4; i++) {
+            const dx = W/2 + shake + (i - 1.5) * dotSpacing;
+            ctx.fillStyle = i < cheatPassword.input.length ? "#f0c050" : "#444";
+            ctx.beginPath(); ctx.arc(dx, dotY, 8, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = "#888"; ctx.lineWidth = 1; ctx.stroke();
+          }
+          if (cheatPassword.wrongTimer > 0) {
+            ctx.fillStyle = "#e04040"; ctx.font = "bold 11px monospace";
+            ctx.fillText("✗ Wrong password!", W/2 + shake, by + 100);
+          } else {
+            ctx.fillStyle = "#666"; ctx.font = "9px monospace";
+            ctx.fillText("Backspace to delete  •  X / Esc to cancel", W/2 + shake, by + 100);
+          }
+          ctx.textAlign = "left";
+          return;
+        }
+
         if (cheatBox.open) {
           if (justPressedKeys.pause) { cheatBox.open = false; return; }
           if (justPressedKeys.up)   cheatBox.selected = (cheatBox.selected - 1 + CHEATS.length) % CHEATS.length;
