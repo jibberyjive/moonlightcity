@@ -130,7 +130,9 @@
         "47,20": "south", "57,20": "south",  // Row 1 — door faces Elm Road from above
         "47,25": "north", "57,25": "north",  // Row 2 — door faces Elm Road from below
         "47,39": "north", "57,39": "north",  // Row 3 — door faces Blossom Lane
+        "32,19": "south",                    // Sweet Dreams candy store — south door
       };
+      const CANDY_STORE = { x1: 30, y1: 15, x2: 34, y2: 19 };
       // Named NPC definitions — position is their home wander centre
       const NPC_DATA = [
         { id: "ella",   name: "Ella",   homeX: 20*32+16, homeY: 22*32+16, skin: "#e8c49a", hair: "#b85c2a", torso: "#f5e6c8", legs: "#8b5e3c", hairStyle: 1,
@@ -593,6 +595,10 @@
         // -- Market Square (open air, keep as PATH + decoration) --
         fillRectTiles(16, 5, 9, 6, TILE.PATH);    // open square
         fillRectTiles(19, 7, 4, 3, TILE.WATER);   // decorative fountain
+
+        // -- Sweet Dreams Candy Store -- (x:30-34, y:15-19, south of Main Street)
+        fillRectTiles(30, 15, 5, 5, TILE.STONE);
+        stampTiles([[29,15],[29,19],[35,15],[35,19],[31,20],[32,20],[33,20]], TILE.FLOWERS);
 
         // -- Main roads (carve back to PATH over stone blocks) --
         fillRectTiles(2,  12, 55, 3, TILE.PATH);  // Main Street (E-W, y=12-14)
@@ -1548,12 +1554,71 @@
       }
 
       function drawStone(x, y, tileX, tileY) {
-        // Building from above: warm terracotta roof + wall face at south edge
+        const isCandy = tileX >= CANDY_STORE.x1 && tileX <= CANDY_STORE.x2 &&
+                        tileY >= CANDY_STORE.y1 && tileY <= CANDY_STORE.y2;
 
-        // Roof base colour — slight variation per tile
-        const roofCol = noise(tileX, tileY, 99) < 0.45 ? "#6b3a1e" : "#7c4828";
-        ctx.fillStyle = roofCol;
-        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+        if (isCandy) {
+          // ── Candy Store roof — pink tiles ───────────────────────
+          const pinkA = noise(tileX, tileY, 99) < 0.45 ? "#e8608a" : "#f07aa0";
+          ctx.fillStyle = pinkA;
+          ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+          // Shingle lines in deeper pink
+          ctx.fillStyle = "rgba(180,40,80,0.3)";
+          for (let row = 1; row < 4; row++) ctx.fillRect(x, y + row * 8, TILE_SIZE, 1);
+          const stg = ((tileX + tileY) % 2 === 0) ? 0 : 8;
+          ctx.fillStyle = "rgba(180,40,80,0.18)";
+          for (let row = 0; row < 4; row++) {
+            ctx.fillRect(x + stg + row * 16,     y + row * 8, 1, 8);
+            ctx.fillRect(x + stg + row * 16 + 8, y + row * 8, 1, 8);
+          }
+          // Candy cane stripe accent on roof
+          ctx.fillStyle = "rgba(255,255,255,0.18)";
+          ctx.fillRect(x + 4, y, 3, TILE_SIZE);
+          ctx.fillRect(x + 20, y, 3, TILE_SIZE);
+
+          // South-edge pink wall face
+          const southTile = (tileY + 1 < MAP_H) ? map[tileY + 1][tileX] : -1;
+          const isEdge = southTile !== TILE.STONE;
+          if (isEdge) {
+            // Candy-stripe wall: alternating pink & white bands
+            for (let i = 0; i < 5; i++) {
+              ctx.fillStyle = i % 2 === 0 ? "#ffd6e8" : "#ff8ab8";
+              ctx.fillRect(x + i * 7, y + TILE_SIZE - 9, 7, 9);
+            }
+            ctx.fillRect(x + 35, y + TILE_SIZE - 9, TILE_SIZE - 35, 9);  // fill remainder
+            // Roof overhang shadow
+            ctx.fillStyle = "rgba(0,0,0,0.25)";
+            ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 2);
+            // Heart windows
+            ctx.fillStyle = "#ffe0f0";
+            ctx.fillRect(x + 4,            y + TILE_SIZE - 8, 5, 5);
+            ctx.fillRect(x + TILE_SIZE - 9, y + TILE_SIZE - 8, 5, 5);
+            ctx.fillStyle = "rgba(200,60,100,0.5)";
+            ctx.strokeStyle = "rgba(200,60,100,0.5)";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 4,            y + TILE_SIZE - 8, 5, 5);
+            ctx.strokeRect(x + TILE_SIZE - 9, y + TILE_SIZE - 8, 5, 5);
+
+            // "Sweet Dreams" sign above door tile (centre column)
+            if (tileX === 32) {
+              ctx.fillStyle = "#ff4d88";
+              ctx.font = "bold 7px Trebuchet MS, Arial, sans-serif";
+              ctx.textAlign = "center";
+              ctx.fillText("🍬 Sweet Dreams", x + TILE_SIZE / 2, y + TILE_SIZE - 11);
+              ctx.textAlign = "left";
+            }
+          }
+
+          // West-edge
+          const westTile = (tileX - 1 >= 0) ? map[tileY][tileX - 1] : -1;
+          if (westTile !== TILE.STONE) {
+            ctx.fillStyle = "#f0a0c8";
+            ctx.fillRect(x, y, 4, TILE_SIZE);
+            ctx.fillStyle = "rgba(0,0,0,0.15)";
+            ctx.fillRect(x, y, 1, TILE_SIZE);
+          }
+
+        } else {
 
         // Horizontal shingle lines
         ctx.fillStyle = "rgba(0,0,0,0.22)";
@@ -1598,28 +1663,38 @@
           ctx.fillStyle = "rgba(0,0,0,0.2)";
           ctx.fillRect(x, y, 1, TILE_SIZE);
         }
+        } // end else (non-candy buildings)
 
         // Door on this tile (if it's a designated door tile)
         const doorFacing = BUILDING_DOOR_TILES[`${tileX},${tileY}`];
         if (doorFacing) {
           const doorY = doorFacing === "south" ? y + TILE_SIZE - 9 : y;
           const doorH = 9;
-          // Door frame
-          ctx.fillStyle = "#3a1e08";
-          ctx.fillRect(x + 10, doorY, 12, doorH);
-          // Door panel
-          ctx.fillStyle = "#7a4a18";
-          ctx.fillRect(x + 11, doorY + 1, 10, doorH - 1);
-          // Door handle
-          ctx.fillStyle = "#ffd700";
-          ctx.fillRect(doorFacing === "south" ? x + 18 : x + 12, doorY + 3, 2, 2);
-          // Highlight on door
-          ctx.fillStyle = "rgba(255,255,255,0.15)";
-          ctx.fillRect(x + 12, doorY + 1, 3, doorH - 2);
+          if (isCandy) {
+            // Pink candy door
+            ctx.fillStyle = "#c0185a";
+            ctx.fillRect(x + 10, doorY, 12, doorH);
+            ctx.fillStyle = "#f04880";
+            ctx.fillRect(x + 11, doorY + 1, 10, doorH - 1);
+            ctx.fillStyle = "#ffd700";
+            ctx.fillRect(x + 18, doorY + 3, 2, 2);
+            ctx.fillStyle = "rgba(255,220,240,0.3)";
+            ctx.fillRect(x + 12, doorY + 1, 3, doorH - 2);
+          } else {
+            // Regular brown door
+            ctx.fillStyle = "#3a1e08";
+            ctx.fillRect(x + 10, doorY, 12, doorH);
+            ctx.fillStyle = "#7a4a18";
+            ctx.fillRect(x + 11, doorY + 1, 10, doorH - 1);
+            ctx.fillStyle = "#ffd700";
+            ctx.fillRect(doorFacing === "south" ? x + 18 : x + 12, doorY + 3, 2, 2);
+            ctx.fillStyle = "rgba(255,255,255,0.15)";
+            ctx.fillRect(x + 12, doorY + 1, 3, doorH - 2);
+          }
         }
 
         // Highlight top-left corner (light source hint)
-        ctx.fillStyle = "rgba(255,255,220,0.08)";
+        ctx.fillStyle = isCandy ? "rgba(255,200,230,0.12)" : "rgba(255,255,220,0.08)";
         ctx.fillRect(x, y, TILE_SIZE, 3);
       }
 
