@@ -1136,24 +1136,60 @@
       }
 
       function drawStone(x, y, tileX, tileY) {
-        // Rooftop / building tile — grey stone with mortar lines
-        const base = noise(tileX, tileY, 99) < 0.4 ? "#717178" : "#7e7e86";
-        ctx.fillStyle = base;
+        // Building from above: warm terracotta roof + wall face at south edge
+
+        // Roof base colour — slight variation per tile
+        const roofCol = noise(tileX, tileY, 99) < 0.45 ? "#6b3a1e" : "#7c4828";
+        ctx.fillStyle = roofCol;
         ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-        // Horizontal mortar lines
-        ctx.fillStyle = COLORS.stoneMortar;
-        ctx.fillRect(x, y + 10, TILE_SIZE, 1);
-        ctx.fillRect(x, y + 21, TILE_SIZE, 1);
-        // Vertical mortar (offset per row)
-        const off1 = Math.floor(noise(tileX, tileY, 91) * 14) + 2;
-        const off2 = Math.floor(noise(tileX, tileY, 92) * 14) + 2;
-        ctx.fillRect(x + off1, y,      1, 10);
-        ctx.fillRect(x + off1 + 14, y, 1, 10);
-        ctx.fillRect(x + off2 + 7, y + 11, 1, 10);
-        ctx.fillRect(x + off2 + 21, y + 11, 1, 10);
-        // Subtle shadow at bottom edge (depth hint)
-        ctx.fillStyle = COLORS.stoneShadow;
-        ctx.fillRect(x, y + 28, TILE_SIZE, 4);
+
+        // Horizontal shingle lines
+        ctx.fillStyle = "rgba(0,0,0,0.22)";
+        for (let row = 1; row < 4; row++) {
+          ctx.fillRect(x, y + row * 8, TILE_SIZE, 1);
+        }
+        // Vertical stagger on shingles (alternating per row)
+        ctx.fillStyle = "rgba(0,0,0,0.13)";
+        const stg = ((tileX + tileY) % 2 === 0) ? 0 : 8;
+        for (let row = 0; row < 4; row++) {
+          ctx.fillRect(x + stg + row * 16,     y + row * 8, 1, 8);
+          ctx.fillRect(x + stg + row * 16 + 8, y + row * 8, 1, 8);
+        }
+
+        // South-edge wall face (where building meets the street)
+        const southTile = (tileY + 1 < MAP_H) ? map[tileY + 1][tileX] : -1;
+        const isEdge = southTile !== TILE.STONE;
+        if (isEdge) {
+          // Cream/stone wall strip
+          ctx.fillStyle = "#d2c49a";
+          ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 9);
+          // Dark line where roof overhangs wall
+          ctx.fillStyle = "rgba(0,0,0,0.35)";
+          ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 2);
+          // Small windows
+          ctx.fillStyle = "#a8c8e8";
+          ctx.fillRect(x + 5,            y + TILE_SIZE - 8, 5, 5);
+          ctx.fillRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 5, 5);
+          // Window frames
+          ctx.fillStyle = "rgba(80,50,20,0.6)";
+          ctx.strokeStyle = "rgba(80,50,20,0.6)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x + 5,            y + TILE_SIZE - 8, 5, 5);
+          ctx.strokeRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 5, 5);
+        }
+
+        // West-edge wall face
+        const westTile = (tileX - 1 >= 0) ? map[tileY][tileX - 1] : -1;
+        if (westTile !== TILE.STONE) {
+          ctx.fillStyle = "#b8a882";
+          ctx.fillRect(x, y, 4, TILE_SIZE);
+          ctx.fillStyle = "rgba(0,0,0,0.2)";
+          ctx.fillRect(x, y, 1, TILE_SIZE);
+        }
+
+        // Highlight top-left corner (light source hint)
+        ctx.fillStyle = "rgba(255,255,220,0.08)";
+        ctx.fillRect(x, y, TILE_SIZE, 3);
       }
 
       function drawDarkPath(x, y, tileX, tileY) {
@@ -1207,6 +1243,12 @@
           default:
             drawGrass(x, y, tileX, tileY, COLORS.grass);
             break;
+        }
+
+        // Drop shadow cast by buildings to the north
+        if (tile !== TILE.STONE && tileY > 0 && map[tileY - 1][tileX] === TILE.STONE) {
+          ctx.fillStyle = "rgba(0,0,0,0.25)";
+          ctx.fillRect(x, y, TILE_SIZE, 7);
         }
       }
 
