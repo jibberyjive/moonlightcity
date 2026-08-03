@@ -46,7 +46,7 @@
       // === CONSTANTS & ENUMS ============================
       // ==================================================
 
-      const SCHEMA_VERSION = 1;
+      const SCHEMA_VERSION = 2;
       const SAVE_KEY = "moonlight-city-save";
 
       // Scene IDs
@@ -236,6 +236,48 @@
             "Sit down. Don't touch the lantern.",
             "You're thinking about the sewers, aren't you. Everyone does their first week.",
             "Don't go in. ...Fine. But come back and tell me what floor you reached."
+          ]
+        },
+        { id: "mabel",  name: "Mabel",  homeX: 28*32+16, homeY: 10*32+16, skin: "#f0c898", hair: "#c87830", torso: "#e05030", legs: "#5a3020", hairStyle: 2,
+          lines: [
+            "Morning! Bread's fresh out the oven — well, it was. Thirty seconds ago.",
+            "I've been baking since before the sun was up. The dough doesn't sleep, so neither do I.",
+            "Take a roll if you like. Actually no, those are for the mayor. But... maybe one wouldn't hurt."
+          ]
+        },
+        { id: "finn",   name: "Finn",   homeX: 52*32+16, homeY: 58*32+16, skin: "#a07848", hair: "#2a1808", torso: "#1a4a6a", legs: "#0a2030", hairStyle: 0,
+          lines: [
+            "Caught three silvers and a boot this morning. Kept the boot.",
+            "The harbour's been strange lately. Fish come up with scratch marks. Deep ones.",
+            "I don't fish after dark any more. Some things you only learn once."
+          ]
+        },
+        { id: "doc",    name: "Doc",    homeX: 32*32+16, homeY: 16*32+16, skin: "#e8d8c0", hair: "#f0f0f0", torso: "#e8e8f8", legs: "#3a3a60", hairStyle: 1,
+          lines: [
+            "Ah, you look well enough. Relatively speaking.",
+            "I've patched up half this town. The other half learned to avoid my needle.",
+            "Rest. Water. Don't fight slimes bare-handed. That's the full consultation."
+          ]
+        },
+        { id: "nora",   name: "Nora",   homeX: 70*32+16, homeY: 12*32+16, skin: "#c8a880", hair: "#8a4820", torso: "#7a3a80", legs: "#2a1838", hairStyle: 4,
+          lines: [
+            "The mansion? Oh I just live near it. Very restful. Very quiet. Very... watchful.",
+            "Something walks the grounds at three in the morning. I've seen the footprints.",
+            "I leave out biscuits now. They're always gone by dawn. Make of that what you will."
+          ]
+        },
+        { id: "sam",    name: "Sam",    homeX: 37*32+16, homeY: 46*32+16, skin: "#f5d8a0", hair: "#1a1008", torso: "#3a6ab8", legs: "#1a3878", hairStyle: 3, ageType: "child",
+          lines: [
+            "School's okay I guess. Mr Hobbs gives too much homework though.",
+            "I'm saving up to buy a sword. Mum says I should save for college. I'm still getting a sword.",
+            "Have you been in the sewers?! What's it like?! Is it scary?! I bet it's REALLY scary."
+          ]
+        },
+        { id: "cleo",   name: "Cleo",   homeX:  8*32+16, homeY: 28*32+16, skin: "#3a2818", hair: "#c83030", torso: "#101828", legs: "#080c18", hairStyle: 2,
+          lines: [
+            "You're going to the cinema? I used to go every Friday. Then I saw something in one of the films.",
+            "It was just a background detail. A face in a crowd. My face. From a photo I've never taken.",
+            "I still go every Friday. I need to see if it happens again."
           ]
         },
       ];
@@ -3248,7 +3290,18 @@
         { label: "⚔️  Enter Dungeon",          fn: () => { if(game.scene===SCENE.CITY){ enterDungeon(1); } return "Into the sewer!"; } },
         { label: "💀 Kill All Enemies",        fn: () => { if(dungeon.enemies) dungeon.enemies.forEach(e=>e.alive=false); return "Enemies cleared!"; } },
         { label: "🏆 Max HP +10",              fn: () => { player.maxHp+=10; player.hp=player.maxHp; if(game.save) game.save.player.hpMax=player.maxHp; return `Max HP now ${player.maxHp}!`; } },
+        { label: "💕 +1 Heart All NPCs",       fn: () => {
+          if (!game.save.friendship) game.save.friendship = {};
+          ["ella","will","pipper","rose","lumi","rex","mabel","finn","doc","nora","sam","cleo"].forEach(id => {
+            game.save.friendship[id] = Math.min(10, (game.save.friendship[id]||0) + 1);
+          });
+          writeSave(game.save); return "+1 heart with everyone! 💕"; }},
+        { label: "💖 Max Hearts All NPCs",      fn: () => {
+          if (!game.save.friendship) game.save.friendship = {};
+          ["ella","will","pipper","rose","lumi","rex","mabel","finn","doc","nora","sam","cleo"].forEach(id => { game.save.friendship[id] = 10; });
+          writeSave(game.save); return "Max hearts with everyone! 💖"; }},
       ];
+
 
       function drawCheatBox(time) {
         const W = canvas.width, H = canvas.height;
@@ -4297,7 +4350,8 @@
       }
 
       function npcNameColour(id) {
-        return { ella:"#f5c870", will:"#7ab8f5", pipper:"#f57a3a", rose:"#c47af5", lumi:"#b8f0e0", rex:"#d48a58" }[id] || "#f0ede4";
+        return { ella:"#f5c870", will:"#7ab8f5", pipper:"#f57a3a", rose:"#c47af5", lumi:"#b8f0e0", rex:"#d48a58",
+                 mabel:"#f07840", finn:"#58a8c8", doc:"#d0d8f8", nora:"#c870e0", sam:"#60a0f0", cleo:"#e84040" }[id] || "#f0ede4";
       }
 
       function roundRect(ctx, x, y, w, h, r) {
