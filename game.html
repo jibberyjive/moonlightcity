@@ -4282,6 +4282,18 @@
           }
         }
 
+        // ── Velvet Rug (drawn on floor after floor tiles) ──
+        if (hasUpgrade("velvet_rug")) {
+          ctx.fillStyle = "#8b1a1a";
+          ctx.fillRect(ox + ts * 2, oy + ts * 3, ts * 7, ts * 2);
+          ctx.strokeStyle = "#c84040";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(ox + ts * 2 + 4, oy + ts * 3 + 4, ts * 7 - 8, ts * 2 - 8);
+          ctx.strokeStyle = "#f0c0a0";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(ox + ts * 2 + 10, oy + ts * 3 + 10, ts * 7 - 20, ts * 2 - 20);
+        }
+
         // Walls — plaster
         ctx.fillStyle = "#c0a87a";
         // Top wall
@@ -4298,7 +4310,65 @@
         ctx.fillStyle = "#5a3818";
         ctx.fillRect(ox + ts, oy + (roomH-2) * ts + ts - 6, (roomW-2) * ts, 6);
 
-        // Window (back wall centre) — moonlit
+        // ── Chandelier ────────────────────────────────────
+        if (hasUpgrade("chandelier")) {
+          const cx = ox + ts * 5 + ts / 2, cy = oy + ts + 8;
+          // Warm glow
+          const cGlow = ctx.createRadialGradient(cx, cy, 4, cx, cy, ts * 3.5);
+          cGlow.addColorStop(0, "rgba(255,220,80,0.30)");
+          cGlow.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = cGlow;
+          ctx.fillRect(ox, oy, roomW * ts, roomH * ts);
+          // Chain
+          ctx.strokeStyle = "#c8a020";
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(cx, oy); ctx.lineTo(cx, cy); ctx.stroke();
+          // Body
+          ctx.fillStyle = "#d8b24c";
+          ctx.beginPath(); ctx.ellipse(cx, cy, 18, 8, 0, 0, Math.PI * 2); ctx.fill();
+          // Arms
+          for (let a = 0; a < 6; a++) {
+            const ang = (a / 6) * Math.PI * 2;
+            const ax = cx + Math.cos(ang) * 18, ay = cy + Math.sin(ang) * 6;
+            ctx.strokeStyle = "#c8a020"; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + Math.cos(ang) * 10, ay + 8); ctx.stroke();
+            // Candle flame
+            const flk = Math.sin(time * 7 + a) * 1.5;
+            ctx.fillStyle = "#ffcc44";
+            ctx.beginPath(); ctx.ellipse(ax + Math.cos(ang) * 10, ay + 4 + flk, 2.5, 4, 0, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+
+        // ── Fireplace (left wall, rows 3-5) ───────────────
+        if (hasUpgrade("fireplace")) {
+          const fpX = ox + ts + 2, fpY = oy + ts * 3;
+          // Stone surround
+          ctx.fillStyle = "#7a6858";
+          ctx.fillRect(fpX, fpY, ts * 2, ts * 2);
+          // Inner firebox
+          ctx.fillStyle = "#1a0a00";
+          ctx.fillRect(fpX + 8, fpY + 12, ts * 2 - 16, ts * 2 - 18);
+          // Mantelpiece
+          ctx.fillStyle = "#5a3818";
+          ctx.fillRect(fpX - 4, fpY - 8, ts * 2 + 8, 10);
+          // Animated flames
+          for (let f = 0; f < 4; f++) {
+            const flk = Math.sin(time * 6 + f * 1.2) * 3;
+            const flc = ["#ff4400","#ff8800","#ffcc00","#ff6600"][f];
+            ctx.fillStyle = flc;
+            ctx.beginPath();
+            ctx.ellipse(fpX + 14 + f * 8, fpY + ts * 2 - 16 + flk, 5, 10 + flk, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          // Fire glow
+          const fGlow = ctx.createRadialGradient(fpX + ts, fpY + ts * 1.5, 4, fpX + ts, fpY + ts, ts * 1.5);
+          fGlow.addColorStop(0, "rgba(255,120,20,0.22)");
+          fGlow.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = fGlow;
+          ctx.fillRect(ox, oy, roomW * ts, roomH * ts);
+        }
+
+        // ── Window (back wall centre) — moonlit ───────────
         const winX = ox + ts * 4, winY = oy + ts;
         ctx.fillStyle = "#0d1a2e";
         ctx.fillRect(winX, winY, ts * 3, ts * 2 - 4);
@@ -4529,7 +4599,6 @@
         ctx.fillText(hintText, w / 2, h - 22);
 
         ctx.textAlign = "left";
-        drawFade();
       }
 
       // ==================================================
