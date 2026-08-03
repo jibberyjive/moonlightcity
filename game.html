@@ -508,7 +508,9 @@
         KeyI: "inventory",
         Escape: "pause",
         Enter: "confirm",
-        Backspace: "back"
+        Backspace: "back",
+        Digit6: "d6",
+        Digit7: "d7"
       };
 
       window.addEventListener("keydown", (e) => {
@@ -849,6 +851,7 @@
       let dialogue = { active: false, npc: null, lineIndex: 0 };
       let candyShop = { open: false, selected: 0 };
       let inventory = { open: false, selected: 0 };
+      let cheatBox  = { open: false, selected: 0, flash: "" };
       let dungeon = {
         floor: 1,
         data: null,
@@ -2508,6 +2511,102 @@
         ctx.textAlign = "left";
       }
 
+      const CHEATS = [
+        { label: "💰 Give 100 Gold",          fn: () => { addCarriedGold(100);  return "+100 gold!"; } },
+        { label: "💰 Give 1000 Gold",         fn: () => { addCarriedGold(1000); return "+1000 gold! 🤑"; } },
+        { label: "❤️  Full HP",               fn: () => { player.hp = player.maxHp; if(game.save) game.save.player.hp=player.maxHp; return "HP fully restored!"; } },
+        { label: "🍬 Fill Candy Bag",         fn: () => {
+          if (!game.save.inventory) game.save.inventory = [];
+          for (const it of CANDY_ITEMS) game.save.inventory.push({ id:it.id, emoji:it.emoji, name:it.name, hp:it.hp, speed:it.speed||0 });
+          writeSave(game.save); return "Bag stuffed with candy!"; } },
+        { label: "⚡ Speed Boost (60s)",       fn: () => { player.speedBoost = 60; return "Zoom zoom! 60s boost!"; } },
+        { label: "🏠 Teleport: Home",          fn: () => { if(game.scene===SCENE.CITY){ player.x=47*32+16; player.y=26*32+16; } return "Teleported home!"; } },
+        { label: "🎓 Teleport: School",        fn: () => { if(game.scene===SCENE.CITY){ player.x=35*32+16; player.y=49*32+16; } return "Teleported to school!"; } },
+        { label: "🍬 Teleport: Candy Store",   fn: () => { if(game.scene===SCENE.CITY){ player.x=58*32+16; player.y=54*32+16; } return "Teleported to docks!"; } },
+        { label: "🗺️  Teleport: Park",         fn: () => { if(game.scene===SCENE.CITY){ player.x=35*32+16; player.y=31*32+16; } return "Teleported to park!"; } },
+        { label: "⚔️  Enter Dungeon",          fn: () => { if(game.scene===SCENE.CITY){ enterDungeon(1); } return "Into the sewer!"; } },
+        { label: "💀 Kill All Enemies",        fn: () => { if(dungeon.enemies) dungeon.enemies.forEach(e=>e.alive=false); return "Enemies cleared!"; } },
+        { label: "🏆 Max HP +10",              fn: () => { player.maxHp+=10; player.hp=player.maxHp; if(game.save) game.save.player.hpMax=player.maxHp; return `Max HP now ${player.maxHp}!`; } },
+      ];
+
+      function drawCheatBox(time) {
+        const W = canvas.width, H = canvas.height;
+
+        // Cheat toggle: 6 held + 7 pressed
+        if (keys.d6 && justPressedKeys.d7) { cheatBox.open = !cheatBox.open; cheatBox.selected = 0; }
+        if (cheatBox.open) {
+          if (justPressedKeys.pause) { cheatBox.open = false; return; }
+          if (justPressedKeys.up)   cheatBox.selected = (cheatBox.selected - 1 + CHEATS.length) % CHEATS.length;
+          if (justPressedKeys.down) cheatBox.selected = (cheatBox.selected + 1) % CHEATS.length;
+          if (justPressedKeys.interact || justPressedKeys.confirm) {
+            const msg = CHEATS[cheatBox.selected].fn();
+            cheatBox.flash = msg;
+            cheatBox.flashTimer = 2;
+          }
+        }
+        if (!cheatBox.open) return;
+
+        // Dim
+        ctx.fillStyle = "rgba(0,10,0,0.80)";
+        ctx.fillRect(0, 0, W, H);
+
+        const mw = 370, mh = 60 + CHEATS.length * 42 + 44;
+        const mx = Math.round((W - mw) / 2), my = Math.round((H - mh) / 2);
+
+        // Panel — dark green hacker feel
+        ctx.fillStyle = "#041408";
+        roundRect(ctx, mx, my, mw, mh, 10);
+        ctx.fill();
+        ctx.strokeStyle = "#00ff44";
+        ctx.lineWidth = 2;
+        roundRect(ctx, mx, my, mw, mh, 10);
+        ctx.stroke();
+
+        // Title
+        ctx.textAlign = "center";
+        ctx.font = "bold 15px 'Courier New', monospace";
+        ctx.fillStyle = "#00ff44";
+        ctx.fillText(">> CHEAT CONSOLE <<", mx + mw/2, my + 22);
+        ctx.font = "10px 'Courier New', monospace";
+        ctx.fillStyle = "#006622";
+        ctx.fillText("access code: 6+7", mx + mw/2, my + 36);
+
+        // Flash message
+        if (cheatBox.flash) {
+          ctx.fillStyle = "#ffff00";
+          ctx.font = "bold 12px 'Courier New', monospace";
+          ctx.fillText(cheatBox.flash, mx + mw/2, my + 52);
+        }
+
+        // Cheat entries
+        for (let i = 0; i < CHEATS.length; i++) {
+          const iy = my + 62 + i * 42;
+          const sel = i === cheatBox.selected;
+
+          ctx.fillStyle = sel ? "rgba(0,255,68,0.15)" : "rgba(0,255,68,0.03)";
+          roundRect(ctx, mx+10, iy, mw-20, 36, 6);
+          ctx.fill();
+          if (sel) {
+            ctx.strokeStyle = "#00ff44";
+            ctx.lineWidth = 1;
+            roundRect(ctx, mx+10, iy, mw-20, 36, 6);
+            ctx.stroke();
+          }
+
+          ctx.textAlign = "left";
+          ctx.font = sel ? "bold 13px 'Courier New', monospace" : "12px 'Courier New', monospace";
+          ctx.fillStyle = sel ? "#00ff88" : "#008833";
+          ctx.fillText((sel ? "> " : "  ") + CHEATS[i].label, mx + 20, iy + 23);
+        }
+
+        // Hint
+        ctx.textAlign = "center";
+        ctx.font = "10px 'Courier New', monospace";
+        ctx.fillStyle = "#005520";
+        ctx.fillText("↑↓ navigate  •  E/Enter to activate  •  Esc to close", mx + mw/2, my + mh - 12);
+        ctx.textAlign = "left";
+      }
+
       function drawFade() {
         if (game.fadeAlpha < 0) {
           ctx.fillStyle = `rgba(0,0,0,${Math.min(1, -game.fadeAlpha)})`;
@@ -3982,6 +4081,10 @@
           game.noticeTimer = Math.max(0, game.noticeTimer - dt);
           if (game.noticeTimer === 0) game.noticeText = "";
         }
+        if (cheatBox.flashTimer > 0) {
+          cheatBox.flashTimer = Math.max(0, cheatBox.flashTimer - dt);
+          if (cheatBox.flashTimer === 0) cheatBox.flash = "";
+        }
 
         // World map toggle (works in any scene except title/char-create)
         if (justPressedKeys.map && game.scene !== SCENE.TITLE && game.scene !== SCENE.CHARACTER_CREATION) {
@@ -4029,6 +4132,7 @@
         drawFade();
         if (worldMapOpen) drawWorldMap();
         if (inventory.open) drawInventory();
+        drawCheatBox(game.elapsed);
 
         clearJustPressed();
         requestAnimationFrame(tick);
