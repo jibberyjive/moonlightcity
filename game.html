@@ -860,7 +860,13 @@
         const door = HOUSE_DOORS[hn];
         game.houseExitX = door ? door.px : 47 * 32 + 16;
         game.houseExitY = door ? door.py : 24 * 32 + 16;
-        switchScene(SCENE.HOUSE_INTERIOR);
+        switchScene(SCENE.HOUSE_INTERIOR, () => {
+          // Place player at interior spawn (near door, bottom centre)
+          player.x = 5 * 36 + 18;
+          player.y = 6 * 36 + 18;
+          player.vx = 0; player.vy = 0;
+          player.dir = "up";
+        });
       }
 
       function exitHouse() {
@@ -2087,7 +2093,41 @@
       }
 
       function updateHouseInterior(dt) {
-        if (justPressedKeys.pause) exitHouse();
+        if (justPressedKeys.pause) { exitHouse(); return; }
+
+        const ts = 36, roomW = 11, roomH = 8, r = player.radius;
+
+        // Movement — same controls as city
+        let inputX = 0, inputY = 0;
+        if (keys.left)  inputX -= 1;
+        if (keys.right) inputX += 1;
+        if (keys.up)    inputY -= 1;
+        if (keys.down)  inputY += 1;
+
+        const step = player.accel * dt;
+        player.vx += clamp(inputX * player.speed - player.vx, -step, step);
+        player.vy += clamp(inputY * player.speed - player.vy, -step, step);
+        if (!inputX) player.vx *= 0.75;
+        if (!inputY) player.vy *= 0.75;
+        if (Math.abs(player.vx) < 0.5) player.vx = 0;
+        if (Math.abs(player.vy) < 0.5) player.vy = 0;
+
+        if (Math.hypot(player.vx, player.vy) > 4) {
+          player.walkTime += dt * 9;
+          if (Math.abs(player.vx) >= Math.abs(player.vy))
+            player.dir = player.vx > 0 ? "right" : "left";
+          else
+            player.dir = player.vy > 0 ? "down" : "up";
+        }
+
+        // Room bounds
+        player.x = clamp(player.x + player.vx * dt, ts + r, (roomW - 1) * ts - r);
+        player.y = clamp(player.y + player.vy * dt, ts + r, (roomH - 1) * ts - r);
+
+        // Walk out the door (bottom centre)
+        if (player.y >= (roomH - 1) * ts - r - 2 && Math.abs(player.x - (5 * ts + ts / 2)) < ts) {
+          exitHouse();
+        }
       }
 
       function drawHouseInterior(time) {
@@ -2228,11 +2268,8 @@
         ctx.fillStyle = "#ffd700";
         ctx.fillRect(dX + ts - 12, dY - ts/2, 6, 6);
 
-        // ── Player preview in the room ───────────────────
-        const prevX = ox + ts * 5 + ts / 2;
-        const prevY = oy + (roomH - 2) * ts;
-        const prevP = { ...player, x: prevX, y: prevY, dir: "down", walkTime: 0, vx: 0, vy: 0 };
-        drawPlayerSprite(time, prevP);
+        // ── Player in the room ───────────────────────────
+        drawPlayerSprite(time, { ...player, x: ox + player.x, y: oy + player.y });
 
         // ── Name sign on wall ────────────────────────────
         const pName = game.save && game.save.player ? game.save.player.name : "Hero";
