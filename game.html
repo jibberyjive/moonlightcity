@@ -133,10 +133,12 @@
         "58,53": "south",                    // Sweet Dreams candy store — south door
         "35,48": "south",                    // Moonlight Academy — south door
         "49,21": "south",                    // Prestige Furnishings — south door
+        "58,51": "south",                    // Moonlight Mansion — south door
       };
       const CANDY_STORE = { x1: 56, y1: 49, x2: 60, y2: 53 };
       const SCHOOL = { x1: 30, y1: 41, x2: 41, y2: 48 };
       const PRESTIGE_STORE = { x1: 44, y1: 15, x2: 55, y2: 21 };
+      const MANSION = { x1: 54, y1: 44, x2: 62, y2: 51 };
 
       const CANDY_ITEMS = [
         { id: "gobstopper",   emoji: "🟠", name: "Gobstopper",    desc: "Restores 3 HP",          price:  3, hp: 3  },
@@ -155,6 +157,7 @@
         { id: "garden_fountain", emoji: "⛲", name: "Garden Fountain",     desc: "A fountain in your garden",        price: 400 },
         { id: "fireplace",       emoji: "🔥", name: "Fireplace",           desc: "Warm crackling fire",              price: 250 },
         { id: "trophy_case",     emoji: "🏆", name: "Trophy Case",         desc: "Display your dungeon victories",   price: 180 },
+        { id: "mansion_deed",    emoji: "🏰", name: "Moonlight Mansion",   desc: "Buy the grand residential mansion!", price: 5000 },
       ];
       // Named NPC definitions — position is their home wander centre
       const NPC_DATA = [
@@ -475,7 +478,8 @@
         fadeCallback: null,
         inCandyStore: false,
         inSchool: false,
-        inPrestigeStore: false
+        inPrestigeStore: false,
+        inMansion: false
       };
 
       const camera = { x: 0, y: 0 };
@@ -688,6 +692,15 @@
         // Row 3 houses  (y:39-50)
         fillRectTiles(45, 39, 5, 6, TILE.STONE); // House 5
         fillRectTiles(54, 39, 7, 6, TILE.STONE); // House 6
+
+        // ══════════════════════════════════════════════════════════
+        // MOONLIGHT MANSION  (x:54-62, y:44-51)
+        // Grand estate — only accessible if player buys the deed
+        // ══════════════════════════════════════════════════════════
+        fillRectTiles(54, 44, 9, 8, TILE.STONE);   // mansion footprint
+        // Grand garden path leading to door
+        fillRectTiles(57, 52, 3, 1, TILE.PATH);    // doorstep path
+        stampTiles([[53,44],[63,44],[53,51],[63,51],[56,52],[59,52],[62,52]], TILE.FLOWERS);
 
         // Garden flowers & yard trees
         stampTiles([[47,15],[56,15],[47,24],[57,24],
@@ -1291,6 +1304,7 @@
         game.houseExitY = 54 * 32 + 16;
         game.inSchool = false;
         game.inPrestigeStore = false;
+        game.inMansion = false;
         game.inCandyStore = true;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           player.x = 5 * 36 + 18;
@@ -1306,10 +1320,31 @@
         game.inPrestigeStore = true;
         game.inCandyStore = false;
         game.inSchool = false;
+        game.inMansion = false;
         prestigeShop.open = false;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           player.x = 5 * 36 + 18;
           player.y = 6 * 36 + 18;
+          player.vx = 0; player.vy = 0;
+          player.dir = "up";
+        });
+      }
+
+      function enterMansion() {
+        if (!(game.save && game.save.houseUpgrades && game.save.houseUpgrades.includes("mansion_deed"))) {
+          showNotice("🏰 For sale: 5000⬡ at 💎 Prestige Furnishings!", 3);
+          return;
+        }
+        game.houseExitX = 58 * 32 + 16;
+        game.houseExitY = 52 * 32 + 16;
+        game.inMansion = true;
+        game.inCandyStore = false;
+        game.inSchool = false;
+        game.inPrestigeStore = false;
+        prestigeShop.open = false;
+        switchScene(SCENE.HOUSE_INTERIOR, () => {
+          player.x = 6 * 36 + 18;
+          player.y = 7 * 36 + 18;
           player.vx = 0; player.vy = 0;
           player.dir = "up";
         });
@@ -1320,6 +1355,7 @@
         game.houseExitY = 49 * 32 + 16;
         game.inCandyStore = false;
         game.inPrestigeStore = false;
+        game.inMansion = false;
         game.inSchool = true;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           player.x = 5 * 36 + 18;
@@ -1337,6 +1373,7 @@
         game.inCandyStore = false;
         game.inSchool = false;
         game.inPrestigeStore = false;
+        game.inMansion = false;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           // Place player at interior spawn (near door, bottom centre)
           player.x = 5 * 36 + 18;
@@ -1347,17 +1384,27 @@
       }
 
       function exitHouse() {
-        const wasCandyStore   = game.inCandyStore;
-        const wasSchool       = game.inSchool;
-        const wasPrestige     = game.inPrestigeStore;
-        game.inCandyStore     = false;
-        game.inSchool         = false;
-        game.inPrestigeStore  = false;
+        const wasCandyStore  = game.inCandyStore;
+        const wasSchool      = game.inSchool;
+        const wasPrestige    = game.inPrestigeStore;
+        const wasMansion     = game.inMansion;
+        game.inCandyStore    = false;
+        game.inSchool        = false;
+        game.inPrestigeStore = false;
+        game.inMansion       = false;
         candyShop.open = false;
         prestigeShop.open = false;
         switchScene(SCENE.CITY, () => {
-          player.x = wasCandyStore ? 58*32+16 : wasSchool ? 35*32+16 : wasPrestige ? 49*32+16 : (game.houseExitX || 47*32+16);
-          player.y = wasCandyStore ? 54*32+16 : wasSchool ? 49*32+16 : wasPrestige ? 22*32+16 : (game.houseExitY || 24*32+16);
+          player.x = wasCandyStore ? 58*32+16
+                   : wasSchool     ? 35*32+16
+                   : wasPrestige   ? 49*32+16
+                   : wasMansion    ? 58*32+16
+                   : (game.houseExitX || 47*32+16);
+          player.y = wasCandyStore ? 54*32+16
+                   : wasSchool     ? 49*32+16
+                   : wasPrestige   ? 22*32+16
+                   : wasMansion    ? 52*32+16
+                   : (game.houseExitY || 24*32+16);
           player.vx = 0; player.vy = 0;
         });
       }
@@ -1677,6 +1724,8 @@
                          tileY >= SCHOOL.y1 && tileY <= SCHOOL.y2;
         const isPrestige = tileX >= PRESTIGE_STORE.x1 && tileX <= PRESTIGE_STORE.x2 &&
                            tileY >= PRESTIGE_STORE.y1 && tileY <= PRESTIGE_STORE.y2;
+        const isMansion = tileX >= MANSION.x1 && tileX <= MANSION.x2 &&
+                          tileY >= MANSION.y1 && tileY <= MANSION.y2;
 
         if (isCandy) {
           // ── Candy Store roof — pink tiles ───────────────────────
@@ -1795,7 +1844,7 @@
             ctx.fillRect(x + 1, y, 1, TILE_SIZE);
           }
         } else {
-          const roofColor = isSchool ? "#6b2a1a" : COLORS.stone;
+          const roofColor = isMansion ? "#2a3a80" : isSchool ? "#6b2a1a" : COLORS.stone;
           ctx.fillStyle = roofColor;
           ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
 
@@ -1816,28 +1865,66 @@
         const southTile = (tileY + 1 < MAP_H) ? map[tileY + 1][tileX] : -1;
         const isEdge = southTile !== TILE.STONE;
         if (isEdge) {
-          const wallColor = isSchool ? "#8b3a2a" : "#d2c49a";
-          const trimColor = isSchool ? "#e8d080" : "#d2c49a";
-          const frameColor = isSchool ? "rgba(90,40,20,0.75)" : "rgba(80,50,20,0.6)";
+          const wallColor = isMansion ? "#1a2a6c" : isSchool ? "#8b3a2a" : "#d2c49a";
+          const trimColor = isMansion ? "#d8b24c" : isSchool ? "#e8d080" : "#d2c49a";
+          const frameColor = isMansion ? "rgba(255,255,255,0.8)" : isSchool ? "rgba(90,40,20,0.75)" : "rgba(80,50,20,0.6)";
           // Wall strip
           ctx.fillStyle = wallColor;
           ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 9);
           // Dark line where roof overhangs wall
-          ctx.fillStyle = isSchool ? "rgba(60,20,10,0.45)" : "rgba(0,0,0,0.35)";
+          ctx.fillStyle = isMansion ? "rgba(5,10,40,0.45)" : isSchool ? "rgba(60,20,10,0.45)" : "rgba(0,0,0,0.35)";
           ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 2);
           // Trim band
           ctx.fillStyle = trimColor;
           ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 2);
-          // Small windows
-          ctx.fillStyle = "#a8d8ff";
-          ctx.fillRect(x + 5,             y + TILE_SIZE - 8, 5, 5);
-          ctx.fillRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 5, 5);
-          // Window frames
-          ctx.fillStyle = frameColor;
-          ctx.strokeStyle = frameColor;
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x + 5,             y + TILE_SIZE - 8, 5, 5);
-          ctx.strokeRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 5, 5);
+          if (isMansion) {
+            if ((tileX - MANSION.x1) % 3 === 0) {
+              ctx.fillStyle = "rgba(255,255,255,0.9)";
+              ctx.fillRect(x + 2, y + TILE_SIZE - 9, 3, 9);
+              ctx.fillRect(x + TILE_SIZE - 5, y + TILE_SIZE - 9, 3, 9);
+            }
+            if (tileX !== 58 || tileY !== 51) {
+              ctx.fillStyle = "#fff0a0";
+              ctx.fillRect(x + 6, y + TILE_SIZE - 8, 4, 6);
+              ctx.fillRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 4, 6);
+              ctx.strokeStyle = frameColor;
+              ctx.lineWidth = 1;
+              ctx.strokeRect(x + 6, y + TILE_SIZE - 8, 4, 6);
+              ctx.strokeRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 4, 6);
+              ctx.beginPath();
+              ctx.moveTo(x + 8, y + TILE_SIZE - 8);
+              ctx.lineTo(x + 8, y + TILE_SIZE - 2);
+              ctx.moveTo(x + TILE_SIZE - 8, y + TILE_SIZE - 8);
+              ctx.lineTo(x + TILE_SIZE - 8, y + TILE_SIZE - 2);
+              ctx.stroke();
+            }
+            if (tileX === 58 && tileY === 51) {
+              const mansionOwned = !!(game.save && game.save.houseUpgrades && game.save.houseUpgrades.includes("mansion_deed"));
+              ctx.fillStyle = "#f7dc7a";
+              ctx.font = "bold 7px Trebuchet MS, Arial, sans-serif";
+              ctx.textAlign = "center";
+              ctx.fillText("🏰 Moonlight Mansion", x + TILE_SIZE / 2, y + TILE_SIZE - 12);
+              if (!mansionOwned) {
+                ctx.fillStyle = "#f5f0dc";
+                ctx.fillRect(x - 1, y + TILE_SIZE - 22, TILE_SIZE + 2, 7);
+                ctx.fillStyle = "#8b1a1a";
+                ctx.font = "bold 6px Trebuchet MS, Arial, sans-serif";
+                ctx.fillText("FOR SALE", x + TILE_SIZE / 2, y + TILE_SIZE - 16);
+              }
+              ctx.textAlign = "left";
+            }
+          } else {
+            // Small windows
+            ctx.fillStyle = "#a8d8ff";
+            ctx.fillRect(x + 5,             y + TILE_SIZE - 8, 5, 5);
+            ctx.fillRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 5, 5);
+            // Window frames
+            ctx.fillStyle = frameColor;
+            ctx.strokeStyle = frameColor;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 5,             y + TILE_SIZE - 8, 5, 5);
+            ctx.strokeRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 5, 5);
+          }
 
           if (isSchool && tileX === 35 && tileY === 48) {
             ctx.fillStyle = "#e8d080";
@@ -1851,9 +1938,9 @@
         // West-edge wall face
         const westTile = (tileX - 1 >= 0) ? map[tileY][tileX - 1] : -1;
         if (westTile !== TILE.STONE) {
-          ctx.fillStyle = isSchool ? "#7a3022" : "#b8a882";
+          ctx.fillStyle = isMansion ? "#162257" : isSchool ? "#7a3022" : "#b8a882";
           ctx.fillRect(x, y, 4, TILE_SIZE);
-          ctx.fillStyle = isSchool ? "rgba(70,20,10,0.28)" : "rgba(0,0,0,0.2)";
+          ctx.fillStyle = isMansion ? "rgba(255,255,255,0.2)" : isSchool ? "rgba(70,20,10,0.28)" : "rgba(0,0,0,0.2)";
           ctx.fillRect(x, y, 1, TILE_SIZE);
         }
         } // end else (non-candy buildings)
@@ -1891,6 +1978,15 @@
             ctx.fillRect(doorFacing === "south" ? x + 18 : x + 12, doorY + 3, 2, 2);
             ctx.fillStyle = "rgba(255,225,170,0.2)";
             ctx.fillRect(x + 12, doorY + 1, 3, doorH - 2);
+          } else if (isMansion) {
+            ctx.fillStyle = "#230705";
+            ctx.fillRect(x + 10, doorY, 12, doorH);
+            ctx.fillStyle = "#3a0a08";
+            ctx.fillRect(x + 11, doorY + 1, 10, doorH - 1);
+            ctx.fillStyle = "#e8c55a";
+            ctx.fillRect(doorFacing === "south" ? x + 18 : x + 12, doorY + 3, 2, 2);
+            ctx.fillStyle = "rgba(255,236,180,0.18)";
+            ctx.fillRect(x + 12, doorY + 1, 3, doorH - 2);
           } else {
             // Regular brown door
             ctx.fillStyle = "#3a1e08";
@@ -1905,7 +2001,7 @@
         }
 
         // Highlight top-left corner (light source hint)
-        ctx.fillStyle = isCandy ? "rgba(255,200,230,0.12)" : isSchool ? "rgba(255,230,180,0.12)" : isPrestige ? "rgba(255,235,170,0.12)" : "rgba(255,255,220,0.08)";
+        ctx.fillStyle = isCandy ? "rgba(255,200,230,0.12)" : isSchool ? "rgba(255,230,180,0.12)" : isPrestige ? "rgba(255,235,170,0.12)" : isMansion ? "rgba(255,245,190,0.14)" : "rgba(255,255,220,0.08)";
         ctx.fillRect(x, y, TILE_SIZE, 3);
       }
 
@@ -2440,6 +2536,7 @@
           { text: "Park",           tx: 34, ty: 30 },
           { text: "Residential",    tx: 50, ty: 20 },
           { text: "💎 Prestige",    tx: 50, ty: 17 },
+          { text: "🏰 Mansion",     tx: 58, ty: 47 },
           { text: "Slums",          tx:  5, ty: 38 },
           { text: "Docks",          tx: 48, ty: 55 },
           { text: "Sweet Dreams 🍬",tx: 58, ty: 51 },
@@ -2630,6 +2727,10 @@
           if (!game.save.inventory) game.save.inventory = [];
           for (const it of CANDY_ITEMS) game.save.inventory.push({ id:it.id, emoji:it.emoji, name:it.name, hp:it.hp, speed:it.speed||0 });
           writeSave(game.save); return "Bag stuffed with candy!"; } },
+        { label: "🏰 Give Mansion Deed",      fn: () => {
+          if(!game.save.houseUpgrades) game.save.houseUpgrades=[];
+          if(!game.save.houseUpgrades.includes("mansion_deed")) game.save.houseUpgrades.push("mansion_deed");
+          writeSave(game.save); return "Mansion deed acquired!"; }},
         { label: "⚡ Speed Boost (60s)",       fn: () => { player.speedBoost = 60; return "Zoom zoom! 60s boost!"; } },
         { label: "🏠 Teleport: Home",          fn: () => { if(game.scene===SCENE.CITY){ player.x=47*32+16; player.y=26*32+16; } return "Teleported home!"; } },
         { label: "🎓 Teleport: School",        fn: () => { if(game.scene===SCENE.CITY){ player.x=35*32+16; player.y=49*32+16; } return "Teleported to school!"; } },
@@ -3357,6 +3458,13 @@
           return;
         }
 
+        // Check Mansion door (tile 58,51 → player stands at y:52)
+        const _mansionDoorX = 58 * 32 + 16, _mansionDoorY = 52 * 32 + 16;
+        if (Math.hypot(player.x - _mansionDoorX, player.y - _mansionDoorY) < 52 && justPressedKeys.interact) {
+          enterMansion();
+          return;
+        }
+
         const _schoolDoorX = 35 * 32 + 16, _schoolDoorY = 49 * 32 + 16;
         if (Math.hypot(player.x - _schoolDoorX, player.y - _schoolDoorY) < 52 && justPressedKeys.interact) {
           enterSchool();
@@ -3561,7 +3669,7 @@
       }
 
       function updateHouseInterior(dt) {
-        const ts = 36, roomW = 11, roomH = 8, r = player.radius;
+        const ts = 36, roomW = game.inMansion ? 13 : 11, roomH = game.inMansion ? 9 : 8, r = player.radius;
 
         // Faster indoor movement — direct pixel/s, no acceleration
         const spd = 140;
@@ -3650,6 +3758,11 @@
           if (justPressedKeys.interact && Math.hypot(player.x - shopCtrX, player.y - shopCtrY) < 90) {
             prestigeShop.open = true; prestigeShop.selected = 0; return;
           }
+          if (justPressedKeys.interact) { exitHouse(); return; }
+          return;
+        }
+
+        if (game.inMansion) {
           if (justPressedKeys.interact) { exitHouse(); return; }
           return;
         }
@@ -4252,8 +4365,288 @@
         }
       }
 
+      function drawMansionInterior(time) {
+        const w = canvas.width, h = canvas.height;
+        const ts = 36, roomW = 13, roomH = 9;
+        const ox = Math.floor((w - roomW * ts) / 2);
+        const oy = Math.floor((h - roomH * ts) / 2);
+        const upgrades = game.save && game.save.houseUpgrades ? game.save.houseUpgrades : [];
+        const hasUpgrade = id => upgrades.includes(id);
+
+        ctx.fillStyle = "#080612";
+        ctx.fillRect(0, 0, w, h);
+
+        for (let ty = 1; ty < roomH - 1; ty++) {
+          for (let tx = 1; tx < roomW - 1; tx++) {
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? "#f0ece8" : "#d8d4d0";
+            ctx.fillRect(ox + tx * ts, oy + ty * ts, ts, ts);
+            ctx.strokeStyle = "rgba(140,140,150,0.18)";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(ox + tx * ts, oy + ty * ts, ts, ts);
+          }
+        }
+
+        ctx.fillStyle = "#1a2a6c";
+        ctx.fillRect(ox + ts, oy, (roomW - 2) * ts, ts * 2);
+        ctx.fillStyle = "#1a2a6c";
+        for (let ty = 0; ty < roomH; ty++) {
+          ctx.fillRect(ox, oy + ty * ts, ts, ts);
+          ctx.fillRect(ox + (roomW - 1) * ts, oy + ty * ts, ts, ts);
+        }
+        ctx.fillRect(ox + ts, oy + (roomH - 1) * ts, (roomW - 2) * ts, ts);
+        ctx.fillStyle = "#c8a020";
+        ctx.fillRect(ox + ts, oy + ts * 2 - 8, (roomW - 2) * ts, 8);
+        ctx.fillRect(ox + ts, oy + (roomH - 1) * ts, (roomW - 2) * ts, 8);
+        for (let tx = 1; tx < roomW - 1; tx += 3) {
+          ctx.fillStyle = "rgba(255,255,255,0.9)";
+          ctx.fillRect(ox + tx * ts + ts - 6, oy, 5, ts * 2);
+        }
+
+        const rugX = ox + ts * 3;
+        const rugY = oy + ts * 3;
+        ctx.fillStyle = "#7a1020";
+        ctx.fillRect(rugX, rugY, ts * 5, ts * 3);
+        ctx.strokeStyle = "#d8b24c";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(rugX + 4, rugY + 4, ts * 5 - 8, ts * 3 - 8);
+        ctx.strokeStyle = "rgba(216,178,76,0.55)";
+        ctx.strokeRect(rugX + 12, rugY + 12, ts * 5 - 24, ts * 3 - 24);
+
+        const chandX = ox + roomW * ts / 2;
+        const chandY = oy + 42;
+        const glow = ctx.createRadialGradient(chandX, chandY + 8, 10, chandX, chandY + 8, 115);
+        glow.addColorStop(0, "rgba(255,230,170,0.3)");
+        glow.addColorStop(1, "rgba(255,230,170,0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(chandX, chandY + 8, 115, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#d8b24c";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(chandX, oy + 2);
+        ctx.lineTo(chandX, chandY - 12);
+        ctx.stroke();
+        ctx.fillStyle = "#d8b24c";
+        ctx.beginPath();
+        ctx.ellipse(chandX, chandY, 30, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        for (let a = 0; a < 8; a++) {
+          const ang = (a / 8) * Math.PI * 2;
+          const ax = chandX + Math.cos(ang) * 26;
+          const ay = chandY + Math.sin(ang) * 9;
+          ctx.strokeStyle = "#e6c45c";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(chandX, chandY);
+          ctx.lineTo(ax, ay);
+          ctx.stroke();
+          ctx.fillStyle = "#ffcf5a";
+          ctx.beginPath();
+          ctx.ellipse(ax, ay - 5 + Math.sin(time * 7 + a) * 1.5, 3, 6, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        const archWindows = [4, 8];
+        for (const tx of archWindows) {
+          const wx = ox + tx * ts;
+          const wy = oy + ts * 0.55;
+          ctx.fillStyle = "#fff0a0";
+          ctx.fillRect(wx + 8, wy + 10, ts * 1.25, ts * 1.45);
+          ctx.beginPath();
+          ctx.arc(wx + ts * 0.625 + 8, wy + 10, ts * 0.625, Math.PI, 0);
+          ctx.fill();
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(wx + 8, wy + 10, ts * 1.25, ts * 1.45);
+          ctx.beginPath();
+          ctx.moveTo(wx + 8 + ts * 0.625, wy + 10);
+          ctx.lineTo(wx + 8 + ts * 0.625, wy + 10 + ts * 1.45);
+          ctx.moveTo(wx + 8, wy + 10 + ts * 0.72);
+          ctx.lineTo(wx + 8 + ts * 1.25, wy + 10 + ts * 0.72);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(wx + ts * 0.625 + 8, wy + 10, ts * 0.625, Math.PI, 0);
+          ctx.stroke();
+        }
+
+        const bookX = ox + ts * 1.2;
+        const bookY = oy + ts * 1.25;
+        ctx.fillStyle = "#4a2a18";
+        ctx.fillRect(bookX, bookY, ts * 1.45, ts * 2.9);
+        for (let row = 0; row < 4; row++) {
+          ctx.fillStyle = "#2a140a";
+          ctx.fillRect(bookX + 4, bookY + 8 + row * 23, ts * 1.45 - 8, 3);
+          const colors = ["#8a2f2f", "#2f5a8a", "#8a6a2f", "#3f7a4a", "#6a3f7a"];
+          for (let col = 0; col < 6; col++) {
+            ctx.fillStyle = colors[(row + col) % colors.length];
+            ctx.fillRect(bookX + 8 + col * 7, bookY + 12 + row * 23, 5, 14);
+          }
+        }
+
+        const fpX = ox + ts + 4;
+        const fpY = oy + ts * 3;
+        ctx.fillStyle = "#f0ece8";
+        ctx.fillRect(fpX, fpY, ts * 2.05, ts * 2.2);
+        ctx.fillStyle = "#c8a020";
+        ctx.fillRect(fpX - 4, fpY - 8, ts * 2.05 + 8, 10);
+        ctx.fillStyle = "#d8d4d0";
+        ctx.fillRect(fpX + 10, fpY + 12, ts * 1.5, ts * 1.45);
+        ctx.fillStyle = "#120804";
+        ctx.fillRect(fpX + 14, fpY + 16, ts * 1.28, ts * 1.2);
+        for (let f = 0; f < 5; f++) {
+          const flk = Math.sin(time * 6 + f * 1.2) * 3;
+          ctx.fillStyle = ["#ff4a00", "#ff7a00", "#ffc020", "#ff6600", "#ffd060"][f];
+          ctx.beginPath();
+          ctx.ellipse(fpX + 24 + f * 9, fpY + ts * 1.7 + flk, 5, 10 + flk, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        const tableX = ox + ts * 4.1;
+        const tableY = oy + ts * 3.25;
+        ctx.fillStyle = "#4a1a12";
+        ctx.fillRect(tableX, tableY, ts * 3.2, ts * 1.35);
+        ctx.fillStyle = "#2c0e09";
+        ctx.fillRect(tableX + 8, tableY + 8, ts * 3.2 - 16, ts * 1.35 - 16);
+        for (const chair of [
+          [tableX + 8, tableY - 12], [tableX + ts * 2.2, tableY - 12],
+          [tableX + 8, tableY + ts * 1.35 - 2], [tableX + ts * 2.2, tableY + ts * 1.35 - 2]
+        ]) {
+          ctx.fillStyle = "#5a2418";
+          ctx.fillRect(chair[0], chair[1], 24, 12);
+          ctx.fillRect(chair[0] + 3, chair[1] - 12, 18, 12);
+        }
+
+        for (const c of [tableX - 26, tableX + ts * 3.2 + 14]) {
+          ctx.strokeStyle = "#d8b24c";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(c, tableY + ts * 1.1);
+          ctx.lineTo(c, tableY - 6);
+          ctx.stroke();
+          ctx.fillStyle = "#d8b24c";
+          ctx.fillRect(c - 4, tableY - 6, 8, 22);
+          for (let arm = -1; arm <= 1; arm++) {
+            ctx.beginPath();
+            ctx.moveTo(c, tableY - 2);
+            ctx.lineTo(c + arm * 10, tableY - 10);
+            ctx.stroke();
+            ctx.fillStyle = "#ffcf5a";
+            ctx.beginPath();
+            ctx.ellipse(c + arm * 10, tableY - 13 + Math.sin(time * 7 + arm) * 1.3, 2.5, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        const stairX = ox + ts * 9.35;
+        const stairY = oy + ts * 2.15;
+        for (let i = 0; i < 5; i++) {
+          ctx.fillStyle = i % 2 === 0 ? "#7a4a28" : "#6a3a1e";
+          ctx.fillRect(stairX + i * 8, stairY + i * 24, ts * 1.55, 18);
+          ctx.strokeStyle = "#c8a020";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(stairX + i * 8 + ts * 1.42, stairY + i * 24);
+          ctx.lineTo(stairX + i * 8 + ts * 1.42, stairY + i * 24 + 18);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = "#c8a020";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(stairX + ts * 1.52, stairY - 8);
+        ctx.lineTo(stairX + ts * 1.72, stairY + ts * 3.3);
+        ctx.stroke();
+
+        ctx.fillStyle = "#f7dc7a";
+        ctx.font = "bold 16px Trebuchet MS, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("🏰 Moonlight Mansion", w / 2, oy + 24);
+        ctx.textAlign = "left";
+
+        const doorX = ox + ts * 6;
+        const doorY = oy + (roomH - 1) * ts;
+        ctx.fillStyle = "#230705";
+        ctx.fillRect(doorX, doorY - ts + 4, ts, ts);
+        ctx.fillStyle = "#3a0a08";
+        ctx.fillRect(doorX + 2, doorY - ts + 4, ts - 4, ts - 4);
+        ctx.fillStyle = "#e8c55a";
+        ctx.fillRect(doorX + ts - 12, doorY - ts / 2, 6, 6);
+
+        if (hasUpgrade("royal_bed")) {
+          ctx.fillStyle = "#6a2040";
+          ctx.fillRect(ox + ts * 9.2, oy + ts * 5.6, ts * 2.2, ts * 1.2);
+          ctx.fillStyle = "#d8b24c";
+          ctx.fillRect(ox + ts * 9.15, oy + ts * 5.35, ts * 2.3, 8);
+          ctx.fillStyle = "#f2e6d8";
+          ctx.fillRect(ox + ts * 9.35, oy + ts * 5.85, ts * 1.8, ts * 0.7);
+        }
+        if (hasUpgrade("gold_mirror")) {
+          ctx.strokeStyle = "#d8b24c";
+          ctx.lineWidth = 4;
+          ctx.strokeRect(ox + ts * 10.1, oy + ts * 2.4, ts * 0.9, ts * 1.4);
+          ctx.fillStyle = "rgba(190,220,255,0.35)";
+          ctx.fillRect(ox + ts * 10.1 + 4, oy + ts * 2.4 + 4, ts * 0.9 - 8, ts * 1.4 - 8);
+        }
+        if (hasUpgrade("trophy_case")) {
+          ctx.fillStyle = "#5a3a18";
+          ctx.fillRect(ox + ts * 10.05, oy + ts * 4.2, ts * 0.95, ts * 1.5);
+          ctx.fillStyle = "rgba(220,240,255,0.18)";
+          ctx.fillRect(ox + ts * 10.1, oy + ts * 4.25, ts * 0.85, ts * 1.35);
+          ctx.font = "18px Arial";
+          ctx.fillStyle = "#f0d27a";
+          ctx.fillText("🏆", ox + ts * 10.28, oy + ts * 5.15);
+        }
+        if (hasUpgrade("garden_fountain")) {
+          const fx = ox + ts * 2.2, fy = oy + ts * 6.3;
+          ctx.fillStyle = "#9fd8ff";
+          ctx.beginPath();
+          ctx.arc(fx, fy, 16, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#c8a020";
+          ctx.fillRect(fx - 5, fy - 18, 10, 22);
+          ctx.fillRect(fx - 14, fy + 8, 28, 8);
+        }
+        if (hasUpgrade("bookcase")) {
+          ctx.fillStyle = "#3a2412";
+          ctx.fillRect(ox + ts * 2.1, oy + ts * 1.6, ts * 0.9, ts * 2.2);
+          for (let row = 0; row < 3; row++) {
+            ctx.fillStyle = "#221208";
+            ctx.fillRect(ox + ts * 2.1 + 3, oy + ts * 1.8 + row * 24, ts * 0.9 - 6, 3);
+          }
+        }
+        if (hasUpgrade("chandelier")) {
+          ctx.fillStyle = "rgba(255,230,170,0.12)";
+          ctx.fillRect(ox + ts * 2, oy + ts * 2, ts * 9, ts * 5);
+        }
+        if (hasUpgrade("velvet_rug")) {
+          ctx.strokeStyle = "#f2c8c8";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(rugX + 18, rugY + 18, ts * 5 - 36, ts * 3 - 36);
+        }
+        if (hasUpgrade("fireplace")) {
+          ctx.fillStyle = "#f7dc7a";
+          ctx.font = "20px Arial";
+          ctx.fillText("🔥", fpX + ts * 0.65, fpY - 14);
+        }
+
+        drawPlayerSprite(time, { ...player, x: ox + player.x, y: oy + player.y });
+
+        const nearDoor = Math.hypot(player.x - (6 * 36 + 18), player.y - (7 * 36 + 18)) < 60;
+        if (nearDoor) {
+          ctx.fillStyle = "rgba(0,0,0,0.72)";
+          roundRect(ctx, w / 2 - 88, h - 48, 176, 28, 8);
+          ctx.fill();
+          ctx.fillStyle = "#f7e8ba";
+          ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Press E to leave", w / 2, h - 29);
+          ctx.textAlign = "left";
+        }
+      }
+
       function drawHouseInterior(time) {
         if (game.inPrestigeStore) { drawPrestigeStoreInterior(time); return; }
+        if (game.inMansion) { drawMansionInterior(time); return; }
         if (game.inCandyStore) { drawCandyStoreInterior(time); return; }
         if (game.inSchool) { drawSchoolInterior(time); return; }
         const w = canvas.width, h = canvas.height;
