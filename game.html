@@ -113,7 +113,7 @@
       const HAIR_STYLE_COUNT = 6;
       const HAIR_STYLE_NAMES = ["Crop", "Fringe", "Long", "Curly", "Bun", "Shaved"];
 
-      // 6 player houses in the Residential District (houseNum 1–6)
+      // 6 player houses in the Residential District (houseNum 1–9)
       // Door pixel positions: tile just in front of each house entrance
       const HOUSE_DOORS = [
         null,                                                   // 0 = unassigned
@@ -123,6 +123,9 @@
         { px: 57*32+16, py: 24*32+16 }, // 4 — Row 2 right
         { px: 47*32+16, py: 38*32+16 }, // 5 — Row 3 left
         { px: 57*32+16, py: 38*32+16 }, // 6 — Row 3 right
+        { px: 65*32+16, py: 21*32+16 }, // 7 — Cedar Drive Row 1
+        { px: 65*32+16, py: 24*32+16 }, // 8 — Cedar Drive Row 2
+        { px: 65*32+16, py: 38*32+16 }, // 9 — Cedar Drive Row 3
       ];
       // Tile coords of door within each building → facing direction
       // "south": door on bottom face of STONE tile; "north": on top face
@@ -130,6 +133,9 @@
         "47,20": "south", "57,20": "south",  // Row 1 — door faces Elm Road from above
         "47,25": "north", "57,25": "north",  // Row 2 — door faces Elm Road from below
         "47,39": "north", "57,39": "north",  // Row 3 — door faces Blossom Lane
+        "65,20": "south",                    // House 7 — Cedar Drive Row 1
+        "65,25": "north",                    // House 8 — Cedar Drive Row 2
+        "65,39": "north",                    // House 9 — Cedar Drive Row 3
         "58,53": "south",                    // Sweet Dreams candy store — south door
         "35,48": "south",                    // Moonlight Academy — south door
         "49,21": "south",                    // Prestige Furnishings — south door
@@ -170,6 +176,7 @@
         { id: "fireplace",       emoji: "🔥", name: "Fireplace",           desc: "Warm crackling fire",              price: 250 },
         { id: "trophy_case",     emoji: "🏆", name: "Trophy Case",         desc: "Display your dungeon victories",   price: 180 },
         { id: "mansion_deed",    emoji: "🏰", name: "Moonlight Mansion",   desc: "Buy the grand residential mansion!", price: 5000 },
+        { id: "engagement_ring", emoji: "💍", name: "Engagement Ring",     desc: "For a very special someone...",   price: 500 },
       ];
 
       // 6 purchasable residential houses — Sims 4-style colour schemes
@@ -192,6 +199,15 @@
         { num: 6, name: "Modern Terrace",  price: 1200, x1: 54, y1: 39, x2: 60, y2: 44,
           roofColor: "#303040", wallColor: "#b8a0d0", trimColor: "#e8e0f0", doorColor: "#201828",
           winColor:  "#e8d8ff", doorTile: "57,39", doorFace: "north" },
+        { num: 7, name: "Cedar Cottage",   price:  750, x1: 63, y1: 16, x2: 67, y2: 20,
+          roofColor: "#3a6a18", wallColor: "#d8c8a0", trimColor: "#8a6a40", doorColor: "#4a3010",
+          winColor:  "#d0f0b8", doorTile: "65,20", doorFace: "south" },
+        { num: 8, name: "Stone Manor",     price: 1600, x1: 63, y1: 25, x2: 67, y2: 32,
+          roofColor: "#505060", wallColor: "#9098a8", trimColor: "#c8d0d8", doorColor: "#282838",
+          winColor:  "#d0e0f8", doorTile: "65,25", doorFace: "north" },
+        { num: 9, name: "Amber Retreat",   price: 2200, x1: 63, y1: 39, x2: 67, y2: 44,
+          roofColor: "#7a4808", wallColor: "#e8c860", trimColor: "#b87820", doorColor: "#503808",
+          winColor:  "#fff8c0", doorTile: "65,39", doorFace: "north" },
       ];
 
       // Named NPC definitions — position is their home wander centre
@@ -617,6 +633,9 @@
             placedFurniture: []
           },
           relationships: { ella: 0, rex: 0, lumi: 0 },
+          friendship: { ella: 0, will: 0, pipper: 0, rose: 0, lumi: 0, rex: 0, mabel: 0, finn: 0, doc: 0, nora: 0, sam: 0, cleo: 0 },
+          married: null,
+          hasRing: false,
           time: { currentDay: 1, currentHour: 8, currentMinute: 0 },
           flags: {
             bossDefeated: false,
@@ -641,6 +660,12 @@
               save.relationships = save.relationships || { ella: 0, rex: 0, lumi: 0 };
               save.version = 1;
               break;
+            case 1:
+              save.friendship = save.friendship || { ella: 0, will: 0, pipper: 0, rose: 0, lumi: 0, rex: 0, mabel: 0, finn: 0, doc: 0, nora: 0, sam: 0, cleo: 0 };
+              save.married  = save.married  ?? null;
+              save.hasRing  = save.hasRing  ?? false;
+              save.version = 2;
+              break;
             default:
               return createNewSave();
           }
@@ -654,6 +679,10 @@
         save.flags     = Object.assign({}, fresh.flags,     save.flags);
         save.time      = Object.assign({}, fresh.time,      save.time);
         save.houseUpgrades = Array.isArray(save.houseUpgrades) ? save.houseUpgrades.slice() : fresh.houseUpgrades.slice();
+        save.ownedHouses   = Array.isArray(save.ownedHouses)   ? save.ownedHouses.slice()   : fresh.ownedHouses.slice();
+        save.friendship    = Object.assign({}, fresh.friendship, save.friendship || {});
+        if (save.married  === undefined) save.married  = null;
+        if (save.hasRing  === undefined) save.hasRing  = false;
         return save;
       }
 
@@ -1077,6 +1106,19 @@
         fillRectTiles(56, 51, 2, 1, TILE.PATH);      // gate path south
         stampTiles([[54,45],[56,45],[59,45],[61,45]], TILE.FLOWERS);
 
+        // ── Cedar Drive — Row 7/8/9 (east of Fig Street) ──────────────
+        fillRectTiles(63, 15, 6, 35, TILE.DARK_GRASS);  // new sub-district base
+        fillRectTiles(62, 15, 1, 35, TILE.PATH);         // Cedar Drive N-S
+        fillRectTiles(62, 22, 6, 2,  TILE.PATH);         // Elm Road extended east
+        fillRectTiles(62, 36, 6, 2,  TILE.PATH);         // Blossom Lane extended east
+        fillRectTiles(63, 16, 5, 5,  TILE.STONE);        // House 7
+        fillRectTiles(63, 25, 5, 8,  TILE.STONE);        // House 8
+        fillRectTiles(63, 39, 5, 6,  TILE.STONE);        // House 9
+        fillRectTiles(65, 21, 1, 1,  TILE.PATH);         // House 7 doorstep
+        fillRectTiles(65, 24, 1, 1,  TILE.PATH);         // House 8 doorstep
+        fillRectTiles(65, 38, 1, 1,  TILE.PATH);         // House 9 doorstep
+        stampTiles([[62,15],[68,15],[62,35],[68,35],[63,24],[63,38]], TILE.FLOWERS);
+
         // ══════════════════════════════════════════════════════════
         // EASTERN HILLS  (x:64-95, y:0-63)
         // Rolling countryside, forest, mansion estate to the east
@@ -1177,6 +1219,7 @@
       let inventory = { open: false, selected: 0 };
       let cheatBox  = { open: false, selected: 0, flash: "" };
       let prestigeShop = { open: false, selected: 0 };
+      let proposal  = { active: false, npc: null, selected: 0 }; // 0=Yes 1=No
       let dungeon = {
         floor: 1,
         data: null,
@@ -1201,12 +1244,34 @@
           dir: "down",
           walkTime: 0,
           wanderTimer: Math.random() * 3,
-          targetX: def.homeX, targetY: def.homeY
+          targetX: def.homeX, targetY: def.homeY,
+          married: false
         }));
+        // Re-mark married NPC if save exists
+        if (game.save && game.save.married) {
+          const m = npcs.find(n => n.id === game.save.married);
+          if (m) m.married = true;
+        }
       }
 
       function updateNpcs(dt) {
         for (const npc of npcs) {
+          // Married NPC follows the player
+          if (npc.married && game.scene === 1 /* CITY */) {
+            const dx = player.x - npc.x, dy = player.y - npc.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 52) {
+              const spd = 70;
+              npc.vx = (dx / dist) * spd;
+              npc.vy = (dy / dist) * spd;
+              npc.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+              npc.x += npc.vx * dt; npc.y += npc.vy * dt;
+              npc.walkTime += dt * 2;
+            } else {
+              npc.vx *= 0.8; npc.vy *= 0.8;
+            }
+            continue;
+          }
           npc.wanderTimer -= dt;
           if (npc.wanderTimer <= 0) {
             const angle = Math.random() * Math.PI * 2;
@@ -1736,6 +1801,13 @@
 
       function advanceDialogue() {
         if (!dialogue.active) return;
+        const isLast = dialogue.lineIndex >= (dialogue.npc.lines || []).length - 1;
+        if (isLast && game.save && dialogue.npc.id !== "__player__") {
+          if (!game.save.friendship) game.save.friendship = {};
+          const id = dialogue.npc.id;
+          game.save.friendship[id] = Math.min(10, (game.save.friendship[id] || 0) + 1);
+          writeSave(game.save);
+        }
         dialogue.lineIndex++;
         if (dialogue.lineIndex >= (dialogue.npc.lines || []).length) {
           dialogue.active = false;
@@ -3023,13 +3095,20 @@
 
         // ── Name tag ─────────────────────────────────────────────
         if (npc.name && Math.hypot(player.x - npc.x, player.y - npc.y) < 80) {
+          const hearts = game.save ? ((game.save.friendship || {})[npc.id] || 0) : 0;
+          const heartStr = hearts > 0 ? " " + "♥".repeat(Math.min(hearts, 5)) : "";
           ctx.save();
           ctx.fillStyle = "rgba(0,0,0,0.65)";
-          ctx.fillRect(Math.round(x - 22), Math.round(y - 38), 44, 14);
+          ctx.fillRect(Math.round(x - 26), Math.round(y - 38), 52, 14);
           ctx.fillStyle = npc.married ? "#ffd700" : "#f0e8c0";
           ctx.font = "bold 9px Trebuchet MS, Arial, sans-serif";
           ctx.textAlign = "center";
           ctx.fillText(npc.name, Math.round(x), Math.round(y - 27));
+          if (hearts > 0) {
+            ctx.fillStyle = npc.married ? "#ffd700" : "#ff6888";
+            ctx.font = "8px Arial";
+            ctx.fillText(heartStr, Math.round(x), Math.round(y - 17));
+          }
           ctx.textAlign = "left";
           ctx.restore();
         }
@@ -4096,6 +4175,30 @@
           return;
         }
 
+        // ── Proposal mode ───────────────────────────────────────────────────
+        if (proposal.active) {
+          if (justPressedKeys.left || justPressedKeys.right) proposal.selected = 1 - proposal.selected;
+          if (justPressedKeys.interact || justPressedKeys.confirm) {
+            if (proposal.selected === 0) { // Yes!
+              game.save.married = proposal.npc.id;
+              game.save.hasRing = false;
+              game.save.houseUpgrades = (game.save.houseUpgrades || []).filter(id => id !== "engagement_ring");
+              const m = npcs.find(n => n.id === proposal.npc.id);
+              if (m) m.married = true;
+              writeSave(game.save);
+              showNotice(`💍 ${proposal.npc.name} said YES! You're engaged! 💕`, 5);
+            } else {
+              showNotice(`${proposal.npc.name} isn't ready yet... Give it more time. 💔`, 3);
+            }
+            proposal.active = false; proposal.npc = null;
+          }
+          if (justPressedKeys.back || justPressedKeys.pause) { proposal.active = false; proposal.npc = null; }
+          const _pv = getView();
+          camera.x += (clamp(player.x - _pv.worldW/2, 0, Math.max(0, WORLD_W - _pv.worldW)) - camera.x) * Math.min(1, dt*6);
+          camera.y += (clamp(player.y - _pv.worldH/2, 0, Math.max(0, WORLD_H - _pv.worldH)) - camera.y) * Math.min(1, dt*6);
+          return;
+        }
+
         if (justPressedKeys.pause) { /* pause not yet implemented */ }
         movePlayer(dt);
         updateNpcs(dt);
@@ -4194,14 +4297,26 @@
           break;
         }
 
-        // Check NPC interaction (talk)
+        // Check NPC interaction (talk or propose)
         if (justPressedKeys.interact) {
           let nearest = null, nearestDist = Infinity;
           for (const npc of npcs) {
             const d = Math.hypot(player.x - npc.x, player.y - npc.y);
             if (d < 52 && d < nearestDist) { nearest = npc; nearestDist = d; }
           }
-          if (nearest) openDialogue(nearest);
+          if (nearest) {
+            const friendship = (game.save.friendship || {})[nearest.id] || 0;
+            const canPropose = game.save.hasRing && friendship >= 6 && !game.save.married
+                            && nearest.ageType !== "child" && nearest.id !== "pipper" && nearest.id !== "sam";
+            if (canPropose) {
+              proposal.active = true; proposal.npc = nearest; proposal.selected = 0;
+              const dx = player.x - nearest.x, dy = player.y - nearest.y;
+              nearest.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+              nearest.vx = 0; nearest.vy = 0;
+            } else {
+              openDialogue(nearest);
+            }
+          }
         }
       }
 
@@ -4223,17 +4338,22 @@
           ctx.textAlign = "left";
         }
 
-        // NPC talk prompt
-        if (!dialogue.active) {
+        // NPC talk / propose prompt
+        if (!dialogue.active && !proposal.active) {
           for (const npc of npcs) {
             const dist = Math.hypot(player.x - npc.x, player.y - npc.y);
             if (dist < 52) {
+              const friendship = (game.save.friendship || {})[npc.id] || 0;
+              const canPropose = game.save.hasRing && friendship >= 6 && !game.save.married
+                              && npc.ageType !== "child" && npc.id !== "pipper" && npc.id !== "sam";
+              const label = canPropose ? `Press E to propose to ${npc.name} 💍` : `Press E to talk to ${npc.name}`;
+              const lColor = canPropose ? "#ffd0e0" : npcNameColour(npc.id);
               ctx.fillStyle = "rgba(0,0,0,0.55)";
-              ctx.fillRect(canvas.width / 2 - 110, canvas.height - 42, 220, 24);
-              ctx.fillStyle = npcNameColour(npc.id);
+              ctx.fillRect(canvas.width / 2 - 130, canvas.height - 42, 260, 24);
+              ctx.fillStyle = lColor;
               ctx.font = "bold 12px Trebuchet MS, Arial, sans-serif";
               ctx.textAlign = "center";
-              ctx.fillText(`Press E to talk to ${npc.name}`, canvas.width / 2, canvas.height - 25);
+              ctx.fillText(label, canvas.width / 2, canvas.height - 25);
               ctx.textAlign = "left";
               break;
             }
@@ -4283,6 +4403,7 @@
         }
         drawNotice();
         if (dialogue.active) drawDialogueBox(time);
+        if (proposal.active) drawProposalBox(time);
       }
 
       function drawDialogueBox(time) {
@@ -4346,6 +4467,47 @@
         ctx.font = "11px Trebuchet MS, Arial, sans-serif";
         ctx.textAlign = "right";
         ctx.fillText(hint, W - 22, boxY + boxH - 10);
+        ctx.textAlign = "left";
+      }
+
+      function drawProposalBox(time) {
+        const npc = proposal.npc;
+        if (!npc) return;
+        const W = canvas.width, H = canvas.height;
+        const bw = 480, bh = 200, bx = Math.round((W - bw) / 2), by = Math.round(H / 2 - bh / 2);
+        // Pulsing heart bg
+        const pulse = 0.5 + 0.5 * Math.sin(time * 3);
+        ctx.fillStyle = `rgba(60,10,20,${0.88 + 0.08 * pulse})`;
+        roundRect(ctx, bx, by, bw, bh, 14); ctx.fill();
+        ctx.strokeStyle = `rgb(${Math.round(200 + 40 * pulse)},80,100)`;
+        ctx.lineWidth = 3;
+        roundRect(ctx, bx, by, bw, bh, 14); ctx.stroke();
+        // Heart emoji
+        ctx.font = "36px Arial"; ctx.textAlign = "center";
+        ctx.fillText("💍", W / 2, by + 50);
+        // Text
+        ctx.fillStyle = "#fff0f4";
+        ctx.font = `bold 18px Trebuchet MS, Arial, sans-serif`;
+        ctx.fillText(`Will you marry me, ${npc.name}?`, W / 2, by + 86);
+        // Hearts showing friendship
+        const hearts = (game.save.friendship || {})[npc.id] || 0;
+        let hStr = "";
+        for (let h = 0; h < 10; h++) hStr += h < hearts ? "❤️" : "🖤";
+        ctx.font = "14px Arial";
+        ctx.fillText(hStr, W / 2, by + 112);
+        // Yes / No buttons
+        const btnW = 120, btnH = 40, gap = 40;
+        const yesX = W / 2 - btnW - gap / 2, noX = W / 2 + gap / 2;
+        const btnY = by + bh - 58;
+        ctx.fillStyle = proposal.selected === 0 ? "rgba(200,60,80,0.9)" : "rgba(80,40,50,0.7)";
+        roundRect(ctx, yesX, btnY, btnW, btnH, 10); ctx.fill();
+        ctx.fillStyle = proposal.selected === 1 ? "rgba(80,80,120,0.9)" : "rgba(40,40,70,0.7)";
+        roundRect(ctx, noX, btnY, btnW, btnH, 10); ctx.fill();
+        ctx.fillStyle = "#fff"; ctx.font = `bold 16px Trebuchet MS, Arial, sans-serif`;
+        ctx.fillText("💕  Yes!", yesX + btnW / 2, btnY + 26);
+        ctx.fillText("Not yet...", noX + btnW / 2, btnY + 26);
+        ctx.fillStyle = "#ccc"; ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("◀ ▶ to choose   E to confirm", W / 2, by + bh - 8);
         ctx.textAlign = "left";
       }
 
@@ -4502,6 +4664,7 @@
               } else {
                 setCarriedGold(getCarriedGold() - item.price);
                 game.save.houseUpgrades = [...upgrades, item.id];
+                if (item.id === "engagement_ring") game.save.hasRing = true;
                 writeSave(game.save);
                 showNotice(`Purchased ${item.emoji} ${item.name}!`, 2.5);
               }
