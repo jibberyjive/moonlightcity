@@ -809,6 +809,7 @@
 
       let player = createPlayer(null);
       let npcs = [];
+      let dogs = [];
       let dialogue = { active: false, npc: null, lineIndex: 0 };
       let dungeon = {
         floor: 1,
@@ -862,6 +863,200 @@
           }
           npc.x += npc.vx * dt;
           npc.y += npc.vy * dt;
+        }
+      }
+
+      // ── Odin — town dog (Rhodesian Ridgeback) ─────────────────────────────
+      function initDogs() {
+        dogs = [{
+          name:    "Odin",
+          homeX:   34*32+16, homeY: 36*32+16,  // park area
+          x: 34*32+16, y: 36*32+16,
+          vx: 0, vy: 0,
+          dir:      "right",
+          walkTime: 0,
+          wagTime:  0,
+          wanderTimer: 1,
+          targetX: 34*32+16, targetY: 36*32+16,
+          chasing: false
+        }];
+      }
+
+      function updateDogs(dt) {
+        for (const dog of dogs) {
+          dog.wagTime += dt * 6;
+
+          const distToPlayer = Math.hypot(player.x - dog.x, player.y - dog.y);
+
+          if (distToPlayer < 80 && distToPlayer > 20) {
+            // Chase player when nearby
+            dog.chasing = true;
+            const dx = player.x - dog.x, dy = player.y - dog.y;
+            const d = Math.hypot(dx, dy) || 1;
+            const spd = 72;
+            dog.vx = (dx / d) * spd;
+            dog.vy = (dy / d) * spd;
+            dog.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+            dog.walkTime += dt * 9;
+          } else {
+            dog.chasing = false;
+            dog.wanderTimer -= dt;
+            if (dog.wanderTimer <= 0) {
+              const angle = Math.random() * Math.PI * 2;
+              const dist  = 20 + Math.random() * 60;
+              dog.targetX = dog.homeX + Math.cos(angle) * dist;
+              dog.targetY = dog.homeY + Math.sin(angle) * dist;
+              dog.wanderTimer = 1.5 + Math.random() * 3;
+            }
+            const dx = dog.targetX - dog.x, dy = dog.targetY - dog.y;
+            const d  = Math.hypot(dx, dy);
+            if (d > 6) {
+              const spd = 38;
+              dog.vx = (dx / d) * spd;
+              dog.vy = (dy / d) * spd;
+              dog.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+              dog.walkTime += dt * 7;
+            } else {
+              dog.vx = 0; dog.vy = 0;
+            }
+          }
+
+          dog.x += dog.vx * dt;
+          dog.y += dog.vy * dt;
+        }
+      }
+
+      function drawDogSprite(time, dog) {
+        const coat   = "#c07a3a";   // wheaten tan
+        const coatD  = "#8a5228";   // darker shading
+        const ridge  = "#6e3e18";   // reversed ridge stripe
+        const ear    = "#7a4820";   // floppy ear
+        const nose   = "#1a0800";
+        const eye    = "#3a1800";
+        const belly  = "#d4924e";
+
+        const moving = Math.hypot(dog.vx, dog.vy) > 6;
+        const frame  = moving ? Math.floor(dog.walkTime) % 4 : 0;
+        const legA   = [0, 3, 0, -3][frame];   // front leg pair swing
+        const legB   = [0, -3, 0, 3][frame];   // back leg pair swing
+        // Tail wag — always wagging
+        const wag = Math.sin(dog.wagTime) * 4;
+
+        const x = dog.x, y = dog.y;
+
+        // Shadow
+        ctx.fillStyle = "rgba(0,0,0,0.20)";
+        ctx.beginPath();
+        ctx.ellipse(x, y + 6, 11, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const px = x - 11, py = y - 8;
+        function r(rx, ry, rw, rh, c) {
+          ctx.fillStyle = c;
+          ctx.fillRect(Math.round(px + rx), Math.round(py + ry), rw, rh);
+        }
+
+        const d = dog.dir;
+
+        if (d === "right") {
+          // Tail (left/back), wagging vertically
+          r(0, 2 + wag * 0.4, 3, 2, coat);
+          r(-1, 0 + wag * 0.7, 3, 2, coatD);
+          // Body
+          r(2, 5, 14, 6, coat);
+          r(3, 5, 12, 2, ridge);   // ridge stripe on back
+          r(3, 10, 11, 1, belly);  // belly highlight
+          // Back legs
+          r(3, 10 + legB, 3, 5, coat); r(5, 10 + legB, 2, 5, coatD);
+          // Front legs
+          r(11, 10 + legA, 3, 5, coat); r(12, 10 + legA, 2, 5, coatD);
+          // Neck
+          r(15, 2, 3, 6, coat);
+          // Head
+          r(15, 0, 7, 8, coat);
+          // Ear
+          r(16, -2, 3, 5, ear);
+          // Muzzle
+          r(19, 3, 4, 4, coatD);
+          // Eye
+          r(17, 2, 2, 2, eye);  r(17, 2, 1, 1, "#fff"); // white glint
+          // Nose
+          r(22, 4, 1, 2, nose);
+
+        } else if (d === "left") {
+          // Tail (right/back), wagging
+          r(19, 2 + wag * 0.4, 3, 2, coat);
+          r(20, 0 + wag * 0.7, 3, 2, coatD);
+          // Body
+          r(6, 5, 14, 6, coat);
+          r(7, 5, 12, 2, ridge);
+          r(7, 10, 11, 1, belly);
+          // Back legs
+          r(14, 10 + legB, 3, 5, coat); r(14, 10 + legB, 2, 5, coatD);
+          // Front legs
+          r(6, 10 + legA, 3, 5, coat);  r(6, 10 + legA, 2, 5, coatD);
+          // Neck
+          r(4, 2, 3, 6, coat);
+          // Head
+          r(0, 0, 7, 8, coat);
+          // Ear
+          r(3, -2, 3, 5, ear);
+          // Muzzle
+          r(0, 3, 4, 4, coatD);
+          // Eye
+          r(3, 2, 2, 2, eye);  r(4, 2, 1, 1, "#fff");
+          // Nose
+          r(0, 4, 1, 2, nose);
+
+        } else if (d === "down") {
+          // Body (front view — short & wide)
+          r(3, 6, 16, 6, coat);
+          r(4, 6, 14, 2, ridge);
+          // Front legs
+          r(3, 11 + legA, 3, 5, coat); r(16, 11 + legA, 3, 5, coat);
+          // Neck
+          r(8, 2, 6, 5, coat);
+          // Head
+          r(5, -2, 12, 10, coat);
+          // Ears (floppy sides)
+          r(3, -1, 4, 6, ear); r(15, -1, 4, 6, ear);
+          // Eyes
+          r(8, 1, 2, 2, eye);  r(8, 1, 1, 1, "#fff");
+          r(12, 1, 2, 2, eye); r(12, 1, 1, 1, "#fff");
+          // Muzzle
+          r(8, 4, 6, 4, coatD);
+          // Nose
+          r(10, 5, 2, 2, nose);
+          // Tail wag (behind body — barely visible)
+          r(10, 11 + wag * 0.3, 3, 3, coat);
+
+        } else { // up — back view
+          // Tail (top centre), wagging side to side
+          r(8, -3 + wag * 0.4, 3, 6, coat);
+          r(9, -5 + wag * 0.6, 2, 4, coatD);
+          // Body
+          r(3, 2, 16, 6, coat);
+          r(4, 2, 14, 2, ridge);
+          // Butt
+          r(5, 7, 12, 3, coatD);
+          // Back legs
+          r(3, 8 + legB, 3, 5, coat); r(16, 8 + legB, 3, 5, coat);
+          // Head (back of head — just a rounded lump)
+          r(6, -2, 10, 6, coat);
+          r(5, -1, 2, 4, ear); r(15, -1, 2, 4, ear);
+        }
+
+        // Name tag when player nearby
+        if (Math.hypot(player.x - dog.x, player.y - dog.y) < 60) {
+          ctx.save();
+          ctx.fillStyle = "rgba(0,0,0,0.65)";
+          ctx.fillRect(Math.round(x - 20), Math.round(y - 24), 40, 14);
+          ctx.fillStyle = "#f5d080";
+          ctx.font = "bold 9px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Odin 🐾", Math.round(x), Math.round(y - 13));
+          ctx.textAlign = "left";
+          ctx.restore();
         }
       }
 
@@ -1736,11 +1931,13 @@
 
         // Draw all characters (player + NPCs) sorted by Y so taller-Y sprites appear in front
         const chars = [{ isPlayer: true, y: player.y }];
-        for (const npc of npcs) chars.push({ isPlayer: false, y: npc.y, npc });
+        for (const npc of npcs) chars.push({ isPlayer: false, isDog: false, y: npc.y, npc });
+        for (const dog of dogs) chars.push({ isPlayer: false, isDog: true, y: dog.y, dog });
         chars.sort((a, b) => a.y - b.y);
 
         for (const c of chars) {
           if (c.isPlayer) drawPlayer(time);
+          else if (c.isDog) drawDogSprite(time, c.dog);
           else drawNpcSprite(time, c.npc);
         }
 
@@ -2267,6 +2464,7 @@
         if (justPressedKeys.pause) { /* pause not yet implemented */ }
         movePlayer(dt);
         updateNpcs(dt);
+        updateDogs(dt);
 
         const view = getView();
         const targetX = clamp(player.x - view.worldW / 2, 0, Math.max(0, WORLD_W - view.worldW));
@@ -2481,6 +2679,8 @@
         }
         if (line) ctx.fillText(line, x, cy);
       }
+
+      function updateDungeonScene(dt) {
         updateDungeon(dt);
       }
 
@@ -2774,6 +2974,7 @@
       (function startup() {
         buildMap();
         initNpcs();
+        initDogs();
         const saved = loadSave();
         game.save = saved;
         // If a save exists, go straight to title (Continue is lit)
