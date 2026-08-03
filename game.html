@@ -135,11 +135,22 @@
         "49,21": "south",                    // Prestige Furnishings — south door
         "58,51": "south",   // old mansion (kept in case legacy save)
         "73,16": "south",   // Moonlight Mansion — south door
+        "7,34":  "south",   // Moonlight Cinemas — south door
       };
       const CANDY_STORE = { x1: 56, y1: 49, x2: 60, y2: 53 };
       const SCHOOL = { x1: 30, y1: 41, x2: 41, y2: 48 };
       const PRESTIGE_STORE = { x1: 44, y1: 15, x2: 55, y2: 21 };
       const MANSION = { x1: 68, y1: 5, x2: 79, y2: 16 };
+      const THEATER = { x1: 2, y1: 25, x2: 13, y2: 34 };
+
+      const MOVIES = [
+        { id: "action",  emoji: "⚔️",  title: "Dungeon Warriors III",   desc: "Speed + HP boost for 60s",   price: 8,
+          fn: (p) => { p.speedBoost = 60; p.hp = Math.min(p.hp + 10, p.maxHp); return "Action film hype! +10 HP, 60s speed boost!"; } },
+        { id: "comedy",  emoji: "😂",  title: "My Life as a Slime",     desc: "Restores full HP",            price: 6,
+          fn: (p) => { p.hp = p.maxHp; return "You laughed until you healed! Full HP restored!"; } },
+        { id: "romance", emoji: "💕",  title: "Moonlight by Midnight",  desc: "Warm fuzzy feeling (+15 HP)", price: 5,
+          fn: (p) => { p.hp = Math.min(p.hp + 15, p.maxHp); return "Felt all the feelings. +15 HP!"; } },
+      ];
 
       const CANDY_ITEMS = [
         { id: "gobstopper",   emoji: "🟠", name: "Gobstopper",    desc: "Restores 3 HP",          price:  3, hp: 3  },
@@ -239,7 +250,10 @@
         STAIRS_UNLOCKED: 5,
         BARREL: 6,
         CHEST: 7,
-        SLIME_PUDDLE: 8
+        SLIME_PUDDLE: 8,
+        ORE_VEIN: 9,
+        CRYSTAL: 10,
+        LAVA: 11
       };
 
       const DUNGEON_COLORS = {
@@ -258,8 +272,21 @@
       };
 
       const ENEMY_STATS = {
-        small_slime: { maxHp: 12, speed: 28, damage: 3, xp: 4, gold: [1, 3], color: "#3daa3d", size: 7 },
-        sewer_rat:   { maxHp: 8,  speed: 55, damage: 2, xp: 3, gold: [1, 2], color: "#7a6040", size: 6 }
+        small_slime:    { maxHp: 12,  speed: 28,  damage: 3,  xp: 4,  gold: [1, 3],   color: "#3daa3d", size: 7  },
+        sewer_rat:      { maxHp: 8,   speed: 55,  damage: 2,  xp: 3,  gold: [1, 2],   color: "#7a6040", size: 6  },
+        // ── Mines (floors 4–8) ──────────────────────────────────
+        cave_bat:       { maxHp: 14,  speed: 80,  damage: 5,  xp: 7,  gold: [1, 4],   color: "#6a4a8a", size: 6  },
+        goblin:         { maxHp: 22,  speed: 48,  damage: 6,  xp: 9,  gold: [2, 6],   color: "#4a8c28", size: 8  },
+        // ── Deep Mines (floors 9–14) ─────────────────────────────
+        mine_crawler:   { maxHp: 30,  speed: 38,  damage: 8,  xp: 12, gold: [3, 7],   color: "#7a5828", size: 9  },
+        stone_golem:    { maxHp: 60,  speed: 18,  damage: 14, xp: 22, gold: [6, 14],  color: "#7a7870", size: 13 },
+        // ── Crystal Caverns (floors 15–20) ───────────────────────
+        crystal_spider: { maxHp: 38,  speed: 65,  damage: 10, xp: 16, gold: [4, 10],  color: "#60c0e8", size: 8  },
+        crystal_golem:  { maxHp: 75,  speed: 16,  damage: 18, xp: 28, gold: [8, 18],  color: "#88d8ff", size: 14 },
+        // ── Lava Depths (floors 21–25) ───────────────────────────
+        lava_slime:     { maxHp: 45,  speed: 38,  damage: 16, xp: 25, gold: [6, 12],  color: "#e84010", size: 10 },
+        lava_bat:       { maxHp: 32,  speed: 95,  damage: 12, xp: 20, gold: [5, 10],  color: "#c03010", size: 6  },
+        lava_golem:     { maxHp: 100, speed: 14,  damage: 24, xp: 40, gold: [12, 25], color: "#ff6020", size: 15 },
       };
 
       const FLOOR_01 = {
@@ -370,6 +397,119 @@
       };
 
       const FLOOR_DATA = [null, FLOOR_01, FLOOR_02, FLOOR_03];
+
+      // ── Procedural Mine Floor Generator (floors 4–25) ───────────────
+      // Deterministic seeded RNG so every floor is always the same layout
+      function generateMineFloor(floorNum) {
+        let seed = (floorNum * 2654435761) >>> 0;
+        function rand() {
+          seed = Math.imul(seed ^ seed >>> 15, 2246822519) >>> 0;
+          seed = Math.imul(seed ^ seed >>> 13, 3266489917) >>> 0;
+          seed = (seed ^ seed >>> 16) >>> 0;
+          return seed / 4294967296;
+        }
+        function ri(lo, hi) { return lo + Math.floor(rand() * (hi - lo + 1)); }
+
+        const W = 22, H = 16;
+        const tiles = new Array(W * H).fill(DTILE.WALL);
+        const setT  = (x, y, t) => { if (x > 0 && x < W-1 && y > 0 && y < H-1) tiles[y*W+x] = t; };
+        const getT  = (x, y)    => (x >= 0 && x < W && y >= 0 && y < H) ? tiles[y*W+x] : DTILE.WALL;
+        function carveRect(x1, y1, x2, y2) {
+          for (let y = y1; y <= y2; y++) for (let x = x1; x <= x2; x++) setT(x, y, DTILE.FLOOR);
+        }
+        function carveCorridor(ax, ay, bx, by) {
+          const sx = ax < bx ? 1 : -1, sy = ay < by ? 1 : -1;
+          for (let x = ax; x !== bx + sx; x += sx) setT(x, ay, DTILE.FLOOR);
+          for (let y = ay; y !== by + sy; y += sy) setT(bx, y, DTILE.FLOOR);
+        }
+
+        // Carve rooms
+        const numRooms = ri(4, 7);
+        const rooms = [];
+        for (let attempt = 0; attempt < numRooms * 4 && rooms.length < numRooms; attempt++) {
+          const rw = ri(3, 6), rh = ri(3, 5);
+          const rx = ri(1, W - rw - 2), ry = ri(1, H - rh - 2);
+          carveRect(rx, ry, rx + rw - 1, ry + rh - 1);
+          rooms.push({ x: rx, y: ry, w: rw, h: rh,
+            cx: rx + Math.floor(rw/2), cy: ry + Math.floor(rh/2) });
+        }
+        if (rooms.length < 2) { // fallback: two guaranteed rooms
+          carveRect(1, 1, 5, 4);   rooms.push({ x:1,  y:1,  w:5, h:4, cx:3,  cy:2  });
+          carveRect(15, 10, 20, 14); rooms.push({ x:15, y:10, w:6, h:5, cx:17, cy:12 });
+        }
+        // Connect rooms with corridors
+        for (let i = 1; i < rooms.length; i++) carveCorridor(rooms[i-1].cx, rooms[i-1].cy, rooms[i].cx, rooms[i].cy);
+
+        // Tier determines visuals + enemies
+        // 4–8 Upper Mines, 9–14 Deep Mines, 15–20 Crystal Caverns, 21–25 Lava Depths
+        const tier = floorNum <= 8 ? 0 : floorNum <= 14 ? 1 : floorNum <= 20 ? 2 : 3;
+        const tierEnemies = [
+          ["cave_bat", "goblin"],
+          ["goblin", "mine_crawler", "stone_golem"],
+          ["crystal_spider", "crystal_golem", "mine_crawler"],
+          ["lava_slime", "lava_bat", "lava_golem"]
+        ][tier];
+
+        // Scatter ore/crystal/lava decorations in walls
+        const wallOre = tier <= 1 ? DTILE.ORE_VEIN : tier === 2 ? DTILE.CRYSTAL : DTILE.LAVA;
+        for (let y = 1; y < H-1; y++) {
+          for (let x = 1; x < W-1; x++) {
+            if (getT(x, y) === DTILE.WALL && rand() < 0.055) setT(x, y, wallOre);
+            // Deep floors: scatter lava pools on floor tiles
+            if (tier === 3 && getT(x, y) === DTILE.FLOOR && rand() < 0.04) setT(x, y, DTILE.LAVA);
+          }
+        }
+
+        // Player spawn (room 0, top-left corner)
+        const spawnR = rooms[0];
+        const playerSpawn = { x: spawnR.x + 1, y: spawnR.y + 1 };
+
+        // Stairs down (last room, near bottom-right)
+        const stairR = rooms[rooms.length - 1];
+        const stairsPos = { x: stairR.x + stairR.w - 2, y: stairR.y + stairR.h - 2 };
+        setT(stairsPos.x, stairsPos.y, DTILE.STAIRS_LOCKED);
+
+        // Up-stairs = same as spawn
+        const upStairsPos = { x: playerSpawn.x, y: playerSpawn.y };
+
+        // Enemies — more and harder as floor increases
+        const numEnemies = Math.min(3 + Math.floor(floorNum * 0.6), 12);
+        const enemySpawns = [];
+        const midRooms = rooms.slice(1, rooms.length - 1);
+        const fightRooms = midRooms.length > 0 ? midRooms : rooms;
+        for (let i = 0; i < numEnemies; i++) {
+          const room = fightRooms[i % fightRooms.length];
+          const ex = room.x + ri(0, room.w - 1);
+          const ey = room.y + ri(0, room.h - 1);
+          const etype = tierEnemies[i % tierEnemies.length];
+          const ai = rand() < 0.45 ? "stationary" : "patrol";
+          const sp = { type: etype, x: ex, y: ey, ai };
+          if (ai === "patrol") {
+            const px2 = Math.min(ex + ri(1, 3), room.x + room.w - 1);
+            sp.patrol = [{ x: ex, y: ey }, { x: px2, y: ey }];
+          }
+          enemySpawns.push(sp);
+        }
+
+        // Chests (every 3 floors, in a mid room)
+        const chests = [];
+        if (floorNum % 3 === 0 && fightRooms.length > 0) {
+          const cr = fightRooms[ri(0, fightRooms.length - 1)];
+          chests.push({ x: cr.x + 1, y: cr.y + 1, opened: false });
+        }
+
+        // Barrels
+        const barrels = [];
+        if (rand() < 0.65 && rooms.length > 1) {
+          const br = rooms[ri(0, rooms.length - 1)];
+          barrels.push({ x: br.x, y: br.y, broken: false });
+        }
+
+        return { w: W, h: H, tiles: Array.from(tiles), playerSpawn, stairsPos, upStairsPos, chests, barrels, enemySpawns };
+      }
+
+      // Populate floors 4–25
+      for (let _f = 4; _f <= 25; _f++) FLOOR_DATA.push(generateMineFloor(_f));
 
       function clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
@@ -504,7 +644,9 @@
         inCandyStore: false,
         inSchool: false,
         inPrestigeStore: false,
-        inMansion: false
+        inMansion: false,
+        inTheater: false,
+        theater: { movieMenu: false, selected: 0 }
       };
 
       const camera = { x: 0, y: 0 };
@@ -806,6 +948,18 @@
         fillRectTiles(27, 36, 2, 5, TILE.PATH);
         // Slums east → Docks (Gulley Row continues)
         fillRectTiles(28, 53, 17, 2, TILE.PATH);    // bridge to docks
+
+        // ══════════════════════════════════════════════════════════
+        // MOONLIGHT CINEMAS  (x:2-13, y:25-34)
+        // South of downtown, west of North Ave
+        // ══════════════════════════════════════════════════════════
+        fillRectTiles(2, 25, 12, 10, TILE.DARK_GRASS);  // cinema grounds
+        fillRectTiles(2, 25, 12, 10, TILE.STONE);        // main building
+        fillRectTiles(3, 35, 4, 2, TILE.PATH);           // doorstep plaza
+        fillRectTiles(7, 35, 3, 2, TILE.PATH);           // door path
+        paintLine([[13,30],[14,30]], 0, TILE.PATH);      // connect to North Ave
+        // Marquee lights & decorative details
+        stampTiles([[2,24],[13,24],[2,35],[13,35],[7,36],[8,36]], TILE.FLOWERS);
 
         // ══════════════════════════════════════════════════════════
         // SCATTER DETAILS
@@ -1424,6 +1578,24 @@
         });
       }
 
+      function enterTheater() {
+        game.houseExitX = 7 * 32 + 16;
+        game.houseExitY = 35 * 32 + 16;
+        game.inTheater = true;
+        game.inCandyStore = false;
+        game.inSchool = false;
+        game.inPrestigeStore = false;
+        game.inMansion = false;
+        game.theater.movieMenu = false;
+        game.theater.selected = 0;
+        switchScene(SCENE.HOUSE_INTERIOR, () => {
+          player.x = 5 * 36 + 18;
+          player.y = 7 * 36 + 18;
+          player.vx = 0; player.vy = 0;
+          player.dir = "up";
+        });
+      }
+
       function enterMansion() {
         if (!(game.save && game.save.houseUpgrades && game.save.houseUpgrades.includes("mansion_deed"))) {
           showNotice("🏰 For sale: 5000⬡ at 💎 Prestige Furnishings!", 3);
@@ -1482,22 +1654,27 @@
         const wasSchool      = game.inSchool;
         const wasPrestige    = game.inPrestigeStore;
         const wasMansion     = game.inMansion;
+        const wasTheater     = game.inTheater;
         game.inCandyStore    = false;
         game.inSchool        = false;
         game.inPrestigeStore = false;
         game.inMansion       = false;
+        game.inTheater       = false;
+        game.theater.movieMenu = false;
         candyShop.open = false;
         prestigeShop.open = false;
         switchScene(SCENE.CITY, () => {
           player.x = wasCandyStore ? 58*32+16
                    : wasSchool     ? 35*32+16
                    : wasPrestige   ? 49*32+16
-                   : wasMansion    ? 58*32+16
+                   : wasMansion    ? 73*32+16
+                   : wasTheater    ?  7*32+16
                    : (game.houseExitX || 47*32+16);
           player.y = wasCandyStore ? 54*32+16
                    : wasSchool     ? 49*32+16
                    : wasPrestige   ? 22*32+16
-                   : wasMansion    ? 52*32+16
+                   : wasMansion    ? 17*32+16
+                   : wasTheater    ? 35*32+16
                    : (game.houseExitY || 24*32+16);
           player.vx = 0; player.vy = 0;
         });
@@ -1533,7 +1710,8 @@
       }
 
       function isDungeonBlockingTile(tile) {
-        return tile === DTILE.WALL || tile === DTILE.CHEST || tile === DTILE.BARREL || tile === DTILE.STAIRS_LOCKED;
+        return tile === DTILE.WALL || tile === DTILE.CHEST || tile === DTILE.BARREL
+            || tile === DTILE.STAIRS_LOCKED || tile === DTILE.ORE_VEIN || tile === DTILE.CRYSTAL;
       }
 
       function collidesDungeonCircle(x, y, radius) {
@@ -1579,7 +1757,19 @@
         inputY /= len;
 
         const onSlime = dungeonTileAt(player.x, player.y) === DTILE.SLIME_PUDDLE;
-        const moveSpeed = player.speed * (onSlime ? 0.45 : 1);
+        const onLava  = dungeonTileAt(player.x, player.y) === DTILE.LAVA;
+        const moveSpeed = player.speed * (onSlime ? 0.45 : onLava ? 0.6 : 1);
+
+        // Lava burns 1 HP per second
+        if (onLava) {
+          if (!player._lavaTick) player._lavaTick = 0;
+          player._lavaTick += dt;
+          if (player._lavaTick >= 1) {
+            player._lavaTick -= 1;
+            player.hp = Math.max(0, player.hp - 1);
+            showNotice("🔥 Lava burns! -1 HP", 0.8);
+          }
+        } else { player._lavaTick = 0; }
         const targetVX = inputX * moveSpeed;
         const targetVY = inputY * moveSpeed;
         const step = player.accel * dt;
@@ -1820,6 +2010,8 @@
                            tileY >= PRESTIGE_STORE.y1 && tileY <= PRESTIGE_STORE.y2;
         const isMansion = tileX >= MANSION.x1 && tileX <= MANSION.x2 &&
                           tileY >= MANSION.y1 && tileY <= MANSION.y2;
+        const isTheater = tileX >= THEATER.x1 && tileX <= THEATER.x2 &&
+                          tileY >= THEATER.y1 && tileY <= THEATER.y2;
 
         if (isCandy) {
           // ── Candy Store roof — pink tiles ───────────────────────
@@ -2579,133 +2771,223 @@
         }
       }
 
+      // ── Sims-style adult sprite (20 wide × 36 tall pixel cell) ──────────────
+      // Layout (from top):  hair(-3..0), head(0..14), neck(14..17),
+      //   shoulders(17..19), torso(17..28), arms(17..28), belt(28..30),
+      //   legs(30..39), shoes(39..44)
       function drawNpcSprite(time, npc) {
         if (npc.ageType === "toddler") { drawToddlerSprite(time, npc); return; }
         if (npc.ageType === "child")   { drawChildSprite(time, npc);   return; }
+
         const skin  = npc.skin;
         const hair  = npc.hair;
-        const skinS = shade(skin, -15);
-        const hairD = shade(hair, -25);
-        const blush = shade(skin, 16);
+        const skinS = shade(skin, -18);
+        const skinD = shade(skin, -30);
+        const blush = shade(skin, 20);
+        const hairD = shade(hair, -28);
+        const hairL = shade(hair, 18);
         const T     = npc.torso;
-        const TS    = shade(T, -18);
+        const TL    = shade(T, 14);
+        const TS    = shade(T, -22);
+        const TM    = shade(T, -10);
         const L     = npc.legs;
-        const LS    = shade(L, -18);
-        const SH    = "#3a2010";
+        const LS    = shade(L, -20);
+        const SH    = "#2a1a0e";           // shoe dark
+        const SHL   = shade(SH, 18);       // shoe highlight
+        const BELT  = shade(L, -40);
+        const COLLAR = shade(T, 30);
 
         const moving = Math.hypot(npc.vx, npc.vy) > 4;
-        const bob    = moving ? Math.sin(npc.walkTime * Math.PI) * 0.6 : Math.sin(time * 1.8 + npc.homeX * 0.01) * 0.4;
+        const bob    = moving ? Math.sin(npc.walkTime * Math.PI) * 0.7 : Math.sin(time * 1.8 + npc.homeX * 0.01) * 0.35;
         const frame  = moving ? Math.floor(npc.walkTime) % 4 : 0;
-        const ls = [0, 2, 0, -2][frame];
-        const as = [0, -1.5, 0, 1.5][frame];
+        // leg swing ±3, arm counter-swing ±2
+        const ls = [0, 3, 0, -3][frame];
+        const as = [0, -2, 0, 2][frame];
         const x  = npc.x, y = npc.y + bob, d = npc.dir;
 
-        ctx.fillStyle = "rgba(0,0,0,0.18)";
+        // Drop shadow
+        ctx.fillStyle = "rgba(0,0,0,0.20)";
         ctx.beginPath();
-        ctx.ellipse(x, y + 14, 8, 3.5, 0, 0, Math.PI * 2);
+        ctx.ellipse(x, y + 16, 9, 3, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        const px = x - 10, py = y - 20;
+        // Cell origin: sprite is 20 px wide, tall ~44 px; anchor at foot-centre
+        const px = x - 10, py = y - 30;
         function r(rx, ry, rw, rh, c) {
           ctx.fillStyle = c;
           ctx.fillRect(Math.round(px + rx), Math.round(py + ry), rw, rh);
         }
+        // rounded rect helper (1-px corner trim)
+        function rr(rx, ry, rw, rh, c) {
+          r(rx+1, ry, rw-2, rh, c);
+          r(rx, ry+1, rw, rh-2, c);
+        }
 
         if (d === "down") {
-          r(4-ls, 28,6,4,SH); r(10+ls,28,6,4,SH);
-          r(5-ls, 22,5,7,L);  r(10+ls,22,5,7,L);
-          r(1-as*0.5,16,4,9,skin); r(15+as*0.5,16,4,9,skin);
-          r(4,14,12,9,T);
-          r(7,11,6,4,skin);
-          r(3,0,14,13,skin); r(2,4,2,5,skinS); r(16,4,2,5,skinS);
-          r(4,8,3,2,blush); r(13,8,3,2,blush);
-          r(6,4,3,4,"#fff"); r(11,4,3,4,"#fff");
-          r(7,5,2,3,"#1a1a2e"); r(12,5,2,3,"#1a1a2e");
-          r(7,5,1,1,"#fff"); r(12,5,1,1,"#fff");
-          r(8,10,4,1,skinS);
+          // ── Shoes ─────────────────────────────────────
+          r(2-ls, 38, 7, 5, SH);   r(11+ls, 38, 7, 5, SH);
+          r(2-ls, 38, 3, 2, SHL);  r(11+ls, 38, 3, 2, SHL);
+          // ── Legs (tapered) ────────────────────────────
+          r(3-ls, 29, 6, 10, L);   r(11+ls, 29, 6, 10, L);
+          r(3-ls, 35, 6,  3, LS);  r(11+ls, 35, 6,  3, LS);
+          // ── Belt ──────────────────────────────────────
+          r(4, 28, 12, 2, BELT);  r(9, 28, 2, 2, shade(BELT, 20)); // buckle
+          // ── Torso (Sims trapezoid: wider shoulders) ───
+          r(3, 17, 14, 12, T);
+          r(3, 17,  2, 12, TL);  // left shoulder light
+          r(15,17,  2, 12, TS);  // right shadow
+          r(4, 25,  2,  3, TM);  r(14,25,  2,  3, TM); // side seam
+          // ── Collar V-notch ────────────────────────────
+          r(8, 17, 4, 3, COLLAR);
+          r(9, 17, 2, 5, COLLAR);
+          // ── Arms (round shoulders, taper to wrist) ────
+          r(0+as, 17, 4, 10, skin);  r(16-as, 17, 4, 10, skin);
+          r(0+as, 17, 2,  4, shade(skin,10)); // shoulder highlight L
+          r(18-as,17, 2,  4, skinS);          // shoulder shadow R
+          r(0+as, 24, 4,  3, skinS);          // forearm shadow L
+          r(16-as,24, 4,  3, skinS);
+          // ── Neck ──────────────────────────────────────
+          r(7, 13, 6, 5, skin);
+          // ── Head (large, Sims rounded square) ─────────
+          rr(2, 0, 16, 14, skin);
+          r(2, 0,  2,  9, shade(skin, 8));  // left cheek light
+          r(16,0,  2,  9, skinD);            // right shadow
+          // ── Cheeks ────────────────────────────────────
+          r(3, 8, 4, 3, blush);  r(13, 8, 4, 3, blush);
+          // ── Eyes (Sims style: large, spaced) ──────────
+          r(4,  3, 5, 5, "#fff");  r(11, 3, 5, 5, "#fff");
+          r(5,  4, 3, 4, "#1a1a2e"); r(12, 4, 3, 4, "#1a1a2e");
+          r(5,  4, 1, 1, "#e0e8ff"); r(12, 4, 1, 1, "#e0e8ff"); // catchlight
+          r(4,  3, 1, 1, "#888"); r(11, 3, 1, 1, "#888"); // upper lash corner
+          r(4,  8, 6, 1, "#1a1a2e"); r(11, 8, 6, 1, "#1a1a2e"); // lower lash
+          // ── Nose (subtle triangle) ─────────────────────
+          r(8, 8, 1, 2, skinS);  r(10, 8, 1, 2, skinS);  r(8,10, 4, 1, skinS);
+          // ── Smile ─────────────────────────────────────
+          r(6, 11, 8, 1, skinS);
+          r(6, 11, 1, 2, skinS);  r(13, 11, 1, 2, skinS);
+          // ── Ear lobes ─────────────────────────────────
+          r(1, 5, 2, 4, skin);  r(17, 5, 2, 4, skin);
+          r(1, 6, 1, 2, skinD); r(18, 6, 1, 2, skinS);
+
         } else if (d === "up") {
-          r(4-ls,28,6,4,SH); r(10+ls,28,6,4,SH);
-          r(5-ls,22,5,7,LS); r(10+ls,22,5,7,LS);
-          r(1+as*0.5,16,4,9,shade(skin,-15)); r(15-as*0.5,16,4,9,shade(skin,-15));
-          r(4,14,12,9,TS); r(7,11,6,4,shade(skin,-15));
-          r(3,0,14,13,shade(skin,-15)); r(2,4,2,5,shade(skin,-22)); r(16,4,2,5,shade(skin,-22));
+          r(2-ls, 38, 7, 5, SH);   r(11+ls, 38, 7, 5, SH);
+          r(3-ls, 29, 6, 10, LS);  r(11+ls, 29, 6, 10, LS);
+          r(4, 28, 12, 2, BELT);
+          r(3, 17, 14, 12, TS);
+          r(0-as, 17, 4, 10, skinD); r(16+as, 17, 4, 10, skinD);
+          r(7, 13, 6, 5, skinD);
+          rr(2, 0, 16, 14, shade(skin,-18));
+          r(2, 0,  2,  9, shade(skin,-12)); r(16,0,  2,  9, shade(skin,-26));
+
         } else if (d === "left") {
-          r(4-ls*0.6,28,6,4,SH); r(9+ls*0.6,28,6,4,SH);
-          r(5-ls*0.6,22,5,7,L); r(9+ls*0.6,22,5,7,LS);
-          r(2,15+as*0.5,4,9,skin); r(14,14-as*0.5,3,8,skinS);
-          r(4,14,12,9,T); r(13,14,3,9,TS);
-          r(7,11,5,4,skin); r(11,11,2,4,skinS);
-          r(3,0,14,13,skin); r(14,0,3,13,skinS); r(2,4,2,5,skinS);
-          r(4,8,2,2,blush);
-          r(5,4,3,4,"#fff"); r(6,5,2,3,"#1a1a2e"); r(6,5,1,1,"#fff");
-          r(5,10,3,1,skinS);
-        } else {
-          r(6-ls*0.6,28,6,4,SH); r(10+ls*0.6,28,6,4,SH);
-          r(6-ls*0.6,22,5,7,LS); r(10+ls*0.6,22,5,7,L);
-          r(13,15-as*0.5,4,9,skin); r(3,14+as*0.5,3,8,skinS);
-          r(4,14,12,9,T); r(4,14,3,9,TS);
-          r(8,11,5,4,skin); r(8,11,2,4,skinS);
-          r(3,0,14,13,skin); r(3,0,3,13,skinS); r(16,4,2,5,skinS);
-          r(14,8,2,2,blush);
-          r(12,4,3,4,"#fff"); r(12,5,2,3,"#1a1a2e"); r(13,5,1,1,"#fff");
-          r(12,10,3,1,skinS);
+          r(3, 38, 7, 5, SH);   r(10-ls, 38, 7, 5, SH);
+          r(4, 29, 5, 10, LS);  r(9+ls, 29, 5, 10, L);
+          r(4, 28, 12, 2, BELT);
+          r(3, 17, 13, 12, T);  r(14, 17, 3, 12, TS);
+          r(16+as, 17, 4, 10, skin);   // near arm
+          r(1-as,  17, 3,  9, skinD);  // far arm
+          r(7, 13, 5, 5, skin); r(11, 13, 2, 5, skinS);
+          rr(2, 0, 14, 14, skin); r(14, 0, 4, 14, skinD);
+          r(2, 0, 2, 9, shade(skin, 8));
+          r(3, 8, 3, 3, blush);
+          r(4, 3, 5, 5, "#fff"); r(5, 4, 3, 4, "#1a1a2e"); r(5, 4, 1, 1, "#e0e8ff");
+          r(4, 8, 6, 1, "#1a1a2e");
+          r(7, 8, 2, 2, skinS); r(6, 11, 6, 1, skinS);
+          r(6, 11, 1, 2, skinS); r(11, 11, 1, 2, skinS);
+          r(1, 5, 2, 4, skin); r(1, 6, 1, 2, skinD);
+          // profile collar
+          r(13, 17, 2, 4, COLLAR);
+
+        } else { // right
+          r(10+ls, 38, 7, 5, SH); r(3, 38, 7, 5, SH);
+          r(11-ls, 29, 5, 10, L);  r(4, 29, 5, 10, LS);
+          r(4, 28, 12, 2, BELT);
+          r(4, 17, 13, 12, T);  r(3, 17, 3, 12, TS);
+          r(0-as, 17, 4, 10, skin);   // near arm (right side)
+          r(16+as, 17, 3,  9, skinD); // far arm
+          r(8, 13, 5, 5, skin); r(7, 13, 2, 5, skinS);
+          rr(4, 0, 14, 14, skin); r(2, 0, 4, 14, skinD);
+          r(16,0, 2, 9, shade(skin,8));
+          r(14, 8, 3, 3, blush);
+          r(11, 3, 5, 5, "#fff"); r(12, 4, 3, 4, "#1a1a2e"); r(14, 4, 1, 1, "#e0e8ff");
+          r(10, 8, 6, 1, "#1a1a2e");
+          r(11, 8, 2, 2, skinS); r(8, 11, 6, 1, skinS);
+          r(8, 11, 1, 2, skinS); r(13, 11, 1, 2, skinS);
+          r(17, 5, 2, 4, skin); r(18, 6, 1, 2, skinS);
+          r(5, 17, 2, 4, COLLAR);
         }
 
-        // Hair
-        const h = hair, hd = hairD;
-        if (npc.hairStyle === 0) { // crop
-          if (d==="down")  { r(3,-1,14,4,h); r(2,2,3,3,hd); r(15,2,3,3,hd); }
-          if (d==="up")    { r(3,-1,14,5,h); }
-          if (d==="left")  { r(3,-1,12,4,h); r(3,3,3,3,hd); }
-          if (d==="right") { r(5,-1,12,4,h); r(14,3,3,3,hd); }
-        } else if (npc.hairStyle === 1) { // fringe
-          if (d==="down")  { r(3,-1,14,5,h); r(2,3,4,5,hd); r(14,3,4,5,hd); r(5,4,3,4,h); r(12,4,3,4,h); }
-          if (d==="up")    { r(3,-1,14,6,h); r(4,5,12,2,hd); }
-          if (d==="left")  { r(3,-1,12,5,h); r(3,3,4,5,hd); r(13,3,3,4,h); }
-          if (d==="right") { r(5,-1,12,5,h); r(13,3,4,5,hd); r(4,3,3,4,h); }
-        } else if (npc.hairStyle === 2) { // long
-          if (d==="down")  { r(3,-1,14,5,h); r(2,3,4,5,hd); r(14,3,4,5,hd); r(3,13,4,8,hd); r(13,13,4,8,hd); }
-          if (d==="up")    { r(3,-1,14,6,h); r(4,5,12,2,hd); r(3,7,3,8,h); r(14,7,3,8,h); }
-          if (d==="left")  { r(3,-1,12,5,h); r(3,3,4,5,hd); r(13,-1,4,14,h); r(15,3,2,10,hd); }
-          if (d==="right") { r(5,-1,12,5,h); r(13,3,4,5,hd); r(3,-1,4,14,h); r(3,3,2,10,hd); }
-        } else if (npc.hairStyle === 3) { // curly
-          if (d==="down")  { r(1,-2,18,6,h); r(0,2,4,8,hd); r(16,2,4,8,hd); r(2,9,3,4,hd); r(15,9,3,4,hd); r(3,-1,14,5,shade(h,12)); }
-          if (d==="up")    { r(1,-2,18,7,h); r(0,2,4,7,hd); r(16,2,4,7,hd); r(3,5,14,3,shade(h,10)); }
-          if (d==="left")  { r(1,-2,16,6,h); r(0,2,4,7,hd); r(2,8,3,5,hd); r(3,-1,12,4,shade(h,12)); }
-          if (d==="right") { r(3,-2,16,6,h); r(16,2,4,7,hd); r(15,8,3,5,hd); r(5,-1,12,4,shade(h,12)); }
+        // ── Hair ─────────────────────────────────────────────────
+        const h = hair, hd = hairD, hl = hairL;
+        if (npc.hairStyle === 0) { // short crop
+          if (d==="down")  { rr(2,-3,16,6,h); r(3,-3,12,3,hl); r(1,2,3,4,hd); r(16,2,3,4,hd); }
+          if (d==="up")    { rr(2,-3,16,7,h); r(3,-3,12,3,hl); }
+          if (d==="left")  { rr(2,-3,13,6,h); r(3,-3,10,3,hl); r(13,-1,3,5,hd); }
+          if (d==="right") { rr(5,-3,13,6,h); r(6,-3,10,3,hl); r(4,-1,3,5,hd); }
+        } else if (npc.hairStyle === 1) { // side fringe
+          if (d==="down")  { rr(2,-3,16,7,h); r(3,-3,12,3,hl); r(1,2,4,6,hd); r(15,2,4,6,hd); r(4,4,4,5,h); r(12,4,4,5,h); }
+          if (d==="up")    { rr(2,-3,16,8,h); r(3,-3,12,3,hl); r(3,5,14,3,hd); }
+          if (d==="left")  { rr(2,-3,14,7,h); r(3,-3,10,3,hl); r(2,3,5,6,hd); r(13,-1,4,6,h); }
+          if (d==="right") { rr(4,-3,14,7,h); r(5,-3,10,3,hl); r(13,3,5,6,hd); r(3,-1,4,6,h); }
+        } else if (npc.hairStyle === 2) { // long flowing
+          if (d==="down")  { rr(2,-3,16,7,h); r(3,-3,12,3,hl); r(1,3,4,6,hd); r(15,3,4,6,hd); r(2,13,4,10,hd); r(14,13,4,10,hd); r(4,13,12,8,h); }
+          if (d==="up")    { rr(2,-3,16,8,h); r(3,-3,12,3,hl); r(2,8,4,10,h); r(14,8,4,10,h); }
+          if (d==="left")  { rr(2,-3,13,7,h); r(3,-3,10,3,hl); r(2,3,4,6,hd); r(13,-3,5,18,h); r(15,0,3,14,hd); }
+          if (d==="right") { rr(5,-3,13,7,h); r(6,-3,10,3,hl); r(14,3,4,6,hd); r(2,-3,5,18,h); r(2,0,3,14,hd); }
+        } else if (npc.hairStyle === 3) { // curly/afro
+          if (d==="down")  { rr(0,-5,20,8,h); r(2,-5,16,4,hl); r(0,1,4,9,hd); r(16,1,4,9,hd); r(1,9,4,4,hd); r(15,9,4,4,hd); }
+          if (d==="up")    { rr(0,-5,20,9,h); r(2,-5,16,4,hl); r(0,1,4,8,hd); r(16,1,4,8,hd); }
+          if (d==="left")  { rr(0,-5,18,8,h); r(2,-5,14,4,hl); r(0,1,4,9,hd); r(1,9,4,4,hd); }
+          if (d==="right") { rr(2,-5,18,8,h); r(4,-5,14,4,hl); r(16,1,4,9,hd); r(15,9,4,4,hd); }
         } else if (npc.hairStyle === 4) { // bun
-          if (d==="down"||d==="up") { r(3,-1,14,3,h); r(6,-7,8,7,h); r(7,-8,6,2,hd); r(13,-4,3,3,hd); }
-          if (d==="left")  { r(3,-1,12,3,h); r(5,-7,8,7,h); r(10,-8,5,3,hd); }
-          if (d==="right") { r(5,-1,12,3,h); r(7,-7,8,7,h); r(7,-8,5,3,hd); }
-        } else { // shaved (5)
-          if (d==="down"||d==="up") { r(3,-1,14,2,hd); }
-          else { r(3,-1,12,2,hd); }
+          if (d==="down"||d==="up") { rr(2,-2,16,4,h); r(3,-2,12,2,hl); rr(6,-9,8,8,h); r(7,-9,6,3,hl); r(11,-5,3,3,hd); }
+          if (d==="left")  { rr(2,-2,14,4,h); r(3,-2,10,2,hl); rr(4,-9,8,8,h); r(5,-9,6,3,hl); }
+          if (d==="right") { rr(4,-2,14,4,h); r(5,-2,10,2,hl); rr(8,-9,8,8,h); r(9,-9,6,3,hl); }
+        } else { // shaved (5) — stubble shadow
+          if (d==="down"||d==="up") { rr(2,-1,16,3,hd); }
+          else { rr(2,-1,13,3,hd); }
         }
 
-        // Unique per-character accessories
+        // ── Per-character accessories ─────────────────────────────
         if (npc.id === "ella") {
-          if (d !== "up") { r(7,17,6,7,"rgba(255,255,255,0.5)"); } // apron
+          // Apron bib + strings
+          if (d !== "up") { r(7,18,6,10,"rgba(255,255,255,0.55)"); r(5,17,2,2,"rgba(255,255,255,0.4)"); r(13,17,2,2,"rgba(255,255,255,0.4)"); }
         } else if (npc.id === "will") {
-          if (d !== "up") { r(4,21,12,2,shade(T,-32)); }           // tool belt
+          // Tool belt with pocket
+          if (d !== "up") { r(3,28,14,2,shade(T,-38)); r(13,25,3,5,"#8b6914"); }
         } else if (npc.id === "rose") {
-          r(2,-1,16,7,"rgba(18,4,28,0.75)"); r(0,3,20,5,"rgba(18,4,28,0.5)"); // hood
+          // Mage hood + robe trim
+          rr(1,-4,18,9,"rgba(18,4,28,0.82)");
+          r(0,3,20,5,"rgba(18,4,28,0.55)");
+          r(3,17,14,12,"rgba(28,8,48,0.35)"); // robe overlay
         } else if (npc.id === "lumi") {
-          if (d !== "up") { r(9,18,3,2,"#4ec9b0"); r(8,19,2,2,"#4ec9b0"); } // paint smudge
+          // Paint palette smudges
+          if (d !== "up") { r(9,19,3,2,"#4ec9b0"); r(8,22,2,2,"#e07040"); r(11,21,2,2,"#9060d0"); }
         } else if (npc.id === "rex") {
-          if (d==="down") { r(5,9,10,4,"#888"); r(6,12,8,2,"#777"); }       // beard
-          if (d==="left") { r(4,9,6,4,"#888"); }
-          if (d==="right") { r(10,9,6,4,"#888"); }
+          // Beard (stubble patch)
+          if (d==="down") { r(4,9,12,4,"rgba(80,60,40,0.6)"); r(6,12,8,2,"rgba(80,60,40,0.5)"); }
+          if (d==="left") { r(4,9,7,4,"rgba(80,60,40,0.6)"); }
+          if (d==="right") { r(9,9,7,4,"rgba(80,60,40,0.6)"); }
         }
 
-        // Name tag above head when player is nearby (skip for player's own wrapper)
+        // ── Wedding ring (gold band on left hand) ─────────────────
+        if (npc.married) {
+          const ringC = "#ffd700";
+          if (d === "down")  r(0+as, 25, 2, 2, ringC);
+          if (d === "up")    r(0-as, 25, 2, 2, ringC);
+          if (d === "left")  r(17+as, 25, 2, 2, ringC);
+          if (d === "right") r(1-as,  25, 2, 2, ringC);
+        }
+
+        // ── Name tag ─────────────────────────────────────────────
         if (npc.name && Math.hypot(player.x - npc.x, player.y - npc.y) < 80) {
           ctx.save();
           ctx.fillStyle = "rgba(0,0,0,0.65)";
-          ctx.fillRect(Math.round(x - 22), Math.round(y - 34), 44, 14);
-          ctx.fillStyle = "#f0e8c0";
+          ctx.fillRect(Math.round(x - 22), Math.round(y - 38), 44, 14);
+          ctx.fillStyle = npc.married ? "#ffd700" : "#f0e8c0";
           ctx.font = "bold 9px Trebuchet MS, Arial, sans-serif";
           ctx.textAlign = "center";
-          ctx.fillText(npc.name, Math.round(x), Math.round(y - 23));
+          ctx.fillText(npc.name, Math.round(x), Math.round(y - 27));
           ctx.textAlign = "left";
           ctx.restore();
         }
@@ -3157,7 +3439,20 @@
         const offX = dungeonW < canvas.width ? Math.floor((canvas.width - dungeonW) / 2) : -camera.x;
         const offY = dungeonH < canvas.height ? Math.floor((canvas.height - dungeonH) / 2) : -camera.y;
 
-        ctx.fillStyle = "#080a10";
+        // ── Per-floor colour theme ─────────────────────────────────
+        const _fl = dungeon.floor;
+        const _tier = _fl <= 3 ? -1 : _fl <= 8 ? 0 : _fl <= 14 ? 1 : _fl <= 20 ? 2 : 3;
+        const _themes = [
+          { bg:"#080a10", fl:"#1a1e2a", flHi:"#222838", wall:"#3a2a18", wHi:"#4a3820", wAcc:"#8a5a2a", wDecor:"#5a4828" }, // sewer
+          { bg:"#0c0906", fl:"#1c1610", flHi:"#241c14", wall:"#3c2c18", wHi:"#4a3820", wAcc:"#c87830", wDecor:"#6a5030" }, // upper mines
+          { bg:"#060808", fl:"#141820", flHi:"#1a1e28", wall:"#222222", wHi:"#2e2e2e", wAcc:"#909090", wDecor:"#303030" }, // deep mines
+          { bg:"#080a18", fl:"#101828", flHi:"#181e38", wall:"#182038", wHi:"#202848", wAcc:"#60b8f0", wDecor:"#203048" }, // crystal caverns
+          { bg:"#100804", fl:"#1e1008", flHi:"#281408", wall:"#2a1008", wHi:"#381808", wAcc:"#ff6020", wDecor:"#402008" }, // lava depths
+        ];
+        const TC = _themes[_tier + 1] || _themes[0];
+        const _tierLabel = ["Sewer","Upper Mines","Deep Mines","Crystal Caverns","Lava Depths"][_tier + 1] || "Sewer";
+
+        ctx.fillStyle = TC.bg;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         const startTX = Math.max(0, Math.floor((camera.x || 0) / DTILE_SIZE) - 1);
@@ -3170,38 +3465,89 @@
             const t = dungeon.tiles[ty * data.w + tx];
             const px = tx * DTILE_SIZE + offX;
             const py = ty * DTILE_SIZE + offY;
-            const floorColor = (tx + ty) % 2 === 0 ? DUNGEON_COLORS.floor : DUNGEON_COLORS.floorHi;
 
+            // ── Wall ─────────────────────────────────────────────
             if (t === DTILE.WALL) {
-              ctx.fillStyle = DUNGEON_COLORS.wall;
+              ctx.fillStyle = TC.wall;
               ctx.fillRect(px, py, DTILE_SIZE, DTILE_SIZE);
-              ctx.fillStyle = DUNGEON_COLORS.wallHi;
+              ctx.fillStyle = TC.wHi;
               ctx.fillRect(px + 2, py + 2, DTILE_SIZE - 4, 4);
               if ((tx * 7 + ty * 13) % 5 === 0) {
-                ctx.fillStyle = DUNGEON_COLORS.wallMoss;
+                ctx.fillStyle = TC.wDecor;
                 ctx.fillRect(px + 4, py + DTILE_SIZE - 7, DTILE_SIZE - 8, 5);
               }
               continue;
             }
 
-            ctx.fillStyle = floorColor;
+            // ── Ore vein (glowing ore in wall tile) ───────────────
+            if (t === DTILE.ORE_VEIN) {
+              ctx.fillStyle = TC.wall;
+              ctx.fillRect(px, py, DTILE_SIZE, DTILE_SIZE);
+              const oreCol = _tier <= 0 ? "#d09030" : "#b0b0c0";
+              ctx.fillStyle = oreCol;
+              ctx.fillRect(px + 5, py + 7, 9, 7);
+              ctx.fillRect(px + 17, py + 13, 7, 6);
+              ctx.fillRect(px + 9, py + 19, 10, 5);
+              ctx.fillStyle = "rgba(255,255,200,0.5)";
+              ctx.fillRect(px + 6, py + 8, 3, 2);
+              ctx.fillRect(px + 18, py + 14, 2, 2);
+              continue;
+            }
+
+            // ── Crystal vein (pulsing blue/teal) ──────────────────
+            if (t === DTILE.CRYSTAL) {
+              ctx.fillStyle = TC.wall;
+              ctx.fillRect(px, py, DTILE_SIZE, DTILE_SIZE);
+              const cp = 0.5 + 0.5 * Math.sin(time * 2.5 + tx * 1.3 + ty * 0.7);
+              ctx.fillStyle = `rgba(60,190,255,${0.55 + 0.35 * cp})`;
+              ctx.beginPath();
+              ctx.moveTo(px + 8, py + DTILE_SIZE - 3);
+              ctx.lineTo(px + 13, py + 5);
+              ctx.lineTo(px + 18, py + DTILE_SIZE - 3);
+              ctx.fill();
+              ctx.beginPath();
+              ctx.moveTo(px + 17, py + DTILE_SIZE - 3);
+              ctx.lineTo(px + 23, py + 9);
+              ctx.lineTo(px + 29, py + DTILE_SIZE - 3);
+              ctx.fill();
+              ctx.fillStyle = `rgba(200,240,255,${0.35 + 0.2 * cp})`;
+              ctx.fillRect(px + 11, py + 8, 3, 10);
+              ctx.fillRect(px + 21, py + 12, 2, 7);
+              continue;
+            }
+
+            // ── Floor ─────────────────────────────────────────────
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? TC.fl : TC.flHi;
             ctx.fillRect(px, py, DTILE_SIZE, DTILE_SIZE);
 
+            // ── Lava pool (animated, damages player) ──────────────
+            if (t === DTILE.LAVA) {
+              const lp = 0.5 + 0.5 * Math.sin(time * 1.8 + tx * 0.9 + ty * 1.1);
+              ctx.fillStyle = `rgba(220,55,0,${0.75 + 0.2 * lp})`;
+              ctx.fillRect(px + 2, py + 2, DTILE_SIZE - 4, DTILE_SIZE - 4);
+              ctx.fillStyle = `rgba(255,170,0,${0.4 + 0.35 * lp})`;
+              ctx.beginPath();
+              ctx.ellipse(px + DTILE_SIZE/2, py + DTILE_SIZE/2 + Math.sin(time+tx)*2, 8, 5, lp, 0, Math.PI * 2);
+              ctx.fill();
+              continue;
+            }
+
+            // ── Stairs ────────────────────────────────────────────
             if (t === DTILE.STAIRS_LOCKED || t === DTILE.STAIRS_UNLOCKED) {
               ctx.fillStyle = t === DTILE.STAIRS_UNLOCKED ? DUNGEON_COLORS.stairsUnlocked : DUNGEON_COLORS.stairs;
               ctx.fillRect(px + 4, py + 4, DTILE_SIZE - 8, DTILE_SIZE - 8);
               for (let s = 0; s < 4; s++) {
                 ctx.fillStyle = t === DTILE.STAIRS_UNLOCKED ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.25)";
-                ctx.fillRect(px + 6 + s * 4, py + 8 + s * 4, DTILE_SIZE - 12 - s * 8, 3);
+                ctx.fillRect(px + 6 + s*4, py + 8 + s*4, DTILE_SIZE - 12 - s*8, 3);
               }
             } else if (t === DTILE.SLIME_PUDDLE) {
               ctx.fillStyle = DUNGEON_COLORS.slime;
               ctx.beginPath();
-              ctx.ellipse(px + DTILE_SIZE / 2, py + DTILE_SIZE / 2, DTILE_SIZE / 2 - 4, DTILE_SIZE / 2 - 6, 0, 0, Math.PI * 2);
+              ctx.ellipse(px + DTILE_SIZE/2, py + DTILE_SIZE/2, DTILE_SIZE/2 - 4, DTILE_SIZE/2 - 6, 0, 0, Math.PI*2);
               ctx.fill();
               ctx.fillStyle = DUNGEON_COLORS.slimeHi;
               ctx.beginPath();
-              ctx.ellipse(px + DTILE_SIZE / 2 - 4, py + DTILE_SIZE / 2 - 4, 5, 4, -0.5, 0, Math.PI * 2);
+              ctx.ellipse(px + DTILE_SIZE/2 - 4, py + DTILE_SIZE/2 - 4, 5, 4, -0.5, 0, Math.PI*2);
               ctx.fill();
             } else if (t === DTILE.BARREL) {
               ctx.fillStyle = DUNGEON_COLORS.barrel;
@@ -3215,131 +3561,186 @@
               ctx.fillStyle = shade(DUNGEON_COLORS.chest, -20);
               ctx.fillRect(px + 5, py + 8, DTILE_SIZE - 10, 4);
               ctx.fillStyle = "#ffd700";
-              ctx.fillRect(px + DTILE_SIZE / 2 - 2, py + DTILE_SIZE / 2 - 1, 4, 4);
+              ctx.fillRect(px + DTILE_SIZE/2 - 2, py + DTILE_SIZE/2 - 1, 4, 4);
             }
           }
         }
 
+        // ── Enemies ───────────────────────────────────────────────
         dungeon.enemies.forEach(en => {
           if (!en.alive) return;
-          const ex = en.x + offX;
-          const ey = en.y + offY;
-          const stats = en.stats;
+          const ex = en.x + offX, ey = en.y + offY;
+          const sz  = en.stats.size;
+          const col = en.hitFlash > 0 ? "#ffffff" : en.stats.color;
 
           ctx.fillStyle = "rgba(0,0,0,0.3)";
           ctx.beginPath();
-          ctx.ellipse(ex, ey + stats.size - 2, stats.size - 1, 3, 0, 0, Math.PI * 2);
+          ctx.ellipse(ex, ey + sz - 2, sz - 1, 3, 0, 0, Math.PI * 2);
           ctx.fill();
 
-          if (en.type === "small_slime") {
-            const wobble = Math.sin(time * 3 + en.id) * 1.5;
-            ctx.fillStyle = en.hitFlash > 0 ? "#ffffff" : stats.color;
+          if (en.type === "small_slime" || en.type === "lava_slime") {
+            const w = Math.sin(time * 3 + en.id) * 1.5;
+            ctx.fillStyle = col;
             ctx.beginPath();
-            ctx.ellipse(ex, ey, stats.size + wobble, stats.size - wobble * 0.5, 0, 0, Math.PI * 2);
+            ctx.ellipse(ex, ey, sz + w, sz - w * 0.5, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = "#fff";
-            ctx.fillRect(ex - 4, ey - 3, 3, 3);
-            ctx.fillRect(ex + 2, ey - 3, 3, 3);
+            ctx.fillStyle = en.type === "lava_slime" ? "#ffc060" : "#fff";
+            ctx.fillRect(ex - 4, ey - 3, 3, 3); ctx.fillRect(ex + 2, ey - 3, 3, 3);
             ctx.fillStyle = "#222";
-            ctx.fillRect(ex - 3, ey - 2, 2, 2);
-            ctx.fillRect(ex + 3, ey - 2, 2, 2);
+            ctx.fillRect(ex - 3, ey - 2, 2, 2); ctx.fillRect(ex + 3, ey - 2, 2, 2);
+
+          } else if (en.type === "cave_bat" || en.type === "lava_bat") {
+            ctx.fillStyle = col;
+            ctx.beginPath(); ctx.ellipse(ex, ey, sz - 1, sz - 2, 0, 0, Math.PI * 2); ctx.fill();
+            const flap = Math.sin(time * 8 + en.id) * 0.4;
+            ctx.save(); ctx.translate(ex, ey);
+            ctx.beginPath();
+            ctx.moveTo(0, 0); ctx.quadraticCurveTo(-sz*2, -sz*flap, -sz*2.5, sz); ctx.quadraticCurveTo(-sz, sz*0.5, 0, 0); ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(0, 0); ctx.quadraticCurveTo(sz*2, -sz*flap, sz*2.5, sz); ctx.quadraticCurveTo(sz, sz*0.5, 0, 0); ctx.fill();
+            ctx.fillStyle = shade(en.stats.color, 40);
+            ctx.fillRect(-2, -sz - 4, 3, 5); ctx.fillRect(sz - 2, -sz - 4, 3, 5);
+            ctx.restore();
+
+          } else if (en.type === "goblin") {
+            ctx.fillStyle = col;
+            ctx.fillRect(ex - sz + 2, ey - 2, sz*2 - 4, sz);
+            ctx.beginPath(); ctx.ellipse(ex, ey - sz + 1, sz - 2, sz - 2, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "#ff0";
+            ctx.fillRect(ex - 4, ey - sz + 1, 3, 3); ctx.fillRect(ex + 2, ey - sz + 1, 3, 3);
+            ctx.fillStyle = "#222";
+            ctx.fillRect(ex - 3, ey - sz + 2, 2, 2); ctx.fillRect(ex + 3, ey - sz + 2, 2, 2);
+            ctx.fillStyle = "#888";
+            ctx.fillRect(ex + sz - 2, ey - sz, 2, sz + 2);
+
+          } else if (en.type === "mine_crawler") {
+            ctx.fillStyle = col;
+            ctx.beginPath(); ctx.ellipse(ex, ey, sz - 1, sz - 3, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+            for (let lg = 0; lg < 4; lg++) {
+              const ang = (lg / 4) * Math.PI;
+              const wv  = Math.sin(time * 5 + en.id + lg) * 3;
+              ctx.beginPath();
+              ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(ang)*sz*2, ey + Math.sin(ang)*sz + wv);
+              ctx.moveTo(ex, ey); ctx.lineTo(ex - Math.cos(ang)*sz*2, ey + Math.sin(ang)*sz + wv);
+              ctx.stroke();
+            }
+            ctx.fillStyle = "#f00";
+            ctx.fillRect(ex - 3, ey - 2, 2, 2); ctx.fillRect(ex + 2, ey - 2, 2, 2);
+
+          } else if (en.type === "stone_golem" || en.type === "crystal_golem" || en.type === "lava_golem") {
+            ctx.fillStyle = col;
+            ctx.fillRect(ex - sz + 2, ey - sz + 4, sz*2 - 4, sz + 4);
+            ctx.fillRect(ex - sz + 4, ey - sz*2 + 2, sz*2 - 8, sz);
+            ctx.fillRect(ex - sz - 2, ey - sz + 6, sz - 2, sz - 4);
+            ctx.fillRect(ex + 4,      ey - sz + 6, sz - 2, sz - 4);
+            const eyeCol = en.type === "crystal_golem" ? "#80e8ff" : en.type === "lava_golem" ? "#ff7030" : "#555";
+            ctx.fillStyle = eyeCol;
+            ctx.fillRect(ex - sz + 7, ey - sz*2 + 5, 4, 4);
+            ctx.fillRect(ex + sz - 9, ey - sz*2 + 5, 4, 4);
+
+          } else if (en.type === "crystal_spider") {
+            const cp = 0.7 + 0.3 * Math.sin(time * 4 + en.id);
+            ctx.fillStyle = `rgba(60,200,255,${cp})`;
+            ctx.beginPath(); ctx.ellipse(ex, ey, sz - 1, sz - 3, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = `rgba(180,240,255,${cp})`; ctx.lineWidth = 1;
+            for (let lg = 0; lg < 4; lg++) {
+              const ang = (lg / 4) * Math.PI;
+              const wv  = Math.sin(time * 7 + en.id + lg) * 3;
+              ctx.beginPath();
+              ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(ang)*sz*2.2, ey + Math.sin(ang)*sz + wv);
+              ctx.moveTo(ex, ey); ctx.lineTo(ex - Math.cos(ang)*sz*2.2, ey + Math.sin(ang)*sz + wv);
+              ctx.stroke();
+            }
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(ex - 3, ey - 2, 2, 2); ctx.fillRect(ex + 2, ey - 2, 2, 2);
+
           } else {
-            ctx.fillStyle = en.hitFlash > 0 ? "#ffffff" : stats.color;
-            ctx.fillRect(ex - stats.size, ey - stats.size + 2, stats.size * 2, stats.size);
-            ctx.fillRect(ex - stats.size + 2, ey - stats.size - 2, stats.size - 2, stats.size);
-            ctx.fillRect(ex - stats.size + 4, ey - stats.size - 5, 4, 4);
+            // sewer_rat + generic fallback
+            ctx.fillStyle = col;
+            ctx.fillRect(ex - sz, ey - sz + 2, sz*2, sz);
+            ctx.fillRect(ex - sz + 2, ey - sz - 2, sz - 2, sz);
+            ctx.fillRect(ex - sz + 4, ey - sz - 5, 4, 4);
             ctx.fillStyle = "#ff4444";
-            ctx.fillRect(ex - stats.size + 4, ey - stats.size, 2, 2);
-            ctx.strokeStyle = en.hitFlash > 0 ? "#ffffff" : shade(stats.color, -32);
+            ctx.fillRect(ex - sz + 4, ey - sz, 2, 2);
+            ctx.strokeStyle = en.hitFlash > 0 ? "#fff" : shade(en.stats.color, -32);
             ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.moveTo(ex + stats.size, ey);
-            ctx.quadraticCurveTo(ex + stats.size + 6, ey - 4, ex + stats.size + 4, ey - 8);
+            ctx.moveTo(ex + sz, ey);
+            ctx.quadraticCurveTo(ex + sz + 6, ey - 4, ex + sz + 4, ey - 8);
             ctx.stroke();
           }
 
-          const barW = 24;
-          const barH = 3;
-          const bx = ex - barW / 2;
-          const by = ey - stats.size - 10;
-          ctx.fillStyle = "#400";
-          ctx.fillRect(bx, by, barW, barH);
+          // HP bar
+          const bx = ex - 12, by = ey - sz - 10;
+          ctx.fillStyle = "#400"; ctx.fillRect(bx, by, 24, 3);
           ctx.fillStyle = en.hp / en.maxHp > 0.5 ? "#4c4" : en.hp / en.maxHp > 0.25 ? "#cc4" : "#c44";
-          ctx.fillRect(bx, by, barW * (en.hp / en.maxHp), barH);
+          ctx.fillRect(bx, by, 24 * (en.hp / en.maxHp), 3);
         });
 
-        const prevX = player.x;
-        const prevY = player.y;
-        player.x += offX;
-        player.y += offY;
+        // ── Player ────────────────────────────────────────────────
+        const prevX = player.x, prevY = player.y;
+        player.x += offX; player.y += offY;
         drawPlayerSprite(time, player);
-        player.x = prevX;
-        player.y = prevY;
+        player.x = prevX; player.y = prevY;
 
+        // ── Damage numbers ────────────────────────────────────────
         dungeon.dmgNumbers.forEach(d => {
-          const alpha = 1 - d.age / 1.2;
-          ctx.globalAlpha = alpha;
+          ctx.globalAlpha = 1 - d.age / 1.2;
           ctx.fillStyle = d.color;
-          ctx.font = "bold 14px Arial";
-          ctx.textAlign = "center";
+          ctx.font = "bold 14px Arial"; ctx.textAlign = "center";
           ctx.fillText(d.val, d.x + offX, d.y + offY - d.age * 20);
           ctx.globalAlpha = 1;
         });
 
-        ctx.fillStyle = "rgba(0,0,0,0.55)";
-        ctx.fillRect(8, 8, 174, 40);
-        ctx.fillStyle = "#c22";
-        ctx.fillRect(12, 14, 100, 10);
-        ctx.fillStyle = "#e55";
-        ctx.fillRect(12, 14, 100 * (player.hp / player.maxHp), 10);
-        ctx.fillStyle = "#fff";
-        ctx.font = "11px Arial";
-        ctx.textAlign = "left";
+        // ── HUD ───────────────────────────────────────────────────
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(8, 8, 210, 44);
+        ctx.fillStyle = "#c22"; ctx.fillRect(12, 14, 120, 10);
+        ctx.fillStyle = "#e55"; ctx.fillRect(12, 14, 120 * (player.hp / player.maxHp), 10);
+        ctx.fillStyle = "#fff"; ctx.font = "11px Arial"; ctx.textAlign = "left";
         ctx.fillText(`HP ${player.hp} / ${player.maxHp}`, 12, 36);
         ctx.fillStyle = "#ffd700";
-        ctx.fillText(`⬡ ${getCarriedGold()}`, 90, 36);
-        ctx.fillStyle = "#aaa";
-        ctx.textAlign = "right";
-        ctx.fillText(`Floor ${dungeon.floor}`, canvas.width - 12, 26);
+        ctx.fillText(`⬡ ${getCarriedGold()}`, 110, 36);
+
+        // Floor + tier label (top right)
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        const flLabel = `Floor ${dungeon.floor} — ${_tierLabel}`;
+        const flW = ctx.measureText(flLabel).width + 16;
+        ctx.fillRect(canvas.width - flW - 4, 8, flW + 4, 30);
+        ctx.fillStyle = TC.wAcc;
+        ctx.font = "bold 11px Arial"; ctx.textAlign = "right";
+        ctx.fillText(flLabel, canvas.width - 8, 27);
 
         if (player.attackCooldown <= 0) {
           ctx.fillStyle = "rgba(0,0,0,0.5)";
-          ctx.fillRect(canvas.width / 2 - 110, canvas.height - 36, 220, 24);
-          ctx.fillStyle = "#ccc";
-          ctx.font = "12px Arial";
-          ctx.textAlign = "center";
-          ctx.fillText("Z / Space — Attack   E — Interact", canvas.width / 2, canvas.height - 20);
+          ctx.fillRect(canvas.width/2 - 110, canvas.height - 36, 220, 24);
+          ctx.fillStyle = "#ccc"; ctx.font = "12px Arial"; ctx.textAlign = "center";
+          ctx.fillText("Z / Space — Attack   E — Interact", canvas.width/2, canvas.height - 20);
         }
 
         const sp = dungeon.data.stairsPos;
         const stairPx = sp.x * DTILE_SIZE + offX + DTILE_SIZE / 2;
         const stairPy = sp.y * DTILE_SIZE + offY;
         if (dungeon.stairsUnlocked) {
-          ctx.fillStyle = "#8a6ad0";
-          ctx.font = "bold 11px Arial";
-          ctx.textAlign = "center";
-          ctx.fillText("E — Descend", stairPx, stairPy - 8);
+          ctx.fillStyle = "#8a6ad0"; ctx.font = "bold 11px Arial"; ctx.textAlign = "center";
+          ctx.fillText(dungeon.floor < 25 ? "E — Descend" : "🏆 MAX DEPTH!", stairPx, stairPy - 8);
         } else {
           const remaining = dungeon.enemies.filter(e => e.alive).length;
           if (remaining > 0) {
-            ctx.fillStyle = "#cc8844";
-            ctx.font = "11px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText(`${remaining} enemy${remaining > 1 ? "s" : ""} remain`, canvas.width / 2, canvas.height / 2 - 60);
+            ctx.fillStyle = TC.wAcc; ctx.font = "11px Arial"; ctx.textAlign = "center";
+            ctx.fillText(`${remaining} enem${remaining > 1 ? "ies" : "y"} remain`, canvas.width/2, canvas.height/2 - 60);
           }
         }
 
-        // Up-stairs hint (Backspace near spawn/up-stairs pos)
         if (dungeon.data) {
           const upP = dungeon.data.upStairsPos || dungeon.data.playerSpawn;
           const upPx = upP.x * DTILE_SIZE + offX + DTILE_SIZE / 2;
           const upPy = upP.y * DTILE_SIZE + offY;
-          const distUp = Math.hypot(player.x - (upP.x * DTILE_SIZE + DTILE_SIZE / 2), player.y - (upP.y * DTILE_SIZE + DTILE_SIZE / 2));
+          const distUp = Math.hypot(player.x - (upP.x * DTILE_SIZE + DTILE_SIZE/2), player.y - (upP.y * DTILE_SIZE + DTILE_SIZE/2));
           if (distUp < 48) {
-            ctx.fillStyle = "#88aacc";
-            ctx.font = "bold 11px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText(dungeon.floor > 1 ? "Bksp — Go up" : "Bksp — Exit sewer", upPx, upPy - 8);
+            ctx.fillStyle = "#88aacc"; ctx.font = "bold 11px Arial"; ctx.textAlign = "center";
+            ctx.fillText(dungeon.floor > 1 ? "Bksp — Go up" : "Bksp — Exit mines", upPx, upPy - 8);
           }
         }
 
@@ -3693,6 +4094,13 @@
           return;
         }
 
+        // Check Moonlight Cinemas door (tile 7,34 → player at y:35)
+        const _theaterDoorX = 7 * 32 + 16, _theaterDoorY = 35 * 32 + 16;
+        if (Math.hypot(player.x - _theaterDoorX, player.y - _theaterDoorY) < 52 && justPressedKeys.interact) {
+          enterTheater();
+          return;
+        }
+
         const _schoolDoorX = 35 * 32 + 16, _schoolDoorY = 49 * 32 + 16;
         if (Math.hypot(player.x - _schoolDoorX, player.y - _schoolDoorY) < 52 && justPressedKeys.interact) {
           enterSchool();
@@ -3994,6 +4402,35 @@
 
         if (game.inSchool) {
           if (justPressedKeys.interact) { exitHouse(); return; }
+          return;
+        }
+
+        if (game.inTheater) {
+          if (game.theater.movieMenu) {
+            if (justPressedKeys.up)   game.theater.selected = (game.theater.selected - 1 + MOVIES.length) % MOVIES.length;
+            if (justPressedKeys.down) game.theater.selected = (game.theater.selected + 1) % MOVIES.length;
+            if (justPressedKeys.pause || justPressedKeys.back) { game.theater.movieMenu = false; return; }
+            if (justPressedKeys.interact || justPressedKeys.confirm) {
+              const mv = MOVIES[game.theater.selected];
+              if (getCarriedGold() < mv.price) {
+                showNotice(`Need ${mv.price}g for a ticket!`, 1.5);
+              } else {
+                setCarriedGold(getCarriedGold() - mv.price);
+                const msg = mv.fn(player);
+                writeSave(game.save);
+                showNotice(`🎬 ${msg}`, 3);
+              }
+              game.theater.movieMenu = false;
+            }
+            return;
+          }
+          const W = canvas.width, H = canvas.height;
+          const scrCY = (Math.floor((H - 8 * 36) / 2)) + 36 * 3;
+          const distToScreen = Math.hypot(player.x - W / 2, player.y - scrCY);
+          if (justPressedKeys.interact && distToScreen < 36 * 2.5) {
+            game.theater.movieMenu = true; game.theater.selected = 0; return;
+          }
+          if (justPressedKeys.interact || justPressedKeys.back) { exitHouse(); return; }
           return;
         }
 
@@ -4907,11 +5344,195 @@
         }
       }
 
+      function drawTheaterInterior(time) {
+        const W = canvas.width, H = canvas.height;
+        const ts = 36;
+        const roomW = 11, roomH = 8;
+        const ox = Math.floor((W - roomW * ts) / 2);
+        const oy = Math.floor((H - roomH * ts) / 2);
+
+        // Dark background — cinema atmosphere
+        ctx.fillStyle = "#0a0608";
+        ctx.fillRect(0, 0, W, H);
+
+        // Floor — dark red carpet
+        for (let ty = 1; ty < roomH - 1; ty++) {
+          for (let tx = 1; tx < roomW - 1; tx++) {
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? "#4a1018" : "#3a0c12";
+            ctx.fillRect(ox + tx * ts, oy + ty * ts, ts, ts);
+            // Carpet pattern dots
+            ctx.fillStyle = "rgba(200,50,80,0.15)";
+            ctx.fillRect(ox + tx * ts + 8, oy + ty * ts + 8, 4, 4);
+            ctx.fillRect(ox + tx * ts + 22, oy + ty * ts + 22, 4, 4);
+          }
+        }
+
+        // Walls
+        for (let tx = 0; tx < roomW; tx++) {
+          ctx.fillStyle = "#180810"; ctx.fillRect(ox + tx * ts, oy, ts, ts);
+          ctx.fillStyle = "#180810"; ctx.fillRect(ox + tx * ts, oy + (roomH-1)*ts, ts, ts);
+        }
+        for (let ty = 0; ty < roomH; ty++) {
+          ctx.fillStyle = "#180810"; ctx.fillRect(ox, oy + ty * ts, ts, ts);
+          ctx.fillStyle = "#180810"; ctx.fillRect(ox + (roomW-1)*ts, oy + ty * ts, ts, ts);
+        }
+
+        // Curtains on left and right walls (red drapes)
+        const curtainPulse = 0.9 + 0.1 * Math.sin(time * 0.5);
+        ctx.fillStyle = `rgba(160,20,30,${curtainPulse})`;
+        ctx.fillRect(ox + ts, oy + ts, ts - 4, (roomH - 2) * ts);
+        ctx.fillRect(ox + (roomW-2) * ts + 4, oy + ts, ts - 4, (roomH - 2) * ts);
+        // Curtain fold lines
+        ctx.fillStyle = "rgba(0,0,0,0.3)";
+        for (let fold = 0; fold < 5; fold++) {
+          ctx.fillRect(ox + ts + fold * 7, oy + ts, 2, (roomH - 2) * ts);
+          ctx.fillRect(ox + (roomW-2)*ts + 4 + fold * 7, oy + ts, 2, (roomH - 2) * ts);
+        }
+
+        // ── Movie screen ─────────────────────────────────────────
+        const scrX = ox + 2 * ts, scrY = oy + ts + 4;
+        const scrW = (roomW - 4) * ts, scrH = ts * 3 - 8;
+        // Screen glow
+        const scrGlow = 0.7 + 0.3 * Math.sin(time * 0.8);
+        ctx.fillStyle = `rgba(100,120,200,${scrGlow * 0.15})`;
+        ctx.fillRect(scrX - 8, scrY - 8, scrW + 16, scrH + 16);
+        // Screen border
+        ctx.fillStyle = "#1a1a1a";
+        ctx.fillRect(scrX - 4, scrY - 4, scrW + 8, scrH + 8);
+        // Screen surface (animated movie)
+        const mx = scrX, my = scrY;
+        // Sky
+        ctx.fillStyle = "#1a2a5a";
+        ctx.fillRect(mx, my, scrW, scrH);
+        // Ground
+        ctx.fillStyle = "#2a4a1a";
+        ctx.fillRect(mx, my + scrH * 0.6, scrW, scrH * 0.4);
+        // Animated scene elements (simple shapes that move)
+        const sceneT = (time * 0.3) % 1;
+        // Hero silhouette
+        ctx.fillStyle = "#000";
+        ctx.fillRect(mx + scrW * 0.3 + sceneT * scrW * 0.4, my + scrH * 0.35, 12, 28);
+        // Stars
+        for (let s = 0; s < 8; s++) {
+          const st = (s * 0.137 + time * 0.5) % 1;
+          ctx.fillStyle = `rgba(255,255,200,${0.5 + 0.5 * Math.sin(time * 2 + s)})`;
+          ctx.fillRect(mx + (s * 47 + 10) % scrW, my + (s * 31 + 5) % (scrH * 0.55), 2, 2);
+        }
+        // "NOW SHOWING" text on screen
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.font = "bold 10px Trebuchet MS, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("🎬 NOW SHOWING", mx + scrW / 2, my + scrH - 8);
+        ctx.textAlign = "left";
+
+        // ── Seat rows ─────────────────────────────────────────────
+        for (let row = 0; row < 3; row++) {
+          const rowY = oy + ts * 4 + row * (ts - 2);
+          const seatColor = row === 0 ? "#8a1a2a" : "#6a1020";
+          for (let col = 1; col < roomW - 1; col++) {
+            if (col === 5) continue; // center aisle
+            const seatX = ox + col * ts + 4;
+            // Seat back
+            ctx.fillStyle = seatColor;
+            ctx.fillRect(seatX, rowY, ts - 8, ts - 10);
+            ctx.fillStyle = shade(seatColor, 20);
+            ctx.fillRect(seatX, rowY, ts - 8, 5);
+            // Seat base
+            ctx.fillStyle = shade(seatColor, -10);
+            ctx.fillRect(seatX, rowY + ts - 14, ts - 8, 8);
+            // Armrests
+            ctx.fillStyle = "#3a3a3a";
+            ctx.fillRect(seatX - 1, rowY, 3, ts - 6);
+            ctx.fillRect(seatX + ts - 10, rowY, 3, ts - 6);
+          }
+        }
+
+        // ── Popcorn stand near entrance ───────────────────────────
+        ctx.fillStyle = "#e84020";
+        ctx.fillRect(ox + ts * 9 + 4, oy + ts * 6 + 2, ts - 8, ts - 8);
+        ctx.fillStyle = "#fff8d0";
+        ctx.fillRect(ox + ts * 9 + 6, oy + ts * 6 + 4, ts - 12, ts - 12);
+        // Popcorn dots
+        for (let pp = 0; pp < 8; pp++) {
+          ctx.fillStyle = ["#ffe040","#fff8c0","#f0c050","#fff0a0"][pp % 4];
+          ctx.fillRect(ox + ts * 9 + 6 + (pp % 4) * 6, oy + ts * 6 + 4 + Math.floor(pp / 4) * 6, 4, 4);
+        }
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 7px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("POPCORN", ox + ts * 9 + ts/2, oy + ts * 6 - 2);
+        ctx.textAlign = "left";
+
+        // Screen glow illuminates floor
+        ctx.fillStyle = `rgba(80,100,180,${0.08 + 0.04 * scrGlow})`;
+        ctx.fillRect(ox + ts, oy + ts * 4, (roomW - 2) * ts, ts * 3);
+
+        // ── Player ────────────────────────────────────────────────
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        drawPlayerSprite(time, { ...player, x: 0, y: 0 });
+        ctx.restore();
+
+        // ── Movie selection menu ──────────────────────────────────
+        const distToScreen = Math.hypot(player.x - (W / 2), player.y - (oy + ts * 3 + ts / 2));
+        if (!game.theater.movieMenu) {
+          if (distToScreen < ts * 2.5) {
+            ctx.fillStyle = "rgba(0,0,0,0.7)";
+            ctx.fillRect(W / 2 - 120, H - 42, 240, 24);
+            ctx.fillStyle = "#f0e8c0";
+            ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("Press E to choose a movie", W / 2, H - 25);
+            ctx.textAlign = "left";
+          }
+        } else {
+          // Movie menu overlay
+          const mw = 360, mh = 220;
+          const mx2 = Math.floor((W - mw) / 2), my2 = Math.floor((H - mh) / 2);
+          ctx.fillStyle = "rgba(10,5,15,0.95)";
+          roundRect(ctx, mx2, my2, mw, mh, 10); ctx.fill();
+          ctx.strokeStyle = "#c82050"; ctx.lineWidth = 2;
+          roundRect(ctx, mx2, my2, mw, mh, 10); ctx.stroke();
+          ctx.fillStyle = "#f0d0d8";
+          ctx.font = "bold 16px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("🎬 Moonlight Cinemas", W / 2, my2 + 28);
+          ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+          ctx.fillStyle = "#a09098";
+          ctx.fillText("↑↓ choose  •  E to watch  •  Esc to cancel", W / 2, my2 + 46);
+          ctx.textAlign = "left";
+          for (let i = 0; i < MOVIES.length; i++) {
+            const mv = MOVIES[i];
+            const sel = game.theater.selected === i;
+            const iy = my2 + 64 + i * 52;
+            ctx.fillStyle = sel ? "rgba(200,30,60,0.25)" : "rgba(255,255,255,0.05)";
+            ctx.fillRect(mx2 + 12, iy, mw - 24, 46);
+            if (sel) { ctx.strokeStyle = "#c82050"; ctx.lineWidth = 1; ctx.strokeRect(mx2 + 12, iy, mw - 24, 46); }
+            ctx.fillStyle = sel ? "#ffe0e8" : "#d0b8c0";
+            ctx.font = `bold 14px Trebuchet MS, Arial, sans-serif`;
+            ctx.fillText(`${mv.emoji} ${mv.title}`, mx2 + 22, iy + 18);
+            ctx.fillStyle = "#a09098";
+            ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+            ctx.fillText(`${mv.desc}  ·  ${mv.price}⬡`, mx2 + 22, iy + 36);
+          }
+        }
+
+        // Exit hint
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(W / 2 - 80, H - 20, 160, 18);
+        ctx.fillStyle = "#907080";
+        ctx.font = "10px Trebuchet MS, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Backspace / Back to exit", W / 2, H - 7);
+        ctx.textAlign = "left";
+      }
+
       function drawHouseInterior(time) {
         if (game.inPrestigeStore) { drawPrestigeStoreInterior(time); return; }
         if (game.inMansion) { drawMansionInterior(time); return; }
         if (game.inCandyStore) { drawCandyStoreInterior(time); return; }
         if (game.inSchool) { drawSchoolInterior(time); return; }
+        if (game.inTheater) { drawTheaterInterior(time); return; }
         const w = canvas.width, h = canvas.height;
         const ts = 36; // interior tile size (slightly larger for cozy feel)
         const roomW = 11, roomH = 8;
