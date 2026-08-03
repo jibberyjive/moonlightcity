@@ -2093,41 +2093,28 @@
       }
 
       function updateHouseInterior(dt) {
-        if (justPressedKeys.pause) { exitHouse(); return; }
-
         const ts = 36, roomW = 11, roomH = 8, r = player.radius;
 
-        // Movement — same controls as city
-        let inputX = 0, inputY = 0;
-        if (keys.left)  inputX -= 1;
-        if (keys.right) inputX += 1;
-        if (keys.up)    inputY -= 1;
-        if (keys.down)  inputY += 1;
+        // Faster indoor movement — direct pixel/s, no acceleration
+        const spd = 140;
+        let dx = 0, dy = 0;
+        if (keys.left)  dx -= spd * dt;
+        if (keys.right) dx += spd * dt;
+        if (keys.up)    dy -= spd * dt;
+        if (keys.down)  dy += spd * dt;
 
-        const step = player.accel * dt;
-        player.vx += clamp(inputX * player.speed - player.vx, -step, step);
-        player.vy += clamp(inputY * player.speed - player.vy, -step, step);
-        if (!inputX) player.vx *= 0.75;
-        if (!inputY) player.vy *= 0.75;
-        if (Math.abs(player.vx) < 0.5) player.vx = 0;
-        if (Math.abs(player.vy) < 0.5) player.vy = 0;
-
-        if (Math.hypot(player.vx, player.vy) > 4) {
+        if (dx !== 0 || dy !== 0) {
+          player.x = clamp(player.x + dx, ts + r, (roomW - 1) * ts - r);
+          player.y = clamp(player.y + dy, ts + r, (roomH - 1) * ts - r);
           player.walkTime += dt * 9;
-          if (Math.abs(player.vx) >= Math.abs(player.vy))
-            player.dir = player.vx > 0 ? "right" : "left";
+          if (Math.abs(dx) >= Math.abs(dy))
+            player.dir = dx > 0 ? "right" : "left";
           else
-            player.dir = player.vy > 0 ? "down" : "up";
+            player.dir = dy > 0 ? "down" : "up";
         }
 
-        // Room bounds
-        player.x = clamp(player.x + player.vx * dt, ts + r, (roomW - 1) * ts - r);
-        player.y = clamp(player.y + player.vy * dt, ts + r, (roomH - 1) * ts - r);
-
-        // Walk out the door (bottom centre)
-        if (player.y >= (roomH - 1) * ts - r - 2 && Math.abs(player.x - (5 * ts + ts / 2)) < ts) {
-          exitHouse();
-        }
+        // Exit only via Esc or E (no accidental walk-out)
+        if (justPressedKeys.pause || justPressedKeys.interact) exitHouse();
       }
 
       function drawHouseInterior(time) {
@@ -2282,11 +2269,11 @@
 
         // ── Interaction hints ─────────────────────────────
         ctx.fillStyle = "rgba(0,0,0,0.5)";
-        ctx.fillRect(w / 2 - 120, h - 40, 240, 24);
+        ctx.fillRect(w / 2 - 140, h - 40, 280, 24);
         ctx.fillStyle = "#aaa";
         ctx.font = "12px Arial";
         ctx.textAlign = "center";
-        ctx.fillText("Esc — Leave home", w / 2, h - 22);
+        ctx.fillText("Arrow keys / WASD — Move     E or Esc — Leave home", w / 2, h - 22);
 
         ctx.textAlign = "left";
         drawFade();
