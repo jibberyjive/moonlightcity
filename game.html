@@ -63,8 +63,8 @@
 
       // City tile types
       const TILE_SIZE = 32;
-      const MAP_W = 64;
-      const MAP_H = 64;
+      const MAP_W = 96;
+      const MAP_H = 96;
       const WORLD_W = MAP_W * TILE_SIZE;
       const WORLD_H = MAP_H * TILE_SIZE;
 
@@ -2158,102 +2158,137 @@
       function drawPlayer(time) { drawPlayerSprite(time, player); }
 
       function drawToddlerSprite(time, npc) {
-        const skin  = npc.skin,  hair = npc.hair;
-        const skinS = shade(skin, -15), hairD = shade(hair, -25);
-        const blush = shade(skin, 20);
-        const T = npc.torso, L = npc.legs, SH = "#3a2010";
+        const skin  = npc.skin, hair = npc.hair;
+        const skinS = shade(skin, -12);
+        const skinD = shade(skin, -22);
+        const blush = shade(skin, 18);
+        const T = npc.torso, L = npc.legs;
+        const SH = "#2a1808";
 
         const moving = Math.hypot(npc.vx, npc.vy) > 4;
-        // Toddlers waddle: wider, slower arm swing
-        const bob   = moving ? Math.sin(npc.walkTime * Math.PI) * 0.5 : Math.sin(time * 1.8 + (npc.homeX||0) * 0.01) * 0.3;
-        const frame = moving ? Math.floor(npc.walkTime) % 4 : 0;
-        const ls = [0, 2, 0, -2][frame] * 0.6;
-        const as = [0, -2,  0,  2][frame];  // arms swing wide
+        const bob   = moving ? Math.sin(npc.walkTime * Math.PI * 2) * 0.4 : Math.sin(time * 1.6 + (npc.homeX||0)*0.01) * 0.25;
+        const frame = moving ? Math.floor(npc.walkTime * 2) % 4 : 0;
+        // Toddler waddle — legs alternate, arms barely swing
+        const ls = [0, 1.5, 0, -1.5][frame];
+        const as = [0, -1, 0, 1][frame];
         const x = npc.x, y = npc.y + bob, d = npc.dir;
 
-        // Shadow (smaller)
-        ctx.fillStyle = "rgba(0,0,0,0.15)";
+        // Shadow
+        ctx.fillStyle = "rgba(0,0,0,0.14)";
         ctx.beginPath();
-        ctx.ellipse(x, y + 10, 6, 2.5, 0, 0, Math.PI * 2);
+        ctx.ellipse(x, y + 11, 7, 2.5, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Toddler is centred at (x-8, y-14) — 16×22 cell
-        const px = x - 8, py = y - 14;
+        // Cell origin: 16 wide, 24 tall — huge head takes rows 0-13
+        const px = x - 8, py = y - 17;
         function r(rx, ry, rw, rh, c) {
           ctx.fillStyle = c;
           ctx.fillRect(Math.round(px + rx), Math.round(py + ry), rw, rh);
         }
 
         if (d === "down") {
-          // Shoes
-          r(2-ls, 19, 5, 3, SH); r(9+ls, 19, 5, 3, SH);
-          // Legs (short & stubby)
-          r(3-ls, 14, 4, 6, L);  r(9+ls, 14, 4, 6, L);
-          // Arms (spread out wide — toddler style)
-          r(-1-as*0.4, 10, 3, 6, skin); r(14+as*0.4, 10, 3, 6, skin);
-          // Tummy (round, chubby torso)
-          r(2, 9, 12, 6, T);
-          // Neck
-          r(6, 7, 4, 3, skin);
-          // Big round head
-          r(1, 0, 14, 12, skin);
-          // Side shading
-          r(0, 2, 2, 7, skinS); r(14, 2, 2, 7, skinS);
-          // Chubby cheeks (stronger blush on toddlers)
-          r(2, 7, 4, 3, blush); r(10, 7, 4, 3, blush);
-          // Big eyes
-          r(4, 2, 4, 5, "#fff"); r(9, 2, 4, 5, "#fff");
-          r(5, 3, 3, 4, "#1a1a2e"); r(10, 3, 3, 4, "#1a1a2e");
-          r(5, 3, 1, 1, "#fff");    r(10, 3, 1, 1, "#fff");
-          // Tiny smile
-          r(6, 9, 4, 1, skinS);
-          // Little ear nubs
-          r(0, 4, 1, 3, skin); r(15, 4, 1, 3, skin);
+          // ── Shoes ──────────────────────────────────────────────
+          r(1-ls, 20, 6, 3, SH);  r(9+ls, 20, 6, 3, SH);
+          // ── Stubby legs ────────────────────────────────────────
+          r(2-ls, 16, 5, 5, L);   r(9+ls, 16, 5, 5, L);
+          // ── Tiny round torso ───────────────────────────────────
+          r(3, 13, 10, 4, T);
+          // ── Arm stubs (barely there) ───────────────────────────
+          r(0+as, 13, 3, 4, skin); r(13-as, 13, 3, 4, skin);
+          // ── Big round head (dominant feature) ──────────────────
+          r(1, 0, 14, 14, skin);
+          // rounded corners
+          r(0, 2, 1, 10, skin); r(15, 2, 1, 10, skin);
+          r(2, 13, 12, 1, skin);
+          // side shading
+          r(0, 3, 2, 8, skinD);  r(14, 3, 2, 8, skinD);
+          // ── Chubby cheeks ──────────────────────────────────────
+          r(2, 9, 4, 3, blush);  r(10, 9, 4, 3, blush);
+          // ── Big Stardew-style eyes ─────────────────────────────
+          // white sclera
+          r(3, 3, 4, 5, "#fff"); r(9, 3, 4, 5, "#fff");
+          // iris + pupil
+          r(4, 4, 3, 4, "#1a1a2e"); r(10, 4, 3, 4, "#1a1a2e");
+          // eye shine
+          r(4, 4, 1, 1, "#ffffff"); r(10, 4, 1, 1, "#ffffff");
+          // ── Tiny nose dot ──────────────────────────────────────
+          r(7, 9, 2, 1, skinS);
+          // ── Smile ──────────────────────────────────────────────
+          r(5, 11, 6, 1, skinS);
+          r(5, 11, 1, 2, skinS); r(10, 11, 1, 2, skinS);
+          // ── Ear nubs ───────────────────────────────────────────
+          r(0, 5, 1, 4, skin); r(15, 5, 1, 4, skin);
+
         } else if (d === "up") {
-          r(2-ls, 19, 5, 3, SH); r(9+ls, 19, 5, 3, SH);
-          r(3-ls, 14, 4, 6, shade(L,-10)); r(9+ls, 14, 4, 6, shade(L,-10));
-          r(-1+as*0.4, 10, 3, 6, shade(skin,-12)); r(14-as*0.4, 10, 3, 6, shade(skin,-12));
-          r(2, 9, 12, 6, shade(T,-15));
-          r(6, 7, 4, 3, shade(skin,-15));
-          r(1, 0, 14, 12, shade(skin,-12));
-          r(0, 2, 2, 7, shade(skin,-22)); r(14, 2, 2, 7, shade(skin,-22));
+          r(1-ls, 20, 6, 3, SH);  r(9+ls, 20, 6, 3, SH);
+          r(2-ls, 16, 5, 5, shade(L,-12)); r(9+ls, 16, 5, 5, shade(L,-12));
+          r(3, 13, 10, 4, shade(T,-15));
+          r(0-as, 13, 3, 4, skinD); r(13+as, 13, 3, 4, skinD);
+          r(1, 0, 14, 14, skinD);
+          r(0, 2, 1, 10, skinD); r(15, 2, 1, 10, skinD);
+          r(0, 3, 2, 8, shade(skin,-30)); r(14, 3, 2, 8, shade(skin,-30));
+
         } else if (d === "left") {
-          r(3-ls*0.5, 19, 5, 3, SH); r(8+ls*0.5, 19, 5, 3, SH);
-          r(4-ls*0.5, 14, 4, 6, L);  r(8+ls*0.5, 14, 4, 6, shade(L,-10));
-          r(0, 10+as*0.4, 3, 6, skin); r(13, 9-as*0.4, 3, 5, skinS);
-          r(2, 9, 12, 6, T); r(12, 9, 2, 6, shade(T,-15));
-          r(6, 7, 4, 3, skin); r(10, 7, 2, 3, skinS);
-          r(1, 0, 14, 12, skin); r(13, 0, 2, 12, skinS);
-          r(1, 2, 1, 6, skinS);
-          r(2, 7, 3, 3, blush);
-          r(4, 2, 4, 5, "#fff"); r(5, 3, 3, 4, "#1a1a2e"); r(5, 3, 1, 1, "#fff");
+          r(2, 20, 6, 3, SH);
+          r(2-ls*0.5, 16, 5, 5, L); r(7+ls*0.5, 16, 5, 5, shade(L,-10));
+          r(2, 13, 10, 4, T); r(11, 13, 2, 4, shade(T,-12));
+          r(0, 13+as*0.4, 3, 4, skin); r(13, 13, 2, 4, skinD);
+          // head
+          r(1, 0, 13, 14, skin); r(13, 1, 2, 12, skinD);
+          r(0, 2, 1, 10, skin); r(14, 2, 2, 10, skinD);
+          r(1, 13, 12, 1, skin);
+          r(0, 4, 2, 6, skinD);
+          // blush left side
+          r(2, 9, 3, 3, blush);
+          // single eye
+          r(3, 3, 4, 5, "#fff"); r(4, 4, 3, 4, "#1a1a2e"); r(4, 4, 1, 1, "#fff");
+          r(6, 9, 2, 1, skinS);
+          r(4, 11, 5, 1, skinS); r(4, 11, 1, 2, skinS); r(8, 11, 1, 2, skinS);
+
         } else { // right
-          r(4-ls*0.5, 19, 5, 3, SH); r(9+ls*0.5, 19, 5, 3, SH);
-          r(4-ls*0.5, 14, 4, 6, shade(L,-10)); r(9+ls*0.5, 14, 4, 6, L);
-          r(13, 10-as*0.4, 3, 6, skin); r(1, 9+as*0.4, 3, 5, skinS);
-          r(2, 9, 12, 6, T); r(2, 9, 2, 6, shade(T,-15));
-          r(6, 7, 4, 3, skin); r(6, 7, 2, 3, skinS);
-          r(1, 0, 14, 12, skin); r(1, 0, 2, 12, skinS);
-          r(15, 2, 1, 6, skinS);
-          r(11, 7, 3, 3, blush);
-          r(9, 2, 4, 5, "#fff"); r(9, 3, 3, 4, "#1a1a2e"); r(11, 3, 1, 1, "#fff");
+          r(8, 20, 6, 3, SH);
+          r(4-ls*0.5, 16, 5, 5, shade(L,-10)); r(9+ls*0.5, 16, 5, 5, L);
+          r(4, 13, 10, 4, T); r(4, 13, 2, 4, shade(T,-12));
+          r(13, 13+as*0.4, 3, 4, skin); r(1, 13, 2, 4, skinD);
+          // head
+          r(2, 0, 13, 14, skin); r(1, 1, 2, 12, skinD);
+          r(15, 2, 1, 10, skin); r(0, 2, 2, 10, skinD);
+          r(3, 13, 12, 1, skin);
+          r(14, 4, 2, 6, skinD);
+          // blush right side
+          r(11, 9, 3, 3, blush);
+          // single eye
+          r(9, 3, 4, 5, "#fff"); r(9, 4, 3, 4, "#1a1a2e"); r(11, 4, 1, 1, "#fff");
+          r(8, 9, 2, 1, skinS);
+          r(7, 11, 5, 1, skinS); r(7, 11, 1, 2, skinS); r(11, 11, 1, 2, skinS);
         }
 
-        // Hair (simplified for toddler — just a little tuft)
-        const h = hair, hd = hairD;
-        if (d !== "up") {
+        // ── Hair ───────────────────────────────────────────────────
+        // Stardew toddler hair: simple short cap covering top of head
+        const h = hair, hd = shade(hair, -20);
+        if (d === "down" || d === "left" || d === "right") {
           if (npc.hairStyle <= 1) {
-            r(2, 0, 12, 3, h); r(1, 1, 2, 2, h); r(13, 1, 2, 2, h);
+            // Short crop
+            r(2, 0, 12, 4, h); r(1, 1, 2, 3, h); r(13, 1, 2, 3, h);
+            r(2, 0, 12, 1, hd);
           } else if (npc.hairStyle === 2) {
-            r(1, 0, 14, 4, h); r(0, 1, 2, 3, h); r(14, 1, 2, 3, h);
+            // Pigtails
+            r(1, 0, 14, 4, h); r(0, 1, 1, 4, h); r(15, 1, 1, 4, h);
+            r(0, 4, 2, 3, h); r(14, 4, 2, 3, h); // little bunches
+          } else if (npc.hairStyle === 3) {
+            // Bowl cut
+            r(1, 0, 14, 5, h); r(0, 2, 1, 5, h); r(15, 2, 1, 5, h);
+            r(1, 0, 14, 1, hd);
           } else {
-            r(2, 0, 12, 5, h); r(6, 0, 4, 2, hd);
+            // Curly mop
+            r(1, 0, 14, 5, h); r(0, 1, 2, 4, h); r(14, 1, 2, 4, h);
+            r(4, 0, 3, 2, hd); r(9, 0, 3, 2, hd);
           }
         } else {
-          r(1, 0, 14, 4, shade(h, -12));
+          r(1, 0, 14, 4, shade(h,-15));
         }
 
-        // Name tag (only for named NPCs)
+        // ── Name tag ───────────────────────────────────────────────
         if (npc.name) {
           const dist = Math.hypot(npc.x - player.x, npc.y - player.y);
           if (dist < 80) {
@@ -2261,9 +2296,9 @@
             ctx.font = "9px Trebuchet MS, Arial, sans-serif";
             ctx.textAlign = "center";
             const tw = ctx.measureText(npc.name).width + 6;
-            ctx.fillRect(x - tw/2, y - 26, tw, 12);
+            ctx.fillRect(x - tw/2, y - 28, tw, 12);
             ctx.fillStyle = "#ffe8c0";
-            ctx.fillText(npc.name, x, y - 17);
+            ctx.fillText(npc.name, x, y - 19);
             ctx.textAlign = "left";
           }
         }
