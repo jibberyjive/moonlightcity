@@ -2880,8 +2880,9 @@
         const ls = [0,1.5,0,-1.5][frame];
         const x = npc.x, y = npc.y+bob, d = npc.dir||"down";
         // shadow
-        ctx.fillStyle="rgba(0,0,0,0.14)";
-        ctx.beginPath(); ctx.ellipse(x,y+12,6,2,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle="rgba(0,0,0,0.18)";
+        ctx.beginPath(); ctx.ellipse(x,y+16,10,3,0,0,Math.PI*2); ctx.fill();
+        ctx.save(); ctx.translate(x,y); ctx.scale(2,2); ctx.translate(-x,-y);
         const px=x-6, py=y-12;
         const r=(rx,ry,rw,rh,c)=>{ ctx.fillStyle=c; ctx.fillRect(Math.round(px+rx),Math.round(py+ry),rw,rh); };
         if(d==="down"){
@@ -2925,6 +2926,7 @@
         // hair puff
         if(d!=="up"){ r(-1,-3,14,5,hair); r(0,-3,12,3,hl); r(-1,0,2,4,hd); r(11,0,2,4,hd); }
         else { r(-1,-3,14,6,hair); r(0,-3,12,3,hl); }
+        ctx.restore();
       }
 
       function drawChildSprite(time, npc) {
@@ -2936,8 +2938,9 @@
         const frame=moving?Math.floor((npc.walkTime||0))%4:0;
         const ls=[0,2,0,-2][frame], as=[0,-1,0,1][frame];
         const x=npc.x, y=npc.y+bob, d=npc.dir||"down";
-        ctx.fillStyle="rgba(0,0,0,0.15)";
-        ctx.beginPath(); ctx.ellipse(x,y+14,7,2.5,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle="rgba(0,0,0,0.18)";
+        ctx.beginPath(); ctx.ellipse(x,y+18,12,3.5,0,0,Math.PI*2); ctx.fill();
+        ctx.save(); ctx.translate(x,y); ctx.scale(2,2); ctx.translate(-x,-y);
         const px=x-7, py=y-14;
         const r=(rx,ry,rw,rh,c)=>{ ctx.fillStyle=c; ctx.fillRect(Math.round(px+rx),Math.round(py+ry),rw,rh); };
         const TS=shade(T,-20), TL=shade(T,18);
@@ -3000,6 +3003,7 @@
           else { r(0,-4,15,8,hair); r(1,-4,13,4,hl); }
         }
         if(npc.ageType==="child" && d!=="up"){ r(5,15,4,2,"#c8d8f0"); r(6,16,2,1,"#f0e060"); }
+        ctx.restore();
       }
 
       function drawNpcSprite(time, npc) {
@@ -3018,8 +3022,9 @@
         const x=npc.x, y=npc.y+bob, d=npc.dir||"down";
 
         // shadow
-        ctx.fillStyle="rgba(0,0,0,0.15)";
-        ctx.beginPath(); ctx.ellipse(x,y+16,9,3,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle="rgba(0,0,0,0.18)";
+        ctx.beginPath(); ctx.ellipse(x,y+20,14,4,0,0,Math.PI*2); ctx.fill();
+        ctx.save(); ctx.translate(x,y); ctx.scale(2,2); ctx.translate(-x,-y);
 
         const px=x-8, py=y-16;
         const r=(rx,ry,rw,rh,c)=>{ ctx.fillStyle=c; ctx.fillRect(Math.round(px+rx),Math.round(py+ry),rw,rh); };
@@ -3146,7 +3151,8 @@
           r(rx,22,2,1,"#FFD700"); r(rx,22,1,1,"#FFE87C");
         }
 
-        // ── Name tag + hearts ─────────────────────────────────────────────────
+        ctx.restore();
+        // ── Name tag + hearts (at screen scale, not 2x) ───────────────────────
         const dist=Math.hypot((typeof player!=="undefined"?player.x:0)-npc.x,
                               (typeof player!=="undefined"?player.y:0)-npc.y);
         if(npc.name && dist<90){
