@@ -160,6 +160,29 @@
         { id: "trophy_case",     emoji: "🏆", name: "Trophy Case",         desc: "Display your dungeon victories",   price: 180 },
         { id: "mansion_deed",    emoji: "🏰", name: "Moonlight Mansion",   desc: "Buy the grand residential mansion!", price: 5000 },
       ];
+
+      // 6 purchasable residential houses — Sims 4-style colour schemes
+      const HOUSE_LISTINGS = [
+        { num: 1, name: "Willow Cottage",  price:  350, x1: 45, y1: 16, x2: 49, y2: 20,
+          roofColor: "#b04020", wallColor: "#f5e0b8", trimColor: "#c8702a", doorColor: "#7a3a10",
+          winColor:  "#b8dcff", doorTile: "47,20", doorFace: "south" },
+        { num: 2, name: "Blue Colonial",   price:  650, x1: 54, y1: 16, x2: 60, y2: 20,
+          roofColor: "#3a5a8a", wallColor: "#7090c8", trimColor: "#d0d8e8", doorColor: "#1a2a50",
+          winColor:  "#d8eeff", doorTile: "57,20", doorFace: "south" },
+        { num: 3, name: "Sage Bungalow",   price:  480, x1: 45, y1: 25, x2: 49, y2: 32,
+          roofColor: "#5a3a10", wallColor: "#8aaa78", trimColor: "#c8a060", doorColor: "#4a2a08",
+          winColor:  "#d0e8d0", doorTile: "47,25", doorFace: "north" },
+        { num: 4, name: "Rose Villa",      price: 1000, x1: 54, y1: 25, x2: 60, y2: 32,
+          roofColor: "#7a5a78", wallColor: "#e8a0b8", trimColor: "#f0d8e0", doorColor: "#5a2a48",
+          winColor:  "#ffe0ee", doorTile: "57,25", doorFace: "north" },
+        { num: 5, name: "Sunny Cottage",   price:  560, x1: 45, y1: 39, x2: 49, y2: 44,
+          roofColor: "#2a5a18", wallColor: "#f0da6a", trimColor: "#c8a020", doorColor: "#4a3808",
+          winColor:  "#fff8c0", doorTile: "47,39", doorFace: "north" },
+        { num: 6, name: "Modern Terrace",  price: 1200, x1: 54, y1: 39, x2: 60, y2: 44,
+          roofColor: "#303040", wallColor: "#b8a0d0", trimColor: "#e8e0f0", doorColor: "#201828",
+          winColor:  "#e8d8ff", doorTile: "57,39", doorFace: "north" },
+      ];
+
       // Named NPC definitions — position is their home wander centre
       const NPC_DATA = [
         { id: "ella",   name: "Ella",   homeX: 20*32+16, homeY: 22*32+16, skin: "#e8c49a", hair: "#b85c2a", torso: "#f5e6c8", legs: "#8b5e3c", hairStyle: 1,
@@ -398,6 +421,7 @@
           gold: { carried: 0, banked: 0 },
           inventory: [],
           houseUpgrades: [],
+          ownedHouses: [],
           dungeon: {
             currentFloor: 1,
             deepestFloorCleared: 0,
@@ -1914,106 +1938,191 @@
             ctx.fillRect(x + 1, y, 1, TILE_SIZE);
           }
         } else {
-          const roofColor = isMansion ? "#2a3a80" : isSchool ? "#6b2a1a" : COLORS.stone;
+          // Detect if this tile belongs to a purchasable house
+          let houseConfig = null;
+          for (const h of HOUSE_LISTINGS) {
+            if (tileX >= h.x1 && tileX <= h.x2 && tileY >= h.y1 && tileY <= h.y2) {
+              houseConfig = h; break;
+            }
+          }
+
+          // ── Roof colour ──────────────────────────────────────────
+          const roofColor = houseConfig ? houseConfig.roofColor
+                          : isMansion ? "#2a3a80"
+                          : isSchool  ? "#6b2a1a"
+                          : COLORS.stone;
           ctx.fillStyle = roofColor;
           ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
 
-        // Horizontal shingle lines
-        ctx.fillStyle = "rgba(0,0,0,0.22)";
-        for (let row = 1; row < 4; row++) {
-          ctx.fillRect(x, y + row * 8, TILE_SIZE, 1);
-        }
-        // Vertical stagger on shingles (alternating per row)
-        ctx.fillStyle = "rgba(0,0,0,0.13)";
-        const stg = ((tileX + tileY) % 2 === 0) ? 0 : 8;
-        for (let row = 0; row < 4; row++) {
-          ctx.fillRect(x + stg + row * 16,     y + row * 8, 1, 8);
-          ctx.fillRect(x + stg + row * 16 + 8, y + row * 8, 1, 8);
-        }
+          // Shingle texture — horizontal rows + staggered verticals
+          ctx.fillStyle = "rgba(0,0,0,0.20)";
+          for (let row = 1; row < 4; row++) ctx.fillRect(x, y + row * 8, TILE_SIZE, 1);
+          ctx.fillStyle = "rgba(0,0,0,0.12)";
+          const stg = ((tileX + tileY) % 2 === 0) ? 0 : 8;
+          for (let row = 0; row < 4; row++) {
+            ctx.fillRect(x + stg + row * 16,     y + row * 8, 1, 8);
+            ctx.fillRect(x + stg + row * 16 + 8, y + row * 8, 1, 8);
+          }
+          // Ridge highlight at top of each roof tile
+          ctx.fillStyle = "rgba(255,255,255,0.13)";
+          ctx.fillRect(x, y, TILE_SIZE, 2);
 
-        // South-edge wall face (where building meets the street)
-        const southTile = (tileY + 1 < MAP_H) ? map[tileY + 1][tileX] : -1;
-        const isEdge = southTile !== TILE.STONE;
-        if (isEdge) {
-          const wallColor = isMansion ? "#1a2a6c" : isSchool ? "#8b3a2a" : "#d2c49a";
-          const trimColor = isMansion ? "#d8b24c" : isSchool ? "#e8d080" : "#d2c49a";
-          const frameColor = isMansion ? "rgba(255,255,255,0.8)" : isSchool ? "rgba(90,40,20,0.75)" : "rgba(80,50,20,0.6)";
-          // Wall strip
-          ctx.fillStyle = wallColor;
-          ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 9);
-          // Dark line where roof overhangs wall
-          ctx.fillStyle = isMansion ? "rgba(5,10,40,0.45)" : isSchool ? "rgba(60,20,10,0.45)" : "rgba(0,0,0,0.35)";
-          ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 2);
-          // Trim band
-          ctx.fillStyle = trimColor;
-          ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 2);
-          if (isMansion) {
-            if ((tileX - MANSION.x1) % 3 === 0) {
-              ctx.fillStyle = "rgba(255,255,255,0.9)";
-              ctx.fillRect(x + 2, y + TILE_SIZE - 9, 3, 9);
-              ctx.fillRect(x + TILE_SIZE - 5, y + TILE_SIZE - 9, 3, 9);
-            }
-            if (tileX !== 58 || tileY !== 51) {
+          // ── South wall face ──────────────────────────────────────
+          const southTile = (tileY + 1 < MAP_H) ? map[tileY + 1][tileX] : -1;
+          const isEdge = southTile !== TILE.STONE;
+          if (isEdge) {
+            if (houseConfig) {
+              // ── Sims 4-style house wall ──────────────────────────
+              const wc = houseConfig.wallColor;
+              const tc = houseConfig.trimColor;
+              const wh = 11; // wall height in px
+              // Siding background
+              ctx.fillStyle = wc;
+              ctx.fillRect(x, y + TILE_SIZE - wh, TILE_SIZE, wh);
+              // Horizontal clapboard siding lines
+              ctx.fillStyle = "rgba(0,0,0,0.18)";
+              ctx.fillRect(x, y + TILE_SIZE - wh, TILE_SIZE, 1);   // roof shadow
+              ctx.fillStyle = "rgba(0,0,0,0.10)";
+              ctx.fillRect(x, y + TILE_SIZE - wh + 4, TILE_SIZE, 1);
+              ctx.fillRect(x, y + TILE_SIZE - wh + 7, TILE_SIZE, 1);
+              // Eave trim band
+              ctx.fillStyle = tc;
+              ctx.fillRect(x, y + TILE_SIZE - wh, TILE_SIZE, 2);
+              // Sims 4 windows: two per tile, rounded frames, glass + cross pane
+              const owned = game.save && game.save.ownedHouses && game.save.ownedHouses.includes(houseConfig.num);
+              const isPlayerHouse = game.save && game.save.player && game.save.player.houseNum === houseConfig.num;
+              const wX1 = x + 3, wX2 = x + TILE_SIZE - 11;
+              const wY  = y + TILE_SIZE - wh + 3, wW = 7, wH = 6;
+              ctx.fillStyle = houseConfig.winColor;
+              ctx.fillRect(wX1, wY, wW, wH);
+              ctx.fillRect(wX2, wY, wW, wH);
+              // Glass shine
+              ctx.fillStyle = "rgba(255,255,255,0.5)";
+              ctx.fillRect(wX1, wY, 2, 2);
+              ctx.fillRect(wX2, wY, 2, 2);
+              // Window frames
+              ctx.strokeStyle = tc;
+              ctx.lineWidth = 1;
+              ctx.strokeRect(wX1, wY, wW, wH);
+              ctx.strokeRect(wX2, wY, wW, wH);
+              // Cross pane divider
+              ctx.beginPath();
+              ctx.moveTo(wX1 + 3, wY); ctx.lineTo(wX1 + 3, wY + wH);
+              ctx.moveTo(wX1, wY + 3); ctx.lineTo(wX1 + wW, wY + 3);
+              ctx.moveTo(wX2 + 3, wY); ctx.lineTo(wX2 + 3, wY + wH);
+              ctx.moveTo(wX2, wY + 3); ctx.lineTo(wX2 + wW, wY + 3);
+              ctx.strokeStyle = "rgba(0,0,0,0.25)";
+              ctx.stroke();
+              // FOR SALE / owner name sign on door tile
+              const dt = houseConfig.doorTile;
+              const [dtx, dty] = dt.split(",").map(Number);
+              if (tileX === dtx && tileY === dty) {
+                if (!owned && !isPlayerHouse) {
+                  ctx.fillStyle = "rgba(255,248,210,0.92)";
+                  ctx.fillRect(x + 1, y + TILE_SIZE - wh - 8, TILE_SIZE - 2, 7);
+                  ctx.fillStyle = "#8b1a1a";
+                  ctx.font = "bold 5px Trebuchet MS, Arial, sans-serif";
+                  ctx.textAlign = "center";
+                  ctx.fillText(`FOR SALE  ${houseConfig.price}g`, x + TILE_SIZE / 2, y + TILE_SIZE - wh - 2);
+                  ctx.textAlign = "left";
+                } else if (isPlayerHouse) {
+                  ctx.fillStyle = "rgba(40,90,40,0.85)";
+                  ctx.fillRect(x + 1, y + TILE_SIZE - wh - 8, TILE_SIZE - 2, 7);
+                  ctx.fillStyle = "#c8f0a0";
+                  ctx.font = "bold 5px Trebuchet MS, Arial, sans-serif";
+                  ctx.textAlign = "center";
+                  ctx.fillText(`🏠 ${game.save.player.name}`, x + TILE_SIZE / 2, y + TILE_SIZE - wh - 2);
+                  ctx.textAlign = "left";
+                }
+              }
+            } else if (isMansion) {
+              // ── Mansion wall (unchanged logic, fixed coords) ─────
+              const wallColor = "#1a2a6c";
+              ctx.fillStyle = wallColor;
+              ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 9);
+              ctx.fillStyle = "rgba(5,10,40,0.45)";
+              ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 2);
+              ctx.fillStyle = "#d8b24c";
+              ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 2);
+              if ((tileX - MANSION.x1) % 3 === 0) {
+                ctx.fillStyle = "rgba(255,255,255,0.9)";
+                ctx.fillRect(x + 2, y + TILE_SIZE - 9, 3, 9);
+                ctx.fillRect(x + TILE_SIZE - 5, y + TILE_SIZE - 9, 3, 9);
+              }
+              // Windows on mansion
               ctx.fillStyle = "#fff0a0";
               ctx.fillRect(x + 6, y + TILE_SIZE - 8, 4, 6);
               ctx.fillRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 4, 6);
-              ctx.strokeStyle = frameColor;
+              ctx.strokeStyle = "rgba(255,255,255,0.8)";
               ctx.lineWidth = 1;
               ctx.strokeRect(x + 6, y + TILE_SIZE - 8, 4, 6);
               ctx.strokeRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 4, 6);
               ctx.beginPath();
-              ctx.moveTo(x + 8, y + TILE_SIZE - 8);
-              ctx.lineTo(x + 8, y + TILE_SIZE - 2);
-              ctx.moveTo(x + TILE_SIZE - 8, y + TILE_SIZE - 8);
-              ctx.lineTo(x + TILE_SIZE - 8, y + TILE_SIZE - 2);
+              ctx.moveTo(x + 8, y + TILE_SIZE - 8); ctx.lineTo(x + 8, y + TILE_SIZE - 2);
+              ctx.moveTo(x + TILE_SIZE - 8, y + TILE_SIZE - 8); ctx.lineTo(x + TILE_SIZE - 8, y + TILE_SIZE - 2);
               ctx.stroke();
-            }
-            if (tileX === 58 && tileY === 51) {
-              const mansionOwned = !!(game.save && game.save.houseUpgrades && game.save.houseUpgrades.includes("mansion_deed"));
-              ctx.fillStyle = "#f7dc7a";
-              ctx.font = "bold 7px Trebuchet MS, Arial, sans-serif";
-              ctx.textAlign = "center";
-              ctx.fillText("🏰 Moonlight Mansion", x + TILE_SIZE / 2, y + TILE_SIZE - 12);
-              if (!mansionOwned) {
-                ctx.fillStyle = "#f5f0dc";
-                ctx.fillRect(x - 1, y + TILE_SIZE - 22, TILE_SIZE + 2, 7);
-                ctx.fillStyle = "#8b1a1a";
-                ctx.font = "bold 6px Trebuchet MS, Arial, sans-serif";
-                ctx.fillText("FOR SALE", x + TILE_SIZE / 2, y + TILE_SIZE - 16);
+              // Sign on door tile (73,16)
+              if (tileX === 73 && tileY === 16) {
+                const mansionOwned = !!(game.save && game.save.houseUpgrades && game.save.houseUpgrades.includes("mansion_deed"));
+                ctx.fillStyle = "#f7dc7a";
+                ctx.font = "bold 7px Trebuchet MS, Arial, sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("🏰 Moonlight Mansion", x + TILE_SIZE / 2, y + TILE_SIZE - 12);
+                if (!mansionOwned) {
+                  ctx.fillStyle = "#f5f0dc";
+                  ctx.fillRect(x - 1, y + TILE_SIZE - 22, TILE_SIZE + 2, 7);
+                  ctx.fillStyle = "#8b1a1a";
+                  ctx.font = "bold 6px Trebuchet MS, Arial, sans-serif";
+                  ctx.fillText("FOR SALE 5000g", x + TILE_SIZE / 2, y + TILE_SIZE - 16);
+                }
+                ctx.textAlign = "left";
               }
-              ctx.textAlign = "left";
+            } else {
+              // ── School or generic stone ──────────────────────────
+              const wallColor = isSchool ? "#8b3a2a" : "#d2c49a";
+              const trimColor = isSchool ? "#e8d080" : "#d2c49a";
+              const frameColor = isSchool ? "rgba(90,40,20,0.75)" : "rgba(80,50,20,0.6)";
+              ctx.fillStyle = wallColor;
+              ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 9);
+              ctx.fillStyle = isSchool ? "rgba(60,20,10,0.45)" : "rgba(0,0,0,0.35)";
+              ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 2);
+              ctx.fillStyle = trimColor;
+              ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 2);
+              ctx.fillStyle = "#a8d8ff";
+              ctx.fillRect(x + 5,             y + TILE_SIZE - 8, 5, 5);
+              ctx.fillRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 5, 5);
+              ctx.strokeStyle = frameColor;
+              ctx.lineWidth = 1;
+              ctx.strokeRect(x + 5,             y + TILE_SIZE - 8, 5, 5);
+              ctx.strokeRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 5, 5);
+              if (isSchool && tileX === 35 && tileY === 48) {
+                ctx.fillStyle = "#e8d080";
+                ctx.font = "bold 7px Trebuchet MS, Arial, sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("🎓 Moonlight Academy", x + TILE_SIZE / 2, y + TILE_SIZE - 11);
+                ctx.textAlign = "left";
+              }
             }
-          } else {
-            // Small windows
-            ctx.fillStyle = "#a8d8ff";
-            ctx.fillRect(x + 5,             y + TILE_SIZE - 8, 5, 5);
-            ctx.fillRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 5, 5);
-            // Window frames
-            ctx.fillStyle = frameColor;
-            ctx.strokeStyle = frameColor;
-            ctx.lineWidth = 1;
-            ctx.strokeRect(x + 5,             y + TILE_SIZE - 8, 5, 5);
-            ctx.strokeRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 5, 5);
           }
 
-          if (isSchool && tileX === 35 && tileY === 48) {
-            ctx.fillStyle = "#e8d080";
-            ctx.font = "bold 7px Trebuchet MS, Arial, sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText("🎓 Moonlight Academy", x + TILE_SIZE / 2, y + TILE_SIZE - 11);
-            ctx.textAlign = "left";
+          // ── West-edge side wall ──────────────────────────────────
+          const westTile = (tileX - 1 >= 0) ? map[tileY][tileX - 1] : -1;
+          if (westTile !== TILE.STONE) {
+            if (houseConfig) {
+              // Darker shade of wall color for side
+              ctx.fillStyle = houseConfig.trimColor;
+              ctx.fillRect(x, y, 4, TILE_SIZE);
+              ctx.fillStyle = "rgba(0,0,0,0.25)";
+              ctx.fillRect(x, y, 1, TILE_SIZE);
+            } else {
+              ctx.fillStyle = isMansion ? "#162257" : isSchool ? "#7a3022" : "#b8a882";
+              ctx.fillRect(x, y, 4, TILE_SIZE);
+              ctx.fillStyle = isMansion ? "rgba(255,255,255,0.2)" : isSchool ? "rgba(70,20,10,0.28)" : "rgba(0,0,0,0.2)";
+              ctx.fillRect(x, y, 1, TILE_SIZE);
+            }
           }
-        }
-
-        // West-edge wall face
-        const westTile = (tileX - 1 >= 0) ? map[tileY][tileX - 1] : -1;
-        if (westTile !== TILE.STONE) {
-          ctx.fillStyle = isMansion ? "#162257" : isSchool ? "#7a3022" : "#b8a882";
-          ctx.fillRect(x, y, 4, TILE_SIZE);
-          ctx.fillStyle = isMansion ? "rgba(255,255,255,0.2)" : isSchool ? "rgba(70,20,10,0.28)" : "rgba(0,0,0,0.2)";
-          ctx.fillRect(x, y, 1, TILE_SIZE);
-        }
         } // end else (non-candy buildings)
+
 
         // Door on this tile (if it's a designated door tile)
         const doorFacing = BUILDING_DOOR_TILES[`${tileX},${tileY}`];
@@ -2058,10 +2167,16 @@
             ctx.fillStyle = "rgba(255,236,180,0.18)";
             ctx.fillRect(x + 12, doorY + 1, 3, doorH - 2);
           } else {
-            // Regular brown door
-            ctx.fillStyle = "#3a1e08";
+            // House-specific or generic door
+            let hConf = null;
+            for (const h of HOUSE_LISTINGS) {
+              if (h.doorTile === `${tileX},${tileY}`) { hConf = h; break; }
+            }
+            const dc = hConf ? hConf.doorColor : "#3a1e08";
+            const dcLight = hConf ? hConf.trimColor : "#7a4a18";
+            ctx.fillStyle = dc;
             ctx.fillRect(x + 10, doorY, 12, doorH);
-            ctx.fillStyle = "#7a4a18";
+            ctx.fillStyle = dcLight;
             ctx.fillRect(x + 11, doorY + 1, 10, doorH - 1);
             ctx.fillStyle = "#ffd700";
             ctx.fillRect(doorFacing === "south" ? x + 18 : x + 12, doorY + 3, 2, 2);
@@ -2834,6 +2949,11 @@
           if (!game.save.inventory) game.save.inventory = [];
           for (const it of CANDY_ITEMS) game.save.inventory.push({ id:it.id, emoji:it.emoji, name:it.name, hp:it.hp, speed:it.speed||0 });
           writeSave(game.save); return "Bag stuffed with candy!"; } },
+        { label: "🏠 Give All Houses",         fn: () => {
+          if(!game.save.ownedHouses) game.save.ownedHouses=[];
+          for(let i=1;i<=6;i++) if(!game.save.ownedHouses.includes(i)) game.save.ownedHouses.push(i);
+          if(!game.save.player.houseNum) game.save.player.houseNum=1;
+          writeSave(game.save); return "All 6 houses unlocked! 🏡"; }},
         { label: "🏰 Give Mansion Deed",      fn: () => {
           if(!game.save.houseUpgrades) game.save.houseUpgrades=[];
           if(!game.save.houseUpgrades.includes("mansion_deed")) game.save.houseUpgrades.push("mansion_deed");
@@ -3392,9 +3512,10 @@
           game.save.player.outfit     = cc.outfit;
           game.save.player.classId    = cc.classId;
           game.save.player.ageType    = cc.ageType;
-          // Assign a house based on character name — same name always gets same house
-          const _ns = cc.name.split('').reduce((s, c) => s + c.charCodeAt(0), 0);
-          game.save.player.houseNum = (_ns % 6) + 1;
+          // Start with no house — buy one in the Residential District!
+          game.save.player.houseNum = 0;
+          game.save.ownedHouses = [];
+          game.save.gold.carried = 500; // starter gold to buy first house
           writeSave(game.save);
           player = createPlayer(game.save);
           switchScene(SCENE.CITY);
@@ -3578,14 +3699,38 @@
           return;
         }
 
-        // Check player's own house door
-        const _hn = game.save && game.save.player ? (game.save.player.houseNum || 0) : 0;
-        if (_hn > 0) {
-          const _door = HOUSE_DOORS[_hn];
-          if (_door && Math.hypot(player.x - _door.px, player.y - _door.py) < 60 && justPressedKeys.interact) {
+        // Check player's own house door + house purchasing for all 6 houses
+        for (const _hl of HOUSE_LISTINGS) {
+          const _hd = HOUSE_DOORS[_hl.num];
+          if (!_hd) continue;
+          if (Math.hypot(player.x - _hd.px, player.y - _hd.py) >= 60) continue;
+          if (!justPressedKeys.interact) break;
+
+          const owned = game.save.ownedHouses && game.save.ownedHouses.includes(_hl.num);
+          const isCurrentHome = game.save.player.houseNum === _hl.num;
+
+          if (isCurrentHome) {
             enterHouse();
-            return;
+          } else if (owned) {
+            // Move into already-owned house
+            game.save.player.houseNum = _hl.num;
+            showNotice(`Moved into ${_hl.name}! 🏡`, 3);
+            enterHouse();
+          } else {
+            // Buy the house
+            const price = _hl.price;
+            if ((game.save.gold.carried || 0) >= price) {
+              game.save.gold.carried -= price;
+              if (!game.save.ownedHouses) game.save.ownedHouses = [];
+              game.save.ownedHouses.push(_hl.num);
+              if (game.save.player.houseNum === 0) game.save.player.houseNum = _hl.num;
+              saveGame();
+              showNotice(`Bought ${_hl.name} for ${price}g! 🏡`, 4);
+            } else {
+              showNotice(`Need ${price}g to buy ${_hl.name}. You have ${game.save.gold.carried || 0}g.`, 3);
+            }
           }
+          break;
         }
 
         // Check NPC interaction (talk)
@@ -3634,33 +3779,44 @@
           }
         }
 
-        // Player's house door — name label above it + enter prompt when nearby
-        const _hNum = game.save && game.save.player ? (game.save.player.houseNum || 0) : 0;
-        if (_hNum > 0) {
-          const _hDoor = HOUSE_DOORS[_hNum];
-          if (_hDoor) {
+        // House door prompts — for all 6 purchasable houses
+        if (!dialogue.active) {
+          for (const _hl of HOUSE_LISTINGS) {
+            const _hDoor = HOUSE_DOORS[_hl.num];
+            if (!_hDoor) continue;
+            const distToDoor = Math.hypot(player.x - _hDoor.px, player.y - _hDoor.py);
+            const owned = game.save.ownedHouses && game.save.ownedHouses.includes(_hl.num);
+            const isCurrentHome = game.save.player && game.save.player.houseNum === _hl.num;
             const view2 = getView();
             const doorSX = (_hDoor.px - camera.x) * view2.zoom;
             const doorSY = (_hDoor.py - camera.y) * view2.zoom;
-            // Always show name above house (within a generous range so it's findable)
-            const distToDoor = Math.hypot(player.x - _hDoor.px, player.y - _hDoor.py);
-            if (distToDoor < 200) {
+
+            if (distToDoor < 300 && (owned || isCurrentHome)) {
+              // Show owner name tag above house
               ctx.fillStyle = "rgba(0,0,0,0.7)";
-              ctx.fillRect(doorSX - 68, doorSY - 54, 136, 20);
-              ctx.fillStyle = "#f0e0a0";
+              const label = isCurrentHome ? `🏠 ${game.save.player.name}'s Home` : `🏠 ${_hl.name}`;
+              const lw = ctx.measureText(label).width + 16;
+              ctx.fillRect(doorSX - lw / 2, doorSY - 54, lw, 20);
+              ctx.fillStyle = isCurrentHome ? "#f0e0a0" : "#c0e8a0";
               ctx.font = "bold 12px Trebuchet MS, Arial, sans-serif";
               ctx.textAlign = "center";
-              ctx.fillText(`🏠 ${game.save.player.name}'s Home`, doorSX, doorSY - 39);
+              ctx.fillText(label, doorSX, doorSY - 39);
               ctx.textAlign = "left";
             }
             if (distToDoor < 60) {
               ctx.fillStyle = "rgba(0,0,0,0.55)";
-              ctx.fillRect(canvas.width / 2 - 100, canvas.height - 42, 200, 24);
-              ctx.fillStyle = "#d8ddd0";
+              ctx.fillRect(canvas.width / 2 - 130, canvas.height - 42, 260, 24);
               ctx.font = "12px Trebuchet MS, Arial, sans-serif";
               ctx.textAlign = "center";
-              ctx.fillText("Press E to enter your home", canvas.width / 2, canvas.height - 25);
+              if (isCurrentHome || owned) {
+                ctx.fillStyle = "#d8ddd0";
+                ctx.fillText(isCurrentHome ? "Press E to enter your home" : `Press E to move into ${_hl.name}`, canvas.width / 2, canvas.height - 25);
+              } else {
+                ctx.fillStyle = "#f0e060";
+                ctx.fillText(`Press E to buy ${_hl.name} for ${_hl.price}g`, canvas.width / 2, canvas.height - 25);
+              }
               ctx.textAlign = "left";
+              break;
             }
           }
         }
