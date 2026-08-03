@@ -598,9 +598,7 @@
         fillRectTiles(16, 5, 9, 6, TILE.PATH);    // open square
         fillRectTiles(19, 7, 4, 3, TILE.WATER);   // decorative fountain
 
-        // -- Sweet Dreams Candy Store -- (x:56-60, y:49-53, at the docks)
-        fillRectTiles(56, 49, 5, 5, TILE.STONE);
-        stampTiles([[55,49],[55,53],[61,49],[61,53],[57,54],[58,54],[59,54]], TILE.FLOWERS);
+        // -- Sweet Dreams Candy Store moved to after docks tiles -- (placed below)
 
         // -- Main roads (carve back to PATH over stone blocks) --
         fillRectTiles(2,  12, 55, 3, TILE.PATH);  // Main Street (E-W, y=12-14)
@@ -701,6 +699,10 @@
         fillRectTiles(47, 55, 2, 5, TILE.PATH);
         fillRectTiles(53, 55, 2, 5, TILE.PATH);
         fillRectTiles(59, 55, 2, 4, TILE.PATH);
+
+        // -- Sweet Dreams Candy Store -- (x:56-60, y:49-53, docks side-street)
+        fillRectTiles(56, 49, 5, 5, TILE.STONE);
+        stampTiles([[55,49],[55,53],[61,49],[61,53],[57,54],[58,54],[59,54]], TILE.FLOWERS);
 
         // ══════════════════════════════════════════════════════════
         // DISTRICT CONNECTOR PATHS
