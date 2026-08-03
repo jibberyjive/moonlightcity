@@ -490,6 +490,8 @@
         Space: "attack",   KeyZ: "attack",
         ShiftLeft: "dash", ShiftRight: "dash",
         KeyE: "interact",
+        KeyX: "map",
+        KeyB: "map",
         KeyI: "inventory",
         Escape: "pause",
         Enter: "confirm",
@@ -816,6 +818,7 @@
       let player = createPlayer(null);
       let npcs = [];
       let dogs = [];
+      let worldMapOpen = false;
       let dialogue = { active: false, npc: null, lineIndex: 0 };
       let dungeon = {
         floor: 1,
@@ -1979,6 +1982,108 @@
         }
       }
 
+      function drawWorldMap() {
+        const W = canvas.width, H = canvas.height;
+
+        // Dark overlay
+        ctx.fillStyle = "rgba(4, 8, 18, 0.92)";
+        ctx.fillRect(0, 0, W, H);
+
+        // Choose scale so the map fits with margins
+        const ts = Math.max(3, Math.floor(Math.min(W * 0.88, H * 0.82) / MAP_W));
+        const mapW = MAP_W * ts, mapH = MAP_H * ts;
+        const ox = Math.round((W - mapW) / 2);
+        const oy = Math.round((H - mapH) / 2 + 12);
+
+        // Tile colour palette for minimap
+        const TC = {
+          [TILE.GRASS]:      "#3d6e2a",
+          [TILE.DARK_GRASS]: "#2a5018",
+          [TILE.PATH]:       "#b8a86a",
+          [TILE.STONE]:      "#7a6e5e",
+          [TILE.WATER]:      "#3878c0",
+          [TILE.TREE]:       "#1e4e14",
+          [TILE.ROCK]:       "#5a5a4a",
+          [TILE.FLOWERS]:    "#c860a8",
+        };
+
+        // Draw every tile
+        for (let ty = 0; ty < MAP_H; ty++) {
+          for (let tx = 0; tx < MAP_W; tx++) {
+            const tile = map[ty][tx];
+            ctx.fillStyle = TC[tile] || "#3d6e2a";
+            ctx.fillRect(ox + tx * ts, oy + ty * ts, ts, ts);
+          }
+        }
+
+        // Map border
+        ctx.strokeStyle = "rgba(200,190,150,0.5)";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(ox, oy, mapW, mapH);
+
+        // ── Landmark labels ──────────────────────────────────────
+        const labels = [
+          { text: "Downtown",       tx: 28, ty:  6 },
+          { text: "Park",           tx: 34, ty: 30 },
+          { text: "Residential",    tx: 50, ty: 20 },
+          { text: "Slums",          tx:  5, ty: 38 },
+          { text: "Docks",          tx: 48, ty: 55 },
+          { text: "Sweet Dreams 🍬",tx: 28, ty: 18 },
+        ];
+        ctx.font = `bold ${Math.max(7, ts + 2)}px Trebuchet MS, Arial, sans-serif`;
+        ctx.textAlign = "center";
+        for (const lb of labels) {
+          const lx = ox + lb.tx * ts, ly = oy + lb.ty * ts;
+          ctx.fillStyle = "rgba(0,0,0,0.55)";
+          ctx.fillText(lb.text, lx + 1, ly + 1);
+          ctx.fillStyle = "#f0e8c0";
+          ctx.fillText(lb.text, lx, ly);
+        }
+
+        // ── NPC dots ─────────────────────────────────────────────
+        const npcDotSize = Math.max(3, ts - 1);
+        for (const npc of npcs) {
+          const nx = ox + (npc.x / TILE_SIZE) * ts - npcDotSize / 2;
+          const ny = oy + (npc.y / TILE_SIZE) * ts - npcDotSize / 2;
+          ctx.fillStyle = npcNameColour(npc.id);
+          ctx.fillRect(nx, ny, npcDotSize, npcDotSize);
+        }
+
+        // ── Dog dots ─────────────────────────────────────────────
+        for (const dog of dogs) {
+          const dx = ox + (dog.x / TILE_SIZE) * ts - 2;
+          const dy = oy + (dog.y / TILE_SIZE) * ts - 2;
+          ctx.fillStyle = dog.coat || "#c07a3a";
+          ctx.fillRect(dx, dy, npcDotSize, npcDotSize);
+        }
+
+        // ── Player dot ───────────────────────────────────────────
+        const px = ox + (player.x / TILE_SIZE) * ts;
+        const py = oy + (player.y / TILE_SIZE) * ts;
+        // Pulsing ring
+        const pulse = 0.55 + 0.45 * Math.sin(game.elapsed * 5);
+        ctx.strokeStyle = `rgba(255,240,80,${pulse})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(px, py, ts + 1, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = "#ffe840";
+        ctx.beginPath();
+        ctx.arc(px, py, Math.max(2, ts - 1), 0, Math.PI * 2);
+        ctx.fill();
+
+        // ── Title and hint ───────────────────────────────────────
+        ctx.textAlign = "center";
+        ctx.font = "bold 18px Trebuchet MS, Arial, sans-serif";
+        ctx.fillStyle = "#f0e8c0";
+        ctx.fillText("🗺  Moonlight City", W / 2, oy - 10);
+
+        ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+        ctx.fillStyle = "rgba(180,170,140,0.8)";
+        ctx.fillText("Press X or B to close", W / 2, oy + mapH + 16);
+        ctx.textAlign = "left";
+      }
+
       function drawFade() {
         if (game.fadeAlpha < 0) {
           ctx.fillStyle = `rgba(0,0,0,${Math.min(1, -game.fadeAlpha)})`;
@@ -2532,6 +2637,8 @@
       // ---- CITY SCENE (wraps existing world code) ------
 
       function updateCity(dt) {
+        // ── World map open — freeze world ───────────────────────────────────
+        if (worldMapOpen) return;
         // ── Dialogue mode — freeze world, handle input ──────────────────────
         if (dialogue.active) {
           if (justPressedKeys.interact || justPressedKeys.attack || justPressedKeys.confirm || justPressedKeys.pause) {
@@ -3021,6 +3128,11 @@
           if (game.noticeTimer === 0) game.noticeText = "";
         }
 
+        // World map toggle (works in any scene except title/char-create)
+        if (justPressedKeys.map && game.scene !== SCENE.TITLE && game.scene !== SCENE.CHARACTER_CREATION) {
+          worldMapOpen = !worldMapOpen;
+        }
+
         // Scene update
         switch (game.scene) {
           case SCENE.TITLE:              updateTitle();           break;
@@ -3045,6 +3157,7 @@
         }
 
         drawFade();
+        if (worldMapOpen) drawWorldMap();
 
         clearJustPressed();
         requestAnimationFrame(tick);
