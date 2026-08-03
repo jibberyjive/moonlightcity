@@ -2139,11 +2139,7 @@
         const W = canvas.width, H = canvas.height;
         const items = game.save && game.save.inventory ? game.save.inventory : [];
 
-        // Handle navigation input
-        if (justPressedKeys.up)   inventory.selected = (inventory.selected - 1 + Math.max(1, items.length)) % Math.max(1, items.length);
-        if (justPressedKeys.down) inventory.selected = (inventory.selected + 1) % Math.max(1, items.length);
-        if ((justPressedKeys.interact || justPressedKeys.confirm) && items.length > 0) useInventoryItem(inventory.selected);
-        if (justPressedKeys.pause || justPressedKeys.inventory) inventory.open = false;
+        // (input handled in tick loop)
 
         // Overlay
         ctx.fillStyle = "rgba(4, 8, 20, 0.88)";
@@ -3578,6 +3574,15 @@
         if (justPressedKeys.inventory && game.scene !== SCENE.TITLE && game.scene !== SCENE.CHARACTER_CREATION) {
           inventory.open = !inventory.open;
           worldMapOpen = false;
+        }
+
+        // Inventory navigation (runs while open, separate from toggle)
+        if (inventory.open) {
+          const invItems = game.save && game.save.inventory ? game.save.inventory : [];
+          if (justPressedKeys.up)   inventory.selected = (inventory.selected - 1 + Math.max(1, invItems.length)) % Math.max(1, invItems.length);
+          if (justPressedKeys.down) inventory.selected = (inventory.selected + 1) % Math.max(1, invItems.length);
+          if ((justPressedKeys.interact || justPressedKeys.confirm) && invItems.length > 0) useInventoryItem(inventory.selected);
+          if (justPressedKeys.pause) inventory.open = false;
         }
 
         // Scene update
