@@ -502,6 +502,74 @@
         // ══════════════════════════════════════════════════════════
         stampTiles([[26,12],[56,12],[4,12]], TILE.TREE); // street trees on Main St
         stampTiles([[22,22],[40,22],[22,38]], TILE.ROCK); // park edge rocks
+
+        // ══════════════════════════════════════════════════════════
+        // MOONLIGHT MART — Supermarket  (x:29-41, y:15-21)
+        // Biggest shop in downtown. Wide entrance, loading bay.
+        // ══════════════════════════════════════════════════════════
+        fillRectTiles(29, 15, 13, 7, TILE.STONE);
+        fillRectTiles(34, 15, 3,  1, TILE.PATH);    // entrance cut (north face → Main St)
+        fillRectTiles(42, 15, 1,  7, TILE.PATH);    // loading bay alley (east side)
+        stampTiles([[29,14],[30,14],[31,14],          // planter boxes flanking entrance
+                    [39,14],[40,14],[41,14]], TILE.FLOWERS);
+
+        // ══════════════════════════════════════════════════════════
+        // NPC HOUSES — named residences with distinctive gardens
+        // ══════════════════════════════════════════════════════════
+
+        // -- MARA'S FLAT --
+        // The south-shops block (x:15-25, y:15-21) is her building.
+        // Flower boxes along Main Street face + back entrance.
+        stampTiles([[15,14],[17,14],[19,14],[21,14],[23,14],[25,14]], TILE.FLOWERS);
+        fillRectTiles(19, 22, 3, 1, TILE.PATH);     // back door (south side)
+
+        // -- LUMI'S HOUSE -- Row 1, House 2 Residential (x:54-60, y:16-20)
+        // She's a painter — the most flower-filled garden in the city
+        stampTiles([[54,15],[55,15],[57,15],[59,15],[60,15]], TILE.FLOWERS);
+        stampTiles([[54,21],[55,21],[59,21],[60,21]], TILE.FLOWERS);
+        fillRectTiles(56, 21, 2, 1, TILE.PATH);     // gate path to Elm Road
+        stampTiles([[53,19],[61,19]], TILE.ROCK);    // stone garden posts
+
+        // -- BEX'S HOUSE -- Guild rival townhouse (x:45-50, y:15-21)
+        // Lives just south of the Guild Hall — close by choice.
+        fillRectTiles(45, 15, 6, 7, TILE.STONE);
+        fillRectTiles(47, 15, 2, 1, TILE.PATH);     // entrance from Main Street
+        stampTiles([[45,14],[46,14],[50,14],[51,14]], TILE.FLOWERS);
+
+        // -- PIP'S HOUSE -- Excitable kid, near the park (x:22-26, y:24-28)
+        fillRectTiles(22, 24, 5, 5, TILE.STONE);
+        fillRectTiles(24, 23, 2, 1, TILE.PATH);     // gate toward downtown
+        fillRectTiles(24, 29, 2, 1, TILE.PATH);     // back path into park
+        stampTiles([[21,24],[22,23],[24,23],[26,23],[27,24],  // wild kid's garden
+                    [21,28],[22,29],[26,29],[27,28]], TILE.FLOWERS);
+
+        // -- SHADE'S HOUSE -- Near the docks, no garden (x:45-49, y:46-50)
+        // Mysterious — rocks only, no flowers.
+        fillRectTiles(45, 46, 5, 5, TILE.STONE);
+        fillRectTiles(47, 51, 2, 1, TILE.PATH);     // path toward Docks
+        stampTiles([[45,45],[50,45],[45,51],[50,51]], TILE.ROCK);
+
+        // -- MAYOR ALDRIC'S MANSION -- SW downtown (x:2-11, y:15-22) already STONE
+        // Formal symmetrical garden — flowers as clipped hedges.
+        fillRectTiles(6,  22, 2, 1, TILE.PATH);     // grand front gate
+        stampTiles([[2,22],[3,22],[4,22],[8,22],[9,22],[10,22],
+                    [2,15],[10,15]], TILE.FLOWERS);
+
+        // -- AUNTIE FEN'S CLINIC+RESIDENCE -- (x:10-16, y:36-39) already STONE
+        // Herb garden spills onto the Slums dark grass.
+        stampTiles([[10,40],[11,40],[13,40],[15,40],[16,40]], TILE.FLOWERS);
+
+        // -- REX'S TAVERN -- (x:1-5, y:36-39) already STONE
+        // Barrels outside the back (rocks as barrel placeholder)
+        stampTiles([[6,37],[6,38],[6,39]], TILE.ROCK);
+
+        // ══════════════════════════════════════════════════════════
+        // RESIDENTIAL ROW 4 — fill out lower residential
+        // ══════════════════════════════════════════════════════════
+        // x:54-60, y:46-50 (Row 4 east, Shade's row)
+        fillRectTiles(54, 46, 7, 5, TILE.STONE);     // House 8
+        fillRectTiles(56, 51, 2, 1, TILE.PATH);      // gate path south
+        stampTiles([[54,45],[56,45],[59,45],[61,45]], TILE.FLOWERS);
       }
 
       // ==================================================
