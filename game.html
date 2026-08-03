@@ -132,9 +132,11 @@
         "47,39": "north", "57,39": "north",  // Row 3 — door faces Blossom Lane
         "58,53": "south",                    // Sweet Dreams candy store — south door
         "35,48": "south",                    // Moonlight Academy — south door
+        "49,21": "south",                    // Prestige Furnishings — south door
       };
       const CANDY_STORE = { x1: 56, y1: 49, x2: 60, y2: 53 };
       const SCHOOL = { x1: 30, y1: 41, x2: 41, y2: 48 };
+      const PRESTIGE_STORE = { x1: 44, y1: 15, x2: 55, y2: 21 };
 
       const CANDY_ITEMS = [
         { id: "gobstopper",   emoji: "🟠", name: "Gobstopper",    desc: "Restores 3 HP",          price:  3, hp: 3  },
@@ -142,6 +144,17 @@
         { id: "choc_bar",     emoji: "🍫", name: "Chocolate Bar", desc: "Restores 15 HP",         price: 10, hp: 15 },
         { id: "fairy_floss",  emoji: "🩷", name: "Fairy Floss",   desc: "Fully restores HP",      price: 20, hp: 999},
         { id: "sugar_rush",   emoji: "⚡", name: "Sugar Rush",    desc: "Speed boost for 20s",    price: 12, hp: 0, speed: 20 },
+      ];
+
+      const FURNITURE_ITEMS = [
+        { id: "velvet_rug",      emoji: "🟥", name: "Velvet Rug",          desc: "Luxurious red rug for your floor", price: 80 },
+        { id: "chandelier",      emoji: "💎", name: "Crystal Chandelier",  desc: "Fills your home with warm light",  price: 200 },
+        { id: "royal_bed",       emoji: "🛏️", name: "Royal Bed",           desc: "Sleep in style — gold headboard",  price: 300 },
+        { id: "bookcase",        emoji: "📚", name: "Grand Bookcase",      desc: "Floor-to-ceiling books",           price: 120 },
+        { id: "gold_mirror",     emoji: "🪞", name: "Gold Mirror",         desc: "Ornate golden frame mirror",       price: 150 },
+        { id: "garden_fountain", emoji: "⛲", name: "Garden Fountain",     desc: "A fountain in your garden",        price: 400 },
+        { id: "fireplace",       emoji: "🔥", name: "Fireplace",           desc: "Warm crackling fire",              price: 250 },
+        { id: "trophy_case",     emoji: "🏆", name: "Trophy Case",         desc: "Display your dungeon victories",   price: 180 },
       ];
       // Named NPC definitions — position is their home wander centre
       const NPC_DATA = [
@@ -380,6 +393,7 @@
           },
           gold: { carried: 0, banked: 0 },
           inventory: [],
+          houseUpgrades: [],
           dungeon: {
             currentFloor: 1,
             deepestFloorCleared: 0,
@@ -429,6 +443,7 @@
         save.house     = Object.assign({}, fresh.house,     save.house);
         save.flags     = Object.assign({}, fresh.flags,     save.flags);
         save.time      = Object.assign({}, fresh.time,      save.time);
+        save.houseUpgrades = Array.isArray(save.houseUpgrades) ? save.houseUpgrades.slice() : fresh.houseUpgrades.slice();
         return save;
       }
 
@@ -459,7 +474,8 @@
         fadeDir: 0,           // -1 fade out, +1 fade in, 0 idle
         fadeCallback: null,
         inCandyStore: false,
-        inSchool: false
+        inSchool: false,
+        inPrestigeStore: false
       };
 
       const camera = { x: 0, y: 0 };
@@ -650,11 +666,16 @@
         // Cottage plots, gardens, player's house
         // ══════════════════════════════════════════════════════════
         fillRectTiles(44, 15, 19, 38, TILE.DARK_GRASS);
+        // -- Prestige Furnishings Store -- (overrides residential, x:44-55, y:15-21)
+        fillRectTiles(44, 15, 12, 7, TILE.STONE);
+        stampTiles([[43,15],[56,15],[43,21],[56,21],[47,22],[49,22],[51,22]], TILE.FLOWERS);
 
         // Residential streets
         fillRectTiles(44, 22, 19, 2, TILE.PATH); // Elm Road (E-W)
         fillRectTiles(44, 36, 19, 2, TILE.PATH); // Blossom Lane (E-W)
         fillRectTiles(51, 15, 2, 38, TILE.PATH); // Fig Street (N-S)
+        fillRectTiles(44, 15, 12, 7, TILE.STONE); // Restore Prestige Furnishings over street overlays
+        stampTiles([[43,15],[56,15],[43,21],[56,21],[47,22],[49,22],[51,22]], TILE.FLOWERS);
 
         // Row 1 houses  (y:16-21)
         fillRectTiles(45, 16, 5, 5, TILE.STONE); // House 1
@@ -852,6 +873,7 @@
       let candyShop = { open: false, selected: 0 };
       let inventory = { open: false, selected: 0 };
       let cheatBox  = { open: false, selected: 0, flash: "" };
+      let prestigeShop = { open: false, selected: 0 };
       let dungeon = {
         floor: 1,
         data: null,
@@ -1268,7 +1290,23 @@
         game.houseExitX = 58 * 32 + 16;  // tile 58,54 — just south of door
         game.houseExitY = 54 * 32 + 16;
         game.inSchool = false;
+        game.inPrestigeStore = false;
         game.inCandyStore = true;
+        switchScene(SCENE.HOUSE_INTERIOR, () => {
+          player.x = 5 * 36 + 18;
+          player.y = 6 * 36 + 18;
+          player.vx = 0; player.vy = 0;
+          player.dir = "up";
+        });
+      }
+
+      function enterPrestigeStore() {
+        game.houseExitX = 49 * 32 + 16;
+        game.houseExitY = 22 * 32 + 16;
+        game.inPrestigeStore = true;
+        game.inCandyStore = false;
+        game.inSchool = false;
+        prestigeShop.open = false;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           player.x = 5 * 36 + 18;
           player.y = 6 * 36 + 18;
@@ -1281,6 +1319,7 @@
         game.houseExitX = 35 * 32 + 16;
         game.houseExitY = 49 * 32 + 16;
         game.inCandyStore = false;
+        game.inPrestigeStore = false;
         game.inSchool = true;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           player.x = 5 * 36 + 18;
@@ -1297,6 +1336,7 @@
         game.houseExitY = door ? door.py : 24 * 32 + 16;
         game.inCandyStore = false;
         game.inSchool = false;
+        game.inPrestigeStore = false;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           // Place player at interior spawn (near door, bottom centre)
           player.x = 5 * 36 + 18;
@@ -1307,13 +1347,17 @@
       }
 
       function exitHouse() {
-        const wasCandyStore = game.inCandyStore;
-        const wasSchool = game.inSchool;
-        game.inCandyStore = false;
-        game.inSchool = false;
+        const wasCandyStore   = game.inCandyStore;
+        const wasSchool       = game.inSchool;
+        const wasPrestige     = game.inPrestigeStore;
+        game.inCandyStore     = false;
+        game.inSchool         = false;
+        game.inPrestigeStore  = false;
+        candyShop.open = false;
+        prestigeShop.open = false;
         switchScene(SCENE.CITY, () => {
-          player.x = wasCandyStore ? 58 * 32 + 16 : wasSchool ? 35 * 32 + 16 : (game.houseExitX || 47 * 32 + 16);
-          player.y = wasCandyStore ? 54 * 32 + 16 : wasSchool ? 49 * 32 + 16 : (game.houseExitY || 24 * 32 + 16);
+          player.x = wasCandyStore ? 58*32+16 : wasSchool ? 35*32+16 : wasPrestige ? 49*32+16 : (game.houseExitX || 47*32+16);
+          player.y = wasCandyStore ? 54*32+16 : wasSchool ? 49*32+16 : wasPrestige ? 22*32+16 : (game.houseExitY || 24*32+16);
           player.vx = 0; player.vy = 0;
         });
       }
@@ -1631,6 +1675,8 @@
                         tileY >= CANDY_STORE.y1 && tileY <= CANDY_STORE.y2;
         const isSchool = tileX >= SCHOOL.x1 && tileX <= SCHOOL.x2 &&
                          tileY >= SCHOOL.y1 && tileY <= SCHOOL.y2;
+        const isPrestige = tileX >= PRESTIGE_STORE.x1 && tileX <= PRESTIGE_STORE.x2 &&
+                           tileY >= PRESTIGE_STORE.y1 && tileY <= PRESTIGE_STORE.y2;
 
         if (isCandy) {
           // ── Candy Store roof — pink tiles ───────────────────────
@@ -1693,6 +1739,61 @@
             ctx.fillRect(x, y, 1, TILE_SIZE);
           }
 
+        } else if (isPrestige) {
+          ctx.fillStyle = "#c8a820";
+          ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+          ctx.fillStyle = "rgba(90,65,0,0.28)";
+          for (let row = 1; row < 4; row++) ctx.fillRect(x, y + row * 8, TILE_SIZE, 1);
+          const stg = ((tileX + tileY) % 2 === 0) ? 0 : 8;
+          ctx.fillStyle = "rgba(255,236,170,0.2)";
+          for (let row = 0; row < 4; row++) {
+            ctx.fillRect(x + stg + row * 16,     y + row * 8, 1, 8);
+            ctx.fillRect(x + stg + row * 16 + 8, y + row * 8, 1, 8);
+          }
+          ctx.fillStyle = "#e6cc5a";
+          ctx.fillRect(x, y, TILE_SIZE, 3);
+
+          const southTile = (tileY + 1 < MAP_H) ? map[tileY + 1][tileX] : -1;
+          const isEdge = southTile !== TILE.STONE;
+          if (isEdge) {
+            ctx.fillStyle = "#f5e8c0";
+            ctx.fillRect(x, y + TILE_SIZE - 10, TILE_SIZE, 10);
+            ctx.fillStyle = "rgba(196,170,120,0.45)";
+            for (let px = 2; px < TILE_SIZE; px += 3) {
+              ctx.fillRect(x + px, y + TILE_SIZE - 10, 1, 10);
+            }
+            ctx.fillStyle = "rgba(0,0,0,0.28)";
+            ctx.fillRect(x, y + TILE_SIZE - 10, TILE_SIZE, 2);
+            ctx.fillStyle = "#dfbf55";
+            ctx.fillRect(x, y + TILE_SIZE - 10, TILE_SIZE, 2);
+            ctx.fillStyle = "#ffd060";
+            ctx.fillRect(x + 5, y + TILE_SIZE - 9, 6, 6);
+            ctx.fillRect(x + TILE_SIZE - 11, y + TILE_SIZE - 9, 6, 6);
+            ctx.strokeStyle = "#cda434";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 5, y + TILE_SIZE - 9, 6, 6);
+            ctx.strokeRect(x + TILE_SIZE - 11, y + TILE_SIZE - 9, 6, 6);
+            ctx.beginPath();
+            ctx.arc(x + 8, y + TILE_SIZE - 9, 3, Math.PI, 0);
+            ctx.arc(x + TILE_SIZE - 8, y + TILE_SIZE - 9, 3, Math.PI, 0);
+            ctx.stroke();
+
+            if (tileX === 49 && tileY === 21) {
+              ctx.fillStyle = "#fff2c0";
+              ctx.font = "bold 7px Trebuchet MS, Arial, sans-serif";
+              ctx.textAlign = "center";
+              ctx.fillText("💎 Prestige Furnishings", x + TILE_SIZE / 2, y + TILE_SIZE - 12);
+              ctx.textAlign = "left";
+            }
+          }
+
+          const westTile = (tileX - 1 >= 0) ? map[tileY][tileX - 1] : -1;
+          if (westTile !== TILE.STONE) {
+            ctx.fillStyle = "#ead9ad";
+            ctx.fillRect(x, y, 4, TILE_SIZE);
+            ctx.fillStyle = "rgba(160,120,40,0.25)";
+            ctx.fillRect(x + 1, y, 1, TILE_SIZE);
+          }
         } else {
           const roofColor = isSchool ? "#6b2a1a" : COLORS.stone;
           ctx.fillStyle = roofColor;
@@ -1781,6 +1882,15 @@
             ctx.fillRect(doorFacing === "south" ? x + 18 : x + 12, doorY + 3, 2, 2);
             ctx.fillStyle = "rgba(255,235,190,0.2)";
             ctx.fillRect(x + 12, doorY + 1, 3, doorH - 2);
+          } else if (isPrestige) {
+            ctx.fillStyle = "#2a0f06";
+            ctx.fillRect(x + 10, doorY, 12, doorH);
+            ctx.fillStyle = "#4a1a08";
+            ctx.fillRect(x + 11, doorY + 1, 10, doorH - 1);
+            ctx.fillStyle = "#e8c55a";
+            ctx.fillRect(doorFacing === "south" ? x + 18 : x + 12, doorY + 3, 2, 2);
+            ctx.fillStyle = "rgba(255,225,170,0.2)";
+            ctx.fillRect(x + 12, doorY + 1, 3, doorH - 2);
           } else {
             // Regular brown door
             ctx.fillStyle = "#3a1e08";
@@ -1795,7 +1905,7 @@
         }
 
         // Highlight top-left corner (light source hint)
-        ctx.fillStyle = isCandy ? "rgba(255,200,230,0.12)" : isSchool ? "rgba(255,230,180,0.12)" : "rgba(255,255,220,0.08)";
+        ctx.fillStyle = isCandy ? "rgba(255,200,230,0.12)" : isSchool ? "rgba(255,230,180,0.12)" : isPrestige ? "rgba(255,235,170,0.12)" : "rgba(255,255,220,0.08)";
         ctx.fillRect(x, y, TILE_SIZE, 3);
       }
 
@@ -2329,6 +2439,7 @@
           { text: "Downtown",       tx: 28, ty:  6 },
           { text: "Park",           tx: 34, ty: 30 },
           { text: "Residential",    tx: 50, ty: 20 },
+          { text: "💎 Prestige",    tx: 50, ty: 17 },
           { text: "Slums",          tx:  5, ty: 38 },
           { text: "Docks",          tx: 48, ty: 55 },
           { text: "Sweet Dreams 🍬",tx: 58, ty: 51 },
@@ -3239,6 +3350,13 @@
           return;
         }
 
+        // Check Prestige Furnishings door (tile 49,21 → player stands at y:22)
+        const _prestigeDoorX = 49 * 32 + 16, _prestigeDoorY = 22 * 32 + 16;
+        if (Math.hypot(player.x - _prestigeDoorX, player.y - _prestigeDoorY) < 52 && justPressedKeys.interact) {
+          enterPrestigeStore();
+          return;
+        }
+
         const _schoolDoorX = 35 * 32 + 16, _schoolDoorY = 49 * 32 + 16;
         if (Math.hypot(player.x - _schoolDoorX, player.y - _schoolDoorY) < 52 && justPressedKeys.interact) {
           enterSchool();
@@ -3463,7 +3581,12 @@
             player.dir = dy > 0 ? "down" : "up";
         }
 
-        if (justPressedKeys.pause) { candyShop.open = false; exitHouse(); return; }
+        if (justPressedKeys.pause && !(game.inPrestigeStore && prestigeShop.open)) {
+          candyShop.open = false;
+          prestigeShop.open = false;
+          exitHouse();
+          return;
+        }
 
         // ── Candy shop mode ────────────────────────────────────────
         if (game.inCandyStore) {
@@ -3499,6 +3622,34 @@
         }
 
         if (game.inSchool) {
+          if (justPressedKeys.interact) { exitHouse(); return; }
+          return;
+        }
+
+        if (game.inPrestigeStore) {
+          if (prestigeShop.open) {
+            if (justPressedKeys.up)   prestigeShop.selected = (prestigeShop.selected - 1 + FURNITURE_ITEMS.length) % FURNITURE_ITEMS.length;
+            if (justPressedKeys.down) prestigeShop.selected = (prestigeShop.selected + 1) % FURNITURE_ITEMS.length;
+            if (justPressedKeys.pause || justPressedKeys.back) { prestigeShop.open = false; return; }
+            if (justPressedKeys.interact || justPressedKeys.confirm) {
+              const item = FURNITURE_ITEMS[prestigeShop.selected];
+              const upgrades = game.save.houseUpgrades || [];
+              if (upgrades.includes(item.id)) {
+              } else if (getCarriedGold() < item.price) {
+                showNotice(`Need ${item.price} ⬡ for ${item.name}!`, 1.5);
+              } else {
+                setCarriedGold(getCarriedGold() - item.price);
+                game.save.houseUpgrades = [...upgrades, item.id];
+                writeSave(game.save);
+                showNotice(`Purchased ${item.emoji} ${item.name}!`, 2.5);
+              }
+            }
+            return;
+          }
+          const shopCtrX = 8 * 36 + 18, shopCtrY = 3 * 36 + 18;
+          if (justPressedKeys.interact && Math.hypot(player.x - shopCtrX, player.y - shopCtrY) < 90) {
+            prestigeShop.open = true; prestigeShop.selected = 0; return;
+          }
           if (justPressedKeys.interact) { exitHouse(); return; }
           return;
         }
@@ -3875,7 +4026,234 @@
         }
       }
 
+      function drawPrestigeStoreInterior(time) {
+        const w = canvas.width, h = canvas.height;
+        const ts = 36, roomW = 11, roomH = 8;
+        const ox = Math.floor((w - roomW * ts) / 2);
+        const oy = Math.floor((h - roomH * ts) / 2);
+        const upgrades = game.save && game.save.houseUpgrades ? game.save.houseUpgrades : [];
+        const chandelierPulse = 0.7 + Math.sin(time * 1.6) * 0.08;
+
+        ctx.fillStyle = "#100b08";
+        ctx.fillRect(0, 0, w, h);
+
+        for (let ty = 1; ty < roomH - 1; ty++) {
+          for (let tx = 1; tx < roomW - 1; tx++) {
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? "#4d2f18" : "#6a4325";
+            ctx.fillRect(ox + tx * ts, oy + ty * ts, ts, ts);
+            ctx.fillStyle = "rgba(0,0,0,0.14)";
+            ctx.fillRect(ox + tx * ts, oy + ty * ts + ts - 3, ts, 2);
+            if (tx % 2 === 0) {
+              ctx.fillStyle = "rgba(255,220,160,0.05)";
+              ctx.fillRect(ox + tx * ts + 4, oy + ty * ts, 2, ts);
+            }
+          }
+        }
+
+        ctx.fillStyle = "#f5e8c0";
+        ctx.fillRect(ox + ts, oy, (roomW - 2) * ts, ts * 2);
+        ctx.fillStyle = "#5a3318";
+        ctx.fillRect(ox + ts, oy + ts * 1.35, (roomW - 2) * ts, ts * 0.65);
+        ctx.fillStyle = "#d8b24c";
+        ctx.fillRect(ox + ts, oy + ts * 1.28, (roomW - 2) * ts, 4);
+
+        ctx.fillStyle = "#3d2413";
+        for (let ty = 0; ty < roomH; ty++) {
+          ctx.fillRect(ox, oy + ty * ts, ts, ts);
+          ctx.fillRect(ox + (roomW - 1) * ts, oy + ty * ts, ts, ts);
+        }
+        ctx.fillRect(ox + ts, oy + (roomH - 1) * ts, (roomW - 2) * ts, ts);
+        ctx.fillStyle = "#d8b24c";
+        ctx.fillRect(ox + ts, oy + (roomH - 1) * ts - 4, (roomW - 2) * ts, 4);
+
+        [[2.1, 0.8], [4.45, 0.8], [6.8, 0.8]].forEach(([wx, wy]) => {
+          const winX = ox + ts * wx;
+          const winY = oy + ts * wy;
+          ctx.fillStyle = "#ffd878";
+          ctx.fillRect(winX, winY + 12, ts * 1.4, ts * 1.15);
+          ctx.strokeStyle = "#d6ab32";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(winX, winY + 12, ts * 1.4, ts * 1.15);
+          ctx.beginPath();
+          ctx.moveTo(winX + ts * 0.7, winY + 12);
+          ctx.lineTo(winX + ts * 0.7, winY + 12 + ts * 1.15);
+          ctx.moveTo(winX, winY + 12 + ts * 0.58);
+          ctx.lineTo(winX + ts * 1.4, winY + 12 + ts * 0.58);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(winX + ts * 0.7, winY + 12, ts * 0.7, Math.PI, 0);
+          ctx.stroke();
+          ctx.fillStyle = "rgba(255,220,120,0.18)";
+          ctx.fillRect(winX - 4, winY + 8, ts * 1.4 + 8, ts * 2.2);
+        });
+
+        const chandX = ox + roomW * ts / 2;
+        const chandY = oy + 36;
+        const chandGlow = ctx.createRadialGradient(chandX, chandY + 10, 10, chandX, chandY + 10, ts * 2.8);
+        chandGlow.addColorStop(0, `rgba(255,224,150,${0.28 * chandelierPulse})`);
+        chandGlow.addColorStop(1, "rgba(255,224,150,0)");
+        ctx.fillStyle = chandGlow;
+        ctx.beginPath();
+        ctx.arc(chandX, chandY + 10, ts * 2.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#e1ba48";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(chandX, oy + 4);
+        ctx.lineTo(chandX, chandY - 8);
+        ctx.stroke();
+        ctx.fillStyle = "#d8b24c";
+        ctx.beginPath();
+        ctx.moveTo(chandX, chandY - 3);
+        ctx.lineTo(chandX - 18, chandY + 10);
+        ctx.lineTo(chandX, chandY + 22);
+        ctx.lineTo(chandX + 18, chandY + 10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#fff1b5";
+        ctx.beginPath();
+        ctx.arc(chandX, chandY + 10, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        const pedestals = [
+          { x: 2, y: 3.15, item: FURNITURE_ITEMS[0], color: "#9b3a3a" },
+          { x: 4, y: 3.15, item: FURNITURE_ITEMS[1], color: "#8c6ad8" },
+          { x: 6, y: 3.15, item: FURNITURE_ITEMS[2], color: "#7e5930" },
+          { x: 2.5, y: 5.1, item: FURNITURE_ITEMS[3], color: "#6b4d2a" },
+          { x: 5, y: 5.1, item: FURNITURE_ITEMS[4], color: "#c0a060" },
+          { x: 7.2, y: 5.1, item: FURNITURE_ITEMS[7], color: "#6f4b8a" },
+        ];
+        for (const pedestal of pedestals) {
+          const px = ox + ts * pedestal.x;
+          const py = oy + ts * pedestal.y;
+          ctx.fillStyle = pedestal.color;
+          ctx.fillRect(px, py, ts * 0.9, ts * 0.55);
+          ctx.fillStyle = "#ead8b8";
+          ctx.fillRect(px + 4, py + 4, ts * 0.9 - 8, ts * 0.55 - 8);
+          ctx.fillStyle = upgrades.includes(pedestal.item.id) ? "#d8b24c" : "#ffffff";
+          ctx.font = "20px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(pedestal.item.emoji, px + ts * 0.45, py - 2);
+        }
+
+        const fountainX = ox + ts * 5.1;
+        const fountainY = oy + ts * 5.05;
+        ctx.fillStyle = upgrades.includes("garden_fountain") ? "#9fd8ff" : "rgba(255,255,255,0.12)";
+        ctx.beginPath();
+        ctx.arc(fountainX, fountainY + 8, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#b89540";
+        ctx.fillRect(fountainX - 5, fountainY - 14, 10, 24);
+        ctx.fillRect(fountainX - 14, fountainY + 8, 28, 8);
+        if (upgrades.includes("garden_fountain")) {
+          ctx.fillStyle = "rgba(140,220,255,0.5)";
+          ctx.beginPath();
+          ctx.ellipse(fountainX, fountainY - 8, 8, 14, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        const counterX = ox + ts * 7.2;
+        const counterY = oy + ts * 2.15;
+        ctx.fillStyle = "#4a1a08";
+        ctx.fillRect(counterX, counterY, ts * 2.1, ts * 3.5);
+        ctx.fillStyle = "#2f1005";
+        ctx.fillRect(counterX + 4, counterY + 6, ts * 2.1 - 8, ts * 0.48);
+        ctx.fillStyle = "#d8b24c";
+        ctx.fillRect(counterX, counterY, ts * 2.1, 4);
+        ctx.fillStyle = "#f4d27a";
+        ctx.font = "bold 13px Trebuchet MS, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("💎 Prestige Furnishings", w / 2, oy + 22);
+        ctx.textAlign = "left";
+
+        const dX = ox + ts * 5, dY = oy + (roomH - 1) * ts;
+        ctx.fillStyle = "#4a1a08";
+        ctx.fillRect(dX, dY - ts + 4, ts, ts);
+        ctx.fillStyle = "#2a0f06";
+        ctx.fillRect(dX + 2, dY - ts + 4, ts - 4, 4);
+        ctx.fillStyle = "#e8c55a";
+        ctx.fillRect(dX + ts - 12, dY - ts / 2, 6, 6);
+
+        drawPlayerSprite(time, { ...player, x: ox + player.x, y: oy + player.y });
+
+        const nearCounter = Math.hypot(player.x - (8 * 36 + 18), player.y - (3 * 36 + 18)) < 90;
+        const nearDoor = Math.hypot(player.x - (5 * 36 + 18), player.y - (7 * 36 + 18)) < 60;
+        if (nearCounter && !prestigeShop.open) {
+          ctx.fillStyle = "rgba(0,0,0,0.74)";
+          roundRect(ctx, w / 2 - 96, h - 82, 192, 28, 8);
+          ctx.fill();
+          ctx.fillStyle = "#f7e8ba";
+          ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Press E to browse", w / 2, h - 63);
+        }
+        if (nearDoor && !prestigeShop.open) {
+          ctx.fillStyle = "rgba(0,0,0,0.72)";
+          roundRect(ctx, w / 2 - 88, h - 48, 176, 28, 8);
+          ctx.fill();
+          ctx.fillStyle = "#f7e8ba";
+          ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Press E to leave", w / 2, h - 29);
+        }
+        ctx.textAlign = "left";
+
+        if (prestigeShop.open) {
+          const mx = Math.round(w / 2 - 235);
+          const my = Math.round(h / 2 - 175);
+          const mw = 470;
+          const mh = 350;
+          ctx.fillStyle = "rgba(22,14,8,0.92)";
+          roundRect(ctx, mx, my, mw, mh, 16);
+          ctx.fill();
+          ctx.strokeStyle = "#d8b24c";
+          ctx.lineWidth = 3;
+          roundRect(ctx, mx, my, mw, mh, 16);
+          ctx.stroke();
+
+          ctx.fillStyle = "#f8e4a2";
+          ctx.font = "bold 20px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Prestige Furnishings", mx + mw / 2, my + 30);
+          ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText(`Gold: ${getCarriedGold()} ⬡`, mx + mw / 2, my + 48);
+
+          FURNITURE_ITEMS.forEach((item, i) => {
+            const owned = upgrades.includes(item.id);
+            const iy = my + 68 + i * 32;
+            const selected = i === prestigeShop.selected;
+            ctx.fillStyle = selected ? "rgba(216,178,76,0.26)" : "rgba(255,255,255,0.04)";
+            roundRect(ctx, mx + 16, iy - 18, mw - 32, 28, 8);
+            ctx.fill();
+            ctx.strokeStyle = selected ? "#f0d27a" : "rgba(255,255,255,0.06)";
+            ctx.lineWidth = 1;
+            roundRect(ctx, mx + 16, iy - 18, mw - 32, 28, 8);
+            ctx.stroke();
+
+            ctx.font = "18px Arial";
+            ctx.textAlign = "left";
+            ctx.fillStyle = owned ? "#8ea18d" : "#fff2cf";
+            ctx.fillText(item.emoji, mx + 26, iy + 1);
+            ctx.font = "bold 13px Trebuchet MS, Arial, sans-serif";
+            ctx.fillText(item.name, mx + 56, iy);
+            ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+            ctx.fillStyle = owned ? "#8ea18d" : "#ceb98f";
+            ctx.fillText(item.desc, mx + 172, iy);
+            ctx.textAlign = "right";
+            ctx.fillStyle = owned ? "#7dd687" : "#f0d27a";
+            ctx.fillText(owned ? "✓ Owned" : `${item.price} ⬡`, mx + mw - 28, iy);
+          });
+
+          ctx.textAlign = "center";
+          ctx.fillStyle = "rgba(245,232,192,0.78)";
+          ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText("↑↓ navigate • E to buy • Esc to close", mx + mw / 2, my + mh - 16);
+          ctx.textAlign = "left";
+        }
+      }
+
       function drawHouseInterior(time) {
+        if (game.inPrestigeStore) { drawPrestigeStoreInterior(time); return; }
         if (game.inCandyStore) { drawCandyStoreInterior(time); return; }
         if (game.inSchool) { drawSchoolInterior(time); return; }
         const w = canvas.width, h = canvas.height;
@@ -3884,6 +4262,8 @@
         const ox = Math.floor((w - roomW * ts) / 2);
         const oy = Math.floor((h - roomH * ts) / 2);
         const outfit = OUTFIT_COLORS[player.outfit] || OUTFIT_COLORS[0];
+        const upgrades = game.save && game.save.houseUpgrades ? game.save.houseUpgrades : [];
+        const hasUpgrade = id => upgrades.includes(id);
 
         // Dark outer background
         ctx.fillStyle = "#0d0a14";
@@ -3948,29 +4328,94 @@
         ctx.moveTo(winX+2, winY + ts - 2); ctx.lineTo(winX + ts*3 - 2, winY + ts - 2);
         ctx.stroke();
 
+        if (hasUpgrade("velvet_rug")) {
+          const rugX = ox + ts + 8;
+          const rugY = oy + ts * 3;
+          ctx.fillStyle = "#7a1020";
+          ctx.fillRect(rugX, rugY, ts * 8, ts * 2);
+          ctx.strokeStyle = "#c99a66";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(rugX + 1, rugY + 1, ts * 8 - 2, ts * 2 - 2);
+          ctx.strokeStyle = "#4b0a14";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(rugX + 8, rugY + 8, ts * 8 - 16, ts * 2 - 16);
+        }
+
+        if (hasUpgrade("chandelier")) {
+          const cx = ox + ts * 5.5;
+          const cy = oy + 26;
+          const chandGlow = ctx.createRadialGradient(cx, cy + 6, 8, cx, cy + 6, ts * 2.5);
+          chandGlow.addColorStop(0, "rgba(255,220,140,0.30)");
+          chandGlow.addColorStop(1, "rgba(255,220,140,0)");
+          ctx.fillStyle = chandGlow;
+          ctx.beginPath();
+          ctx.arc(cx, cy + 6, ts * 2.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "#d8b24c";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(cx, oy + 2);
+          ctx.lineTo(cx, cy - 8);
+          ctx.stroke();
+          ctx.fillStyle = "#d8b24c";
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - 2);
+          ctx.lineTo(cx - 16, cy + 10);
+          ctx.lineTo(cx, cy + 20);
+          ctx.lineTo(cx + 16, cy + 10);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        if (hasUpgrade("fireplace")) {
+          const fx = ox + ts + 4;
+          const fy = oy + ts * 4;
+          ctx.fillStyle = "#68432b";
+          ctx.fillRect(fx, fy, ts * 1.2, ts * 1.1);
+          ctx.fillStyle = "#3a2416";
+          ctx.fillRect(fx + 6, fy + 10, ts * 1.2 - 12, ts * 0.72);
+          const flame = Math.sin(time * 8) * 4;
+          ctx.fillStyle = "#ff9a24";
+          ctx.beginPath();
+          ctx.moveTo(fx + ts * 0.6, fy + 16);
+          ctx.lineTo(fx + 12, fy + ts * 0.82);
+          ctx.lineTo(fx + ts * 0.6, fy + ts * 0.45 + flame);
+          ctx.lineTo(fx + ts * 1.2 - 12, fy + ts * 0.82);
+          ctx.closePath();
+          ctx.fill();
+        }
+
         // ── Bed (left, y rows 2-5) ──────────────────────
         const bx = ox + ts, by = oy + ts * 2;
         ctx.fillStyle = shade(outfit.legs, -15);
         ctx.fillRect(bx + 2, by, ts * 2 - 4, ts * 4); // frame
-        ctx.fillStyle = shade(outfit.torso, 10);
+        ctx.fillStyle = hasUpgrade("royal_bed") ? "#8b2040" : shade(outfit.torso, 10);
         ctx.fillRect(bx + 6, by + 4, ts * 2 - 12, ts * 3); // mattress
         ctx.fillStyle = "#f5f0e0";
         ctx.fillRect(bx + 6, by + 4, ts * 2 - 12, ts); // pillow
-        ctx.fillStyle = outfit.torso;
+        ctx.fillStyle = hasUpgrade("royal_bed") ? "#b88a2c" : outfit.torso;
         ctx.fillRect(bx + 6, by + ts * 3 - 6, ts * 2 - 12, 10); // blanket fold
         // Bed headboard
-        ctx.fillStyle = shade(outfit.legs, -30);
+        ctx.fillStyle = hasUpgrade("royal_bed") ? "#d8b24c" : shade(outfit.legs, -30);
         ctx.fillRect(bx + 2, by - 6, ts * 2 - 4, 10);
 
         // ── Bookshelf (back-left wall) ───────────────────
         const shX = ox + ts, shY = oy + ts;
         ctx.fillStyle = "#5a3010";
-        ctx.fillRect(shX, shY, ts * 3, ts);
+        ctx.fillRect(shX, hasUpgrade("bookcase") ? shY - ts : shY, ts * 3, hasUpgrade("bookcase") ? ts * 2 : ts);
+        if (hasUpgrade("bookcase")) {
+          ctx.fillStyle = "#d8b24c";
+          ctx.fillRect(shX, shY - ts, ts * 3, 4);
+          ctx.fillRect(shX, shY - 4, ts * 3, 4);
+        }
         // Books
         const bkColors = ["#8b2020","#2060a0","#207030","#906010","#602080"];
-        for (let b = 0; b < 7; b++) {
-          ctx.fillStyle = bkColors[b % bkColors.length];
-          ctx.fillRect(shX + 4 + b * (ts*3/7), shY + 6, ts*3/7 - 2, ts - 8);
+        const shelfRows = hasUpgrade("bookcase") ? [shY - ts + 6, shY + 6] : [shY + 6];
+        for (const rowY of shelfRows) {
+          for (let b = 0; b < 7; b++) {
+            ctx.fillStyle = bkColors[b % bkColors.length];
+            ctx.fillRect(shX + 4 + b * (ts*3/7), rowY, ts*3/7 - 2, ts - 8);
+          }
         }
 
         // ── Table + candle (right side, rows 2-3) ────────
@@ -4005,6 +4450,44 @@
         ctx.fillRect(chX + ts - 5, chY + 1, 10, 8);
         ctx.fillStyle = "#c8a000";
         ctx.fillRect(chX + ts - 3, chY + 3, 6, 4);
+
+        if (hasUpgrade("gold_mirror")) {
+          const mx = ox + ts * 9;
+          const my = oy + ts * 2;
+          ctx.fillStyle = "#d8b24c";
+          ctx.fillRect(mx, my, ts * 0.8, ts * 1.3);
+          ctx.fillStyle = "#9fc0d8";
+          ctx.fillRect(mx + 5, my + 5, ts * 0.8 - 10, ts * 1.3 - 10);
+          ctx.strokeStyle = "#f7e3a5";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(mx + 2, my + 2, ts * 0.8 - 4, ts * 1.3 - 4);
+        }
+
+        if (hasUpgrade("trophy_case")) {
+          const tx = ox + ts * 8;
+          const ty = oy + ts * 4.2;
+          ctx.fillStyle = "#7a5828";
+          ctx.fillRect(tx, ty, ts * 1.8, ts * 1.25);
+          ctx.fillStyle = "rgba(200,230,255,0.22)";
+          ctx.fillRect(tx + 4, ty + 4, ts * 1.8 - 8, ts * 1.25 - 8);
+          ctx.fillStyle = "#d8b24c";
+          ctx.font = "16px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText("🏆", tx + ts * 0.9, ty + 24);
+          ctx.textAlign = "left";
+        }
+
+        if (hasUpgrade("garden_fountain")) {
+          const gx = ox + ts * 5.5;
+          const gy = oy + ts * 5.45;
+          ctx.fillStyle = "#a8ddff";
+          ctx.beginPath();
+          ctx.arc(gx, gy, 14, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#b89540";
+          ctx.fillRect(gx - 4, gy - 18, 8, 22);
+          ctx.fillRect(gx - 12, gy + 4, 24, 6);
+        }
 
         // ── Door (bottom-centre wall) — exit ─────────────
         const dX = ox + ts * 5, dY = oy + (roomH - 1) * ts;
