@@ -494,3 +494,41 @@ Use this as the Phase 8 acceptance test.
 ---
 
 *Moonlight City — progression tuned so a 7-year-old can win and a 37-year-old can optimise.* 🌙
+
+
+## 7. Encounter Tables by Floor
+
+Use [DUNGEONS.md](./DUNGEONS.md) §4 for room-template tags and §6 for the authoritative band rules. Floors **1–5** are hand-designed teaching floors; floors **6–24** use the seeded stitching rules. The lighter enemy counts on early handcrafted floors are intentional and are offset by first-clear XP, safe loot, and tutorial generosity.
+
+| Floor | Enemies | Count | Elite? | Loot table | ooh! moment |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Small Slime / Sewer Rat (tutorial hall) | 6 | — | Band 1 basic chest/barrel | Extra chest |
+| 2 | Small Slime / Sewer Rat (corridor patrols) | 8 | — | Band 1 basic | Bonus gold barrel lane |
+| 3 | Small Slime / Sewer Rat (flooded room cluster) | 10 | — | Band 1 basic + chest ledge | Flooded centre set-piece |
+| 4 | Small Slime / Sewer Rat (cache loops) | 6 | — | Band 1 basic + hidden cache | Secret room behind SECRET_WALL |
+| 5 | Small Slime / Sewer Rat (antechamber arena) | 11 | — | Band 1 basic + clear chest | Tense arena fight |
+| 6 | 50/50 Small Slime & Sewer Rat (entry + corridors + small-arena) | 10 | 5% elite | Band 2 standard | Extra chest |
+| 7 | 50/50 Small Slime & Sewer Rat (junction-heavy) | 11 | 5% elite | Band 2 standard | Lore scrawl or gold barrel |
+| 8 | 50/50 Small Slime & Sewer Rat (hazard corridor) | 12 | 10% elite | Band 2 standard | Secret room chance |
+| 9 | 50/50 Small Slime & Sewer Rat (crossroads + branch) | 13 | 10% elite | Band 2 standard | Mini-boss roll or extra chest |
+| 10 | 50/50 Small Slime & Sewer Rat (large-arena) | 14 | Pipe Warden | Band 2 + Pipe Warden cache | Forced mini-boss |
+| 11 | 30/30/40 Slime/Rat/Toxic (entry + hazard corridor) | 12 | 10% elite | Band 3 standard | Chest or lore scrawl |
+| 12 | 30/30/40 Slime/Rat/Toxic (small-arena focus) | 13 | 15% elite | Band 3 standard | Secret room chance |
+| 13 | 30/30/40 Slime/Rat/Toxic (crossroads + alcove) | 14 | 15% elite | Band 3 standard | Mini-boss roll |
+| 14 | 30/30/40 Slime/Rat/Toxic (branchy corridors) | 15 | 18% elite | Band 3 standard | Extra chest |
+| 15 | 30/30/40 Slime/Rat/Toxic (large-arena eligible) | 15 | 20% elite | Band 3 standard | Mini-boss or secret room |
+| 16 | 20/40/40 Slime/Toxic/Spider (hazard-heavy) | 13 | 15% elite | Band 4 standard | Rare cosmetic roll |
+| 17 | 20/40/40 Slime/Toxic/Spider (small-arena) | 14 | 18% elite | Band 4 standard | Extra chest |
+| 18 | 20/40/40 Slime/Toxic/Spider (crossroads + secret) | 15 | 20% elite | Band 4 standard | Secret room chance |
+| 19 | 20/40/40 Slime/Toxic/Spider (large-arena) | 16 | 22% elite | Band 4 standard | Mini-boss roll |
+| 20 | 20/40/40 Slime/Toxic/Spider (large-arena) | 16 | Slime Mother | Band 4 + Slime Mother cache | Forced mini-boss |
+| 21 | 30/30/40 Toxic/Spider/Giant Slime (deep halls) | 14 | 20% elite | Band 5 standard | Mini-boss roll |
+| 22 | 30/30/40 Toxic/Spider/Giant Slime (hazard corridor) | 15 | 22% elite | Band 5 standard | Secret room chance |
+| 23 | 30/30/40 Toxic/Spider/Giant Slime (crossroads + arena) | 16 | 25% elite | Band 5 standard | Rare cosmetic roll |
+| 24 | 30/30/40 Toxic/Spider/Giant Slime (boss lead-in) | 18 | 30% elite | Band 5 standard | Guaranteed chest or mini-boss |
+| 25 | No regular enemies (boss-antechamber only) | 0 | Boss gate only | None pre-boss | Silent approach to the Slime King |
+
+**Quick reading notes**
+- **Band 1 (1–5):** handcrafted introductions to the room language used later by procedural floors.
+- **Bands 2–5 (6–24):** encounter rows assume `entry-room` + 2–5 stitched middle templates + `exit-room`, with up to 2 short side branches.
+- **Floor 25:** use `boss-antechamber` only; no random combat before the Slime King gate.

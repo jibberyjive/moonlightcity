@@ -28,9 +28,40 @@
     (() => {
       "use strict";
 
+      // ==================================================
+      // === BOOTSTRAP ====================================
+      // ==================================================
+
       const canvas = document.getElementById("game");
       const ctx = canvas.getContext("2d");
 
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      window.addEventListener("resize", resize);
+      resize();
+
+      // ==================================================
+      // === CONSTANTS & ENUMS ============================
+      // ==================================================
+
+      const SCHEMA_VERSION = 1;
+      const SAVE_KEY = "moonlight-city-save";
+
+      // Scene IDs
+      const SCENE = {
+        TITLE: "TITLE",
+        CHARACTER_CREATION: "CHARACTER_CREATION",
+        CITY: "CITY",
+        HOUSE_INTERIOR: "HOUSE_INTERIOR",
+        DUNGEON: "DUNGEON",
+        DIALOGUE: "DIALOGUE",
+        INVENTORY: "INVENTORY",
+        PAUSE: "PAUSE"
+      };
+
+      // City tile types
       const TILE_SIZE = 32;
       const MAP_W = 40;
       const MAP_H = 40;
@@ -49,6 +80,7 @@
 
       const BLOCKING = new Set([TILE.TREE, TILE.WATER, TILE.ROCK]);
 
+      // Palette — city
       const COLORS = {
         grass: "#5a8a3c",
         darkGrass: "#4b7432",
@@ -61,16 +93,28 @@
         leavesHi: "#4e8e4f"
       };
 
-      function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-      }
+      // Character creation options
+      const SKIN_TONES   = ["#f1c27d", "#e0a870", "#c68642", "#8d5524"];
+      const HAIR_COLORS  = ["#1a0a00", "#5c3317", "#b5651d", "#d4a017", "#c0392b", "#ecf0f1", "#7f8c8d", "#9b59b6"];
+      const OUTFIT_COLORS = [
+        { torso: "#2b9db1", legs: "#384c89" },  // teal + blue
+        { torso: "#c0392b", legs: "#2c3e50" },  // red + dark
+        { torso: "#27ae60", legs: "#6d4c41" }   // green + brown
+      ];
+      // 6 hair style indices (0–5); style shapes are handled in drawPlayerSprite
+      const HAIR_STYLE_COUNT = 6;
+      const CLASS_OPTIONS = [{ id: "adventurer", label: "Adventurer" }];
 
-      window.addEventListener("resize", resize);
-      resize();
+      // ==================================================
+      // === UTILITY HELPERS ==============================
+      // ==================================================
 
       function clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
+      }
+
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
       }
 
       function noise(x, y, seed = 0) {
@@ -85,6 +129,178 @@
         const b = clamp((n & 255) + amt, 0, 255);
         return `rgb(${r},${g},${b})`;
       }
+
+      // ==================================================
+      // === SAVE SYSTEM ==================================
+      // ==================================================
+
+      function createNewSave() {
+        return {
+          version: SCHEMA_VERSION,
+          lastScene: SCENE.TITLE,
+          player: {
+            name: "Hero",
+            skin: 0,
+            hairStyle: 0,
+            hairColour: 0,
+            outfit: 0,
+            classId: "adventurer",
+            level: 1,
+            xp: 0,
+            stats: { STR: 5, AGI: 5, INT: 5, DEF: 5 },
+            hp: 30,
+            hpMax: 30,
+            mp: 10,
+            mpMax: 10,
+            spawn: { scene: SCENE.CITY, x: 20 * TILE_SIZE + TILE_SIZE / 2, y: 23 * TILE_SIZE + TILE_SIZE / 2 }
+          },
+          gold: { carried: 0, banked: 0 },
+          inventory: [],
+          dungeon: {
+            currentFloor: 1,
+            deepestFloorCleared: 0,
+            checkpointFloor: 0,
+            floorsCleared: [],
+            deathCount: 0
+          },
+          house: {
+            wallColour: 0,
+            floorColour: 0,
+            placedFurniture: []
+          },
+          relationships: { mara: 0, rex: 0, lumi: 0 },
+          time: { currentDay: 1, currentHour: 8, currentMinute: 0 },
+          flags: {
+            bossDefeated: false,
+            metMara: false,
+            metRex: false,
+            metLumi: false,
+            unlockedHouse: true
+          }
+        };
+      }
+
+      function migrateSave(raw) {
+        let save = raw || createNewSave();
+        if (typeof save.version !== "number") save.version = 0;
+        while (save.version < SCHEMA_VERSION) {
+          switch (save.version) {
+            case 0:
+              save.gold        = save.gold        || { carried: 0, banked: 0 };
+              save.relationships = save.relationships || { mara: 0, rex: 0, lumi: 0 };
+              save.version = 1;
+              break;
+            default:
+              return createNewSave();
+          }
+        }
+        // Fill any missing keys from a fresh save (safe forward-compat)
+        const fresh = createNewSave();
+        save.player    = Object.assign({}, fresh.player,    save.player);
+        save.dungeon   = Object.assign({}, fresh.dungeon,   save.dungeon);
+        save.house     = Object.assign({}, fresh.house,     save.house);
+        save.flags     = Object.assign({}, fresh.flags,     save.flags);
+        save.time      = Object.assign({}, fresh.time,      save.time);
+        return save;
+      }
+
+      function loadSave() {
+        try {
+          const raw = JSON.parse(localStorage.getItem(SAVE_KEY));
+          return raw ? migrateSave(raw) : null;
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function writeSave(save) {
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (_) {}
+      }
+
+      // ==================================================
+      // === GLOBAL GAME STATE ============================
+      // ==================================================
+
+      const game = {
+        scene: SCENE.TITLE,   // active scene ID
+        save: null,           // loaded save object (null until loaded)
+        elapsed: 0,
+        fadeAlpha: 0,
+        fadeDir: 0,           // -1 fade out, +1 fade in, 0 idle
+        fadeCallback: null
+      };
+
+      const camera = { x: 0, y: 0 };
+
+      // Screen-shake state
+      const shake = { x: 0, y: 0, mag: 0, decay: 8 };
+      function triggerShake(mag) { shake.mag = Math.max(shake.mag, mag); }
+      function updateShake(dt) {
+        if (shake.mag <= 0.1) { shake.mag = 0; shake.x = 0; shake.y = 0; return; }
+        shake.x = (Math.random() * 2 - 1) * shake.mag;
+        shake.y = (Math.random() * 2 - 1) * shake.mag;
+        shake.mag -= shake.decay * dt;
+      }
+
+      // Fade transition helper
+      function beginFade(onMidpoint) {
+        game.fadeAlpha = 0;
+        game.fadeDir   = -1;
+        game.fadeCallback = onMidpoint;
+      }
+
+      function switchScene(nextScene) {
+        beginFade(() => { game.scene = nextScene; });
+      }
+
+      // ==================================================
+      // === INPUT SYSTEM =================================
+      // ==================================================
+
+      const keys = Object.create(null);
+      const justPressedKeys = Object.create(null);
+
+      const keyMap = {
+        ArrowUp: "up",    KeyW: "up",
+        ArrowDown: "down", KeyS: "down",
+        ArrowLeft: "left", KeyA: "left",
+        ArrowRight: "right", KeyD: "right",
+        Space: "attack",   KeyZ: "attack",
+        ShiftLeft: "dash", ShiftRight: "dash",
+        KeyE: "interact",
+        KeyI: "inventory",
+        Escape: "pause",
+        Enter: "confirm",
+        Backspace: "back"
+      };
+
+      window.addEventListener("keydown", (e) => {
+        const action = keyMap[e.code];
+        if (action) {
+          if (!keys[action]) justPressedKeys[action] = true;
+          keys[action] = true;
+          e.preventDefault();
+        }
+      });
+      window.addEventListener("keyup", (e) => {
+        const action = keyMap[e.code];
+        if (action) { keys[action] = false; e.preventDefault(); }
+      });
+
+      // Mouse state
+      const mouse = { x: 0, y: 0, clicked: false, _rawClick: false };
+      window.addEventListener("mousemove", (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+      window.addEventListener("mousedown", () => { mouse._rawClick = true; });
+      window.addEventListener("mouseup",   () => { mouse._rawClick = false; });
+
+      function clearJustPressed() {
+        for (const k in justPressedKeys) delete justPressedKeys[k];
+        mouse.clicked = false;
+      }
+
+      // ==================================================
+      // === MAP / WORLD BUILDER ==========================
+      // ==================================================
 
       const map = Array.from({ length: MAP_H }, () => Array(MAP_W).fill(TILE.GRASS));
 
@@ -237,58 +453,34 @@
         );
       }
 
-      buildMap();
+      // ==================================================
+      // === ENTITY FACTORIES =============================
+      // ==================================================
 
-      const keys = Object.create(null);
-      const keyMap = {
-        ArrowUp: "up",
-        KeyW: "up",
-        ArrowDown: "down",
-        KeyS: "down",
-        ArrowLeft: "left",
-        KeyA: "left",
-        ArrowRight: "right",
-        KeyD: "right"
-      };
+      function createPlayer(save) {
+        const s = save ? save.player : {};
+        return {
+          x: s.spawn ? s.spawn.x : 20 * TILE_SIZE + TILE_SIZE / 2,
+          y: s.spawn ? s.spawn.y : 23 * TILE_SIZE + TILE_SIZE / 2,
+          vx: 0, vy: 0,
+          radius: 9, speed: 96, accel: 700,
+          dir: "down", walkTime: 0,
+          skin:       s.skin       || 0,
+          hairStyle:  s.hairStyle  || 0,
+          hairColour: s.hairColour || 0,
+          outfit:     s.outfit     || 0
+        };
+      }
 
-      window.addEventListener("keydown", (event) => {
-        if (keyMap[event.code]) {
-          keys[keyMap[event.code]] = true;
-          event.preventDefault();
-        }
-      });
+      let player = createPlayer(null);
 
-      window.addEventListener("keyup", (event) => {
-        if (keyMap[event.code]) {
-          keys[keyMap[event.code]] = false;
-          event.preventDefault();
-        }
-      });
-
-      const player = {
-        x: 20 * TILE_SIZE + TILE_SIZE / 2,
-        y: 23 * TILE_SIZE + TILE_SIZE / 2,
-        vx: 0,
-        vy: 0,
-        radius: 9,
-        speed: 96,
-        accel: 700,
-        dir: "down",
-        walkTime: 0
-      };
-
-      const camera = {
-        x: 0,
-        y: 0
-      };
+      // ==================================================
+      // === SIMULATION SYSTEMS ===========================
+      // ==================================================
 
       function getView() {
         const zoom = Math.max(1, Math.ceil(Math.max(canvas.width / WORLD_W, canvas.height / WORLD_H)));
-        return {
-          zoom,
-          worldW: canvas.width / zoom,
-          worldH: canvas.height / zoom
-        };
+        return { zoom, worldW: canvas.width / zoom, worldH: canvas.height / zoom };
       }
 
       function isBlockingTile(tx, ty) {
@@ -301,7 +493,6 @@
         const maxX = Math.floor((x + radius) / TILE_SIZE);
         const minY = Math.floor((y - radius) / TILE_SIZE);
         const maxY = Math.floor((y + radius) / TILE_SIZE);
-
         for (let ty = minY; ty <= maxY; ty++) {
           for (let tx = minX; tx <= maxX; tx++) {
             if (!isBlockingTile(tx, ty)) continue;
@@ -309,28 +500,22 @@
             const tileY = ty * TILE_SIZE;
             const nearestX = clamp(x, tileX, tileX + TILE_SIZE);
             const nearestY = clamp(y, tileY, tileY + TILE_SIZE);
-            const dx = x - nearestX;
-            const dy = y - nearestY;
-            if (dx * dx + dy * dy < radius * radius) {
-              return true;
-            }
+            const dx = x - nearestX, dy = y - nearestY;
+            if (dx * dx + dy * dy < radius * radius) return true;
           }
         }
         return false;
       }
 
       function movePlayer(dt) {
-        let inputX = 0;
-        let inputY = 0;
-
-        if (keys.left) inputX -= 1;
+        let inputX = 0, inputY = 0;
+        if (keys.left)  inputX -= 1;
         if (keys.right) inputX += 1;
-        if (keys.up) inputY -= 1;
-        if (keys.down) inputY += 1;
+        if (keys.up)    inputY -= 1;
+        if (keys.down)  inputY += 1;
 
         const len = Math.hypot(inputX, inputY) || 1;
-        inputX /= len;
-        inputY /= len;
+        inputX /= len; inputY /= len;
 
         const targetVX = inputX * player.speed;
         const targetVY = inputY * player.speed;
@@ -369,6 +554,10 @@
         player.x = clamp(player.x, player.radius, WORLD_W - player.radius);
         player.y = clamp(player.y, player.radius, WORLD_H - player.radius);
       }
+
+      // ==================================================
+      // === RENDERING ====================================
+      // ==================================================
 
       function drawGrass(x, y, tileX, tileY, base) {
         ctx.fillStyle = base;
@@ -511,12 +700,17 @@
         if (tile === TILE.ROCK) drawRock(tileX, tileY);
       }
 
-      function drawPlayer(time) {
-        const bob = Math.hypot(player.vx, player.vy) > 4 ? Math.sin(player.walkTime * Math.PI) * 0.5 : Math.sin(time * 2.3) * 0.45;
-        const x = player.x;
-        const y = player.y + bob;
-        const moving = Math.hypot(player.vx, player.vy) > 8;
-        const frame = moving ? Math.floor(player.walkTime) % 4 : 0;
+      function drawPlayerSprite(time, p) {
+        const skinColor = SKIN_TONES[p.skin]   || SKIN_TONES[0];
+        const hairColor = HAIR_COLORS[p.hairColour] || HAIR_COLORS[0];
+        const outfit    = OUTFIT_COLORS[p.outfit]   || OUTFIT_COLORS[0];
+        const skinBack  = shade(skinColor, -18);
+
+        const bob = Math.hypot(p.vx, p.vy) > 4 ? Math.sin(p.walkTime * Math.PI) * 0.5 : Math.sin(time * 2.3) * 0.45;
+        const x = p.x;
+        const y = p.y + bob;
+        const moving = Math.hypot(p.vx, p.vy) > 8;
+        const frame = moving ? Math.floor(p.walkTime) % 4 : 0;
         const legSwing = [0, 1.5, 0, -1.5][frame];
         const armSwing = [0, -1.2, 0, 1.2][frame];
 
@@ -533,52 +727,56 @@
           ctx.fillRect(px + rx, py + ry, rw, rh);
         }
 
+        // Shoes (same for all outfits)
         rect(7, 14, 3, 6, "#5b3a24");
         rect(10, 14, 3, 6, "#5b3a24");
 
-        if (player.dir === "down") {
-          rect(6.5 - armSwing, 8, 2, 7, "#e2b98b");
-          rect(11.5 + armSwing, 8, 2, 7, "#e2b98b");
-          rect(7, 7, 6, 8, "#2b9db1");
-          rect(7.5 - legSwing, 15, 3, 5, "#384c89");
-          rect(10.5 + legSwing, 15, 3, 5, "#384c89");
-          rect(6, 0, 8, 8, "#e2b98b");
-          rect(5, 0, 10, 3, "#6a4027");
-          rect(5, 2, 2, 3, "#6a4027");
-          rect(13, 2, 2, 3, "#6a4027");
+        if (p.dir === "down") {
+          rect(6.5 - armSwing, 8, 2, 7, skinColor);
+          rect(11.5 + armSwing, 8, 2, 7, skinColor);
+          rect(7, 7, 6, 8, outfit.torso);
+          rect(7.5 - legSwing, 15, 3, 5, outfit.legs);
+          rect(10.5 + legSwing, 15, 3, 5, outfit.legs);
+          rect(6, 0, 8, 8, skinColor);
+          rect(5, 0, 10, 3, hairColor);
+          rect(5, 2, 2, 3, hairColor);
+          rect(13, 2, 2, 3, hairColor);
           rect(7, 4, 1, 1, "#1d1d1d");
           rect(12, 4, 1, 1, "#1d1d1d");
-        } else if (player.dir === "up") {
-          rect(7, 7, 6, 8, "#25889b");
-          rect(6.5 + armSwing, 8, 2, 7, "#d3ad80");
-          rect(11.5 - armSwing, 8, 2, 7, "#d3ad80");
-          rect(7.5 - legSwing, 15, 3, 5, "#2f4174");
-          rect(10.5 + legSwing, 15, 3, 5, "#2f4174");
-          rect(6, 0, 8, 8, "#e2b98b");
-          rect(5, 0, 10, 5, "#6a4027");
-          rect(6, 5, 8, 1, "#6a4027");
-        } else if (player.dir === "left") {
-          rect(7, 7, 6, 8, "#2b9db1");
-          rect(6, 9 + armSwing * 0.4, 2, 6, "#e2b98b");
-          rect(11, 8 - armSwing * 0.4, 2, 6, "#cda77d");
-          rect(7.5 - legSwing, 15, 3, 5, "#384c89");
-          rect(10.5 + legSwing, 15, 3, 5, "#384c89");
-          rect(6, 0, 8, 8, "#e2b98b");
-          rect(5, 0, 8, 3, "#6a4027");
-          rect(5, 2, 2, 4, "#6a4027");
+        } else if (p.dir === "up") {
+          rect(7, 7, 6, 8, shade(outfit.torso, -10));
+          rect(6.5 + armSwing, 8, 2, 7, skinBack);
+          rect(11.5 - armSwing, 8, 2, 7, skinBack);
+          rect(7.5 - legSwing, 15, 3, 5, shade(outfit.legs, -10));
+          rect(10.5 + legSwing, 15, 3, 5, shade(outfit.legs, -10));
+          rect(6, 0, 8, 8, skinBack);
+          rect(5, 0, 10, 5, hairColor);
+          rect(6, 5, 8, 1, hairColor);
+        } else if (p.dir === "left") {
+          rect(7, 7, 6, 8, outfit.torso);
+          rect(6, 9 + armSwing * 0.4, 2, 6, skinColor);
+          rect(11, 8 - armSwing * 0.4, 2, 6, skinBack);
+          rect(7.5 - legSwing, 15, 3, 5, outfit.legs);
+          rect(10.5 + legSwing, 15, 3, 5, outfit.legs);
+          rect(6, 0, 8, 8, skinColor);
+          rect(5, 0, 8, 3, hairColor);
+          rect(5, 2, 2, 4, hairColor);
           rect(8, 4, 1, 1, "#1d1d1d");
         } else {
-          rect(7, 7, 6, 8, "#2b9db1");
-          rect(12, 9 - armSwing * 0.4, 2, 6, "#e2b98b");
-          rect(7, 8 + armSwing * 0.4, 2, 6, "#cda77d");
-          rect(7.5 - legSwing, 15, 3, 5, "#384c89");
-          rect(10.5 + legSwing, 15, 3, 5, "#384c89");
-          rect(6, 0, 8, 8, "#e2b98b");
-          rect(7, 0, 8, 3, "#6a4027");
-          rect(13, 2, 2, 4, "#6a4027");
+          rect(7, 7, 6, 8, outfit.torso);
+          rect(12, 9 - armSwing * 0.4, 2, 6, skinColor);
+          rect(7, 8 + armSwing * 0.4, 2, 6, skinBack);
+          rect(7.5 - legSwing, 15, 3, 5, outfit.legs);
+          rect(10.5 + legSwing, 15, 3, 5, outfit.legs);
+          rect(6, 0, 8, 8, skinColor);
+          rect(7, 0, 8, 3, hairColor);
+          rect(13, 2, 2, 4, hairColor);
           rect(11, 4, 1, 1, "#1d1d1d");
         }
       }
+
+      // drawPlayer uses the live player object — called by city scene
+      function drawPlayer(time) { drawPlayerSprite(time, player); }
 
       function drawWorld(time, view) {
         const startX = clamp(Math.floor(camera.x / TILE_SIZE) - 2, 0, MAP_W - 1);
@@ -613,43 +811,297 @@
         }
       }
 
-      function drawUI(day) {
+      function drawCityHUD(save) {
         ctx.save();
+        const day = save ? save.time.currentDay : 1;
+        const name = save ? save.player.name : "";
 
         ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
         ctx.fillRect(14, 12, 178, 36);
-        ctx.fillRect(canvas.width - 110, 12, 96, 36);
+        ctx.fillRect(canvas.width - 140, 12, 126, 36);
 
         ctx.fillStyle = "#f3f7e8";
         ctx.font = "bold 22px Trebuchet MS, Arial, sans-serif";
         ctx.fillText("Moonlight City", 24, 37);
 
-        ctx.font = "bold 20px Trebuchet MS, Arial, sans-serif";
-        const dayText = `Day ${day}`;
+        ctx.font = "bold 18px Trebuchet MS, Arial, sans-serif";
+        const dayText = name ? `${name}  ·  Day ${day}` : `Day ${day}`;
         const dayWidth = ctx.measureText(dayText).width;
         ctx.fillText(dayText, canvas.width - 26 - dayWidth, 37);
-
-        const hint = "WASD or Arrow Keys to move";
-        ctx.font = "18px Trebuchet MS, Arial, sans-serif";
-        const hintWidth = ctx.measureText(hint).width;
-        const hintX = (canvas.width - hintWidth) / 2;
-        const hintY = canvas.height - 22;
-        ctx.fillStyle = "rgba(0, 0, 0, 0.34)";
-        ctx.fillRect(hintX - 12, hintY - 22, hintWidth + 24, 32);
-        ctx.fillStyle = "#f6f6ef";
-        ctx.fillText(hint, hintX, hintY);
 
         ctx.restore();
       }
 
-      let lastTime = performance.now();
-      let elapsed = 0;
+      // ==================================================
+      // === SCENES =======================================
+      // ==================================================
 
-      function tick(now) {
-        const dt = Math.min((now - lastTime) / 1000, 0.033);
-        lastTime = now;
-        elapsed += dt;
+      // ---- TITLE SCENE ---------------------------------
 
+      const titleState = { selected: 0 }; // 0 = New Game, 1 = Continue
+
+      function updateTitle() {
+        if (justPressedKeys.up)   titleState.selected = 0;
+        if (justPressedKeys.down) titleState.selected = 1;
+        if (justPressedKeys.confirm || mouse.clicked) {
+          const hasSave = !!loadSave();
+          if (titleState.selected === 0) {
+            // New game — wipe save and go to character creation
+            game.save = createNewSave();
+            switchScene(SCENE.CHARACTER_CREATION);
+          } else if (hasSave) {
+            game.save = loadSave();
+            player = createPlayer(game.save);
+            switchScene(SCENE.CITY);
+          }
+        }
+      }
+
+      function drawTitle(time) {
+        const w = canvas.width, h = canvas.height;
+
+        // Animated starfield background
+        ctx.fillStyle = "#0a1020";
+        ctx.fillRect(0, 0, w, h);
+        for (let i = 0; i < 120; i++) {
+          const sx = noise(i, 0, 1) * w;
+          const sy = noise(i, 0, 2) * h;
+          const bright = 0.4 + 0.6 * Math.abs(Math.sin(time * 0.8 + i));
+          ctx.fillStyle = `rgba(220,230,255,${bright.toFixed(2)})`;
+          const sr = noise(i, 0, 3) < 0.15 ? 2 : 1;
+          ctx.fillRect(sx, sy, sr, sr);
+        }
+
+        // Moon
+        ctx.fillStyle = "#f0e8c8";
+        ctx.beginPath();
+        ctx.arc(w * 0.72, h * 0.22, 54, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#d8d0a8";
+        ctx.beginPath();
+        ctx.arc(w * 0.72 + 18, h * 0.22 - 14, 44, 0, Math.PI * 2);
+        ctx.fill();
+
+        // City skyline silhouette
+        ctx.fillStyle = "#111922";
+        const bldgs = [
+          [0, 0.68, 0.10, 0.32],
+          [0.08, 0.55, 0.07, 0.45],
+          [0.14, 0.62, 0.10, 0.38],
+          [0.23, 0.50, 0.06, 0.50],
+          [0.28, 0.58, 0.09, 0.42],
+          [0.36, 0.44, 0.07, 0.56],
+          [0.42, 0.60, 0.10, 0.40],
+          [0.51, 0.52, 0.08, 0.48],
+          [0.58, 0.65, 0.11, 0.35],
+          [0.68, 0.48, 0.07, 0.52],
+          [0.74, 0.57, 0.09, 0.43],
+          [0.82, 0.64, 0.10, 0.36],
+          [0.91, 0.54, 0.09, 0.46]
+        ];
+        for (const [bx, by, bw, bh] of bldgs) {
+          ctx.fillRect(bx * w, by * h, bw * w, bh * h);
+        }
+        ctx.fillRect(0, h * 0.82, w, h * 0.18);
+
+        // Title text
+        ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(0,0,0,0.45)";
+        ctx.font = "bold 56px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("Moonlight City", w / 2 + 3, h * 0.36 + 3);
+        ctx.fillStyle = "#f0e8c8";
+        ctx.fillText("Moonlight City", w / 2, h * 0.36);
+        ctx.font = "22px Trebuchet MS, Arial, sans-serif";
+        ctx.fillStyle = "#b8c8d8";
+        ctx.fillText("Go down scary.  Come back rich.  Make home warmer.", w / 2, h * 0.44);
+
+        // Menu buttons
+        const hasSave = !!loadSave();
+        const buttons = [
+          { label: "✨ New Game", y: h * 0.58 },
+          { label: hasSave ? "▶ Continue" : "— No save —", y: h * 0.58 + 58, disabled: !hasSave }
+        ];
+        buttons.forEach((btn, i) => {
+          const selected = titleState.selected === i;
+          const alpha = btn.disabled ? 0.35 : 1;
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = selected ? "rgba(240,232,200,0.18)" : "rgba(0,0,0,0.25)";
+          ctx.fillRect(w / 2 - 140, btn.y - 30, 280, 46);
+          if (selected) {
+            ctx.strokeStyle = "#f0e8c8";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(w / 2 - 140, btn.y - 30, 280, 46);
+          }
+          ctx.fillStyle = selected ? "#f0e8c8" : "#8899aa";
+          ctx.font = selected ? "bold 24px Trebuchet MS, Arial, sans-serif" : "22px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText(btn.label, w / 2, btn.y + 4);
+          ctx.globalAlpha = 1;
+        });
+
+        // Hint
+        ctx.font = "16px Trebuchet MS, Arial, sans-serif";
+        ctx.fillStyle = "rgba(180,190,200,0.6)";
+        ctx.fillText("↑↓ to select  ·  Enter to confirm", w / 2, h * 0.88);
+        ctx.textAlign = "left";
+      }
+
+      // ---- CHARACTER CREATION SCENE -------------------
+
+      const cc = {
+        name: "Hero",
+        skin: 0,
+        hairStyle: 0,
+        hairColour: 0,
+        outfit: 0,
+        classId: "adventurer",
+        // which column the cursor is in: "name"|"skin"|"hair"|"hairColour"|"outfit"|"done"
+        field: "skin",
+        nameEditing: false,
+        typedName: "Hero"
+      };
+
+      const CC_FIELDS = ["name", "skin", "hairColour", "outfit", "done"];
+
+      function updateCharacterCreation() {
+        // Navigate fields with left/right
+        if (justPressedKeys.left) {
+          const idx = CC_FIELDS.indexOf(cc.field);
+          if (idx > 0) cc.field = CC_FIELDS[idx - 1];
+        }
+        if (justPressedKeys.right) {
+          const idx = CC_FIELDS.indexOf(cc.field);
+          if (idx < CC_FIELDS.length - 1) cc.field = CC_FIELDS[idx + 1];
+        }
+
+        // Cycle options with up/down
+        if (justPressedKeys.up || justPressedKeys.down) {
+          const dir = justPressedKeys.up ? -1 : 1;
+          if (cc.field === "skin")       cc.skin       = (cc.skin       + dir + SKIN_TONES.length)    % SKIN_TONES.length;
+          if (cc.field === "hairColour") cc.hairColour = (cc.hairColour + dir + HAIR_COLORS.length)   % HAIR_COLORS.length;
+          if (cc.field === "outfit")     cc.outfit     = (cc.outfit     + dir + OUTFIT_COLORS.length) % OUTFIT_COLORS.length;
+          if (cc.field === "hairStyle")  cc.hairStyle  = (cc.hairStyle  + dir + HAIR_STYLE_COUNT)     % HAIR_STYLE_COUNT;
+        }
+
+        // Confirm / done
+        if ((justPressedKeys.confirm || mouse.clicked) && cc.field === "done") {
+          // Commit to save and go to city
+          game.save.player.name       = cc.name;
+          game.save.player.skin       = cc.skin;
+          game.save.player.hairStyle  = cc.hairStyle;
+          game.save.player.hairColour = cc.hairColour;
+          game.save.player.outfit     = cc.outfit;
+          game.save.player.classId    = cc.classId;
+          writeSave(game.save);
+          player = createPlayer(game.save);
+          switchScene(SCENE.CITY);
+        }
+      }
+
+      window.addEventListener("keypress", (e) => {
+        if (game.scene !== SCENE.CHARACTER_CREATION) return;
+        if (cc.field !== "name") return;
+        if (e.key === "Enter") { cc.name = cc.typedName || "Hero"; return; }
+        if (e.key.length === 1 && cc.typedName.length < 14) {
+          cc.typedName += e.key;
+          cc.name = cc.typedName;
+        }
+      });
+      window.addEventListener("keydown", (e) => {
+        if (game.scene !== SCENE.CHARACTER_CREATION) return;
+        if (cc.field !== "name") return;
+        if (e.code === "Backspace" && cc.typedName.length > 0) {
+          cc.typedName = cc.typedName.slice(0, -1);
+          cc.name = cc.typedName || "Hero";
+        }
+      }, { capture: true });
+
+      function drawCharacterCreation(time) {
+        const w = canvas.width, h = canvas.height;
+
+        // Background
+        ctx.fillStyle = "#1a1028";
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = "rgba(240,232,200,0.04)";
+        for (let i = 0; i < 5; i++) {
+          ctx.fillRect(0, (h / 5) * i, w, 1);
+        }
+
+        // Title
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#f0e8c8";
+        ctx.font = "bold 32px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("Create Your Character", w / 2, 52);
+
+        // Preview character (centre screen, larger)
+        const previewP = {
+          x: w / 2, y: h * 0.45,
+          vx: 0, vy: 0,
+          radius: 9, speed: 0, accel: 0,
+          dir: "down", walkTime: time * 2,
+          skin: cc.skin, hairStyle: cc.hairStyle,
+          hairColour: cc.hairColour, outfit: cc.outfit
+        };
+        ctx.save();
+        ctx.scale(3, 3);
+        ctx.translate(-(w / 2) * (2 / 3), -(h * 0.45) * (2 / 3));
+        drawPlayerSprite(time, previewP);
+        ctx.restore();
+
+        // Option panels
+        const panels = [
+          { key: "name",      label: "Name",      value: cc.name, x: w * 0.12 },
+          { key: "skin",      label: "Skin",       value: `${cc.skin + 1} / ${SKIN_TONES.length}`, x: w * 0.30 },
+          { key: "hairColour",label: "Hair Color", value: `${cc.hairColour + 1} / ${HAIR_COLORS.length}`, x: w * 0.50 },
+          { key: "outfit",    label: "Outfit",     value: `${cc.outfit + 1} / ${OUTFIT_COLORS.length}`, x: w * 0.70 },
+          { key: "done",      label: "▶ Play!",    value: "",  x: w * 0.88 }
+        ];
+
+        const panelY = h * 0.72;
+        panels.forEach(p => {
+          const sel = cc.field === p.key;
+          ctx.fillStyle = sel ? "rgba(240,232,200,0.18)" : "rgba(0,0,0,0.35)";
+          ctx.fillRect(p.x - 70, panelY - 40, 140, 80);
+          if (sel) {
+            ctx.strokeStyle = "#f0e8c8";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(p.x - 70, panelY - 40, 140, 80);
+          }
+          ctx.fillStyle = sel ? "#f0e8c8" : "#889aaa";
+          ctx.font = "bold 16px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText(p.label, p.x, panelY - 14);
+          ctx.font = sel ? "bold 20px Trebuchet MS, Arial, sans-serif" : "18px Trebuchet MS, Arial, sans-serif";
+          ctx.fillStyle = sel ? "#ffe090" : "#c0c8d0";
+          if (p.key === "skin") {
+            // Show swatch
+            ctx.fillStyle = SKIN_TONES[cc.skin];
+            ctx.fillRect(p.x - 12, panelY + 6, 24, 16);
+          } else if (p.key === "hairColour") {
+            ctx.fillStyle = HAIR_COLORS[cc.hairColour];
+            ctx.fillRect(p.x - 12, panelY + 6, 24, 16);
+          } else if (p.key === "outfit") {
+            ctx.fillStyle = OUTFIT_COLORS[cc.outfit].torso;
+            ctx.fillRect(p.x - 14, panelY + 6, 13, 16);
+            ctx.fillStyle = OUTFIT_COLORS[cc.outfit].legs;
+            ctx.fillRect(p.x + 1, panelY + 6, 13, 16);
+          } else {
+            ctx.fillStyle = sel ? "#ffe090" : "#c0c8d0";
+            ctx.fillText(p.value + (p.key === "name" && sel ? "▌" : ""), p.x, panelY + 22);
+          }
+        });
+
+        // Hint
+        ctx.font = "16px Trebuchet MS, Arial, sans-serif";
+        ctx.fillStyle = "rgba(180,190,200,0.6)";
+        ctx.fillText("← → choose  ·  ↑ ↓ change  ·  Enter confirm  ·  Type name when Name is selected", w / 2, h * 0.92);
+        ctx.textAlign = "left";
+      }
+
+      // ---- CITY SCENE (wraps existing world code) ------
+
+      function updateCity(dt) {
+        if (justPressedKeys.pause) {
+          // Push pause overlay — not yet implemented, just ignore for now
+        }
         movePlayer(dt);
 
         const view = getView();
@@ -660,22 +1112,101 @@
         camera.x = clamp(camera.x, 0, Math.max(0, WORLD_W - view.worldW));
         camera.y = clamp(camera.y, 0, Math.max(0, WORLD_H - view.worldH));
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#18281b";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Tick city time (1 real second = 1 in-game minute, 24 min = 1 full day)
+        if (game.save) {
+          game.save.time.currentMinute += dt * (60 / 24);
+          if (game.save.time.currentMinute >= 60) {
+            game.save.time.currentMinute -= 60;
+            game.save.time.currentHour   += 1;
+            if (game.save.time.currentHour >= 24) {
+              game.save.time.currentHour = 0;
+              game.save.time.currentDay += 1;
+            }
+          }
+        }
+      }
 
+      function drawCity(time) {
+        const view = getView();
         ctx.save();
         ctx.scale(view.zoom, view.zoom);
-        ctx.translate(-camera.x, -camera.y);
-        drawWorld(elapsed, view);
+        ctx.translate(-camera.x + shake.x, -camera.y + shake.y);
+        drawWorld(time, view);
         ctx.restore();
+        drawCityHUD(game.save);
+      }
 
-        drawUI(1 + Math.floor(elapsed / 60));
+      // ==================================================
+      // === MAIN LOOP ====================================
+      // ==================================================
+
+      let lastTime = performance.now();
+
+      function tick(now) {
+        const dt = Math.min((now - lastTime) / 1000, 0.033);
+        lastTime = now;
+        game.elapsed += dt;
+
+        // Consume mouse click once per frame
+        mouse.clicked = mouse._rawClick;
+
+        // Update fade
+        if (game.fadeDir !== 0) {
+          game.fadeAlpha += game.fadeDir * dt * 3.5;
+          if (game.fadeDir < 0 && game.fadeAlpha <= -1) {
+            game.fadeAlpha = -1;
+            if (game.fadeCallback) { game.fadeCallback(); game.fadeCallback = null; }
+            game.fadeDir = 1;
+          } else if (game.fadeDir > 0 && game.fadeAlpha >= 0) {
+            game.fadeAlpha = 0;
+            game.fadeDir = 0;
+          }
+        }
+
+        updateShake(dt);
+
+        // Scene update
+        switch (game.scene) {
+          case SCENE.TITLE:              updateTitle();           break;
+          case SCENE.CHARACTER_CREATION: updateCharacterCreation(); break;
+          case SCENE.CITY:               updateCity(dt);          break;
+        }
+
+        // Clear
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#0a1020";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Scene draw
+        switch (game.scene) {
+          case SCENE.TITLE:              drawTitle(game.elapsed);            break;
+          case SCENE.CHARACTER_CREATION: drawCharacterCreation(game.elapsed); break;
+          case SCENE.CITY:               drawCity(game.elapsed);             break;
+        }
+
+        // Fade overlay
+        if (game.fadeAlpha < 0) {
+          ctx.fillStyle = `rgba(0,0,0,${Math.min(1, -game.fadeAlpha)})`;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        clearJustPressed();
         requestAnimationFrame(tick);
       }
 
-      requestAnimationFrame(tick);
-    })();
+      // ==================================================
+      // === STARTUP ======================================
+      // ==================================================
+
+      (function startup() {
+        buildMap();
+        const saved = loadSave();
+        game.save = saved;
+        // If a save exists, go straight to title (Continue is lit)
+        // New game always starts at TITLE
+        game.scene = SCENE.TITLE;
+        requestAnimationFrame(tick);
+      })();
   </script>
 </body>
 </html>
