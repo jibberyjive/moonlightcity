@@ -113,6 +113,71 @@
       const HAIR_STYLE_COUNT = 6;
       const HAIR_STYLE_NAMES = ["Crop", "Fringe", "Long", "Curly", "Bun", "Shaved"];
       const CLASS_OPTIONS = [{ id: "adventurer", label: "Adventurer" }];
+      const DTILE_SIZE = 32;
+      const SEWER_ENTRANCE = { x: 19 * TILE_SIZE + TILE_SIZE / 2, y: 58 * TILE_SIZE + TILE_SIZE / 2 };
+
+      const DTILE = {
+        FLOOR: 0,
+        WALL: 1,
+        STAIRS_LOCKED: 4,
+        STAIRS_UNLOCKED: 5,
+        BARREL: 6,
+        CHEST: 7,
+        SLIME_PUDDLE: 8
+      };
+
+      const DUNGEON_COLORS = {
+        floor: "#1a1e2a",
+        floorHi: "#222838",
+        wall: "#0d0f14",
+        wallHi: "#181c24",
+        wallMoss: "#1e2e1a",
+        stairs: "#4a3a6a",
+        stairsUnlocked: "#8a6ad0",
+        slime: "#2d5a2d",
+        slimeHi: "#3d7a3d",
+        barrel: "#4a3020",
+        chest: "#7a5a20",
+        chestOpen: "#3a2a10"
+      };
+
+      const ENEMY_STATS = {
+        small_slime: { maxHp: 12, speed: 28, damage: 3, xp: 4, gold: [1, 3], color: "#3daa3d", size: 7 },
+        sewer_rat:   { maxHp: 8,  speed: 55, damage: 2, xp: 3, gold: [1, 2], color: "#7a6040", size: 6 }
+      };
+
+      const FLOOR_01 = {
+        w: 20, h: 15,
+        tiles: [
+          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+          1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+          1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+          1,0,0,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+          1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+          1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+          1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+          1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,1,
+          1,0,0,0,0,0,0,0,0,0,0,0,0,1,7,1,0,0,0,1,
+          1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,1,
+          1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+          1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,1,
+          1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+          1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+        ],
+        playerSpawn: { x: 1, y: 1 },
+        stairsPos: { x: 18, y: 11 },
+        chests: [{ x: 14, y: 8, opened: false }],
+        barrels: [{ x: 5, y: 3, broken: false }],
+        enemySpawns: [
+          { type: "small_slime", x: 6,  y: 2,  ai: "stationary" },
+          { type: "small_slime", x: 9,  y: 5,  ai: "patrol", patrol: [{ x: 9, y: 5 }, { x: 11, y: 5 }] },
+          { type: "sewer_rat",   x: 3,  y: 6,  ai: "patrol", patrol: [{ x: 3, y: 6 }, { x: 6, y: 6 }] },
+          { type: "small_slime", x: 15, y: 10, ai: "stationary" },
+          { type: "small_slime", x: 7,  y: 12, ai: "patrol", patrol: [{ x: 7, y: 12 }, { x: 10, y: 12 }] },
+          { type: "sewer_rat",   x: 15, y: 12, ai: "patrol", patrol: [{ x: 15, y: 12 }, { x: 17, y: 12 }] }
+        ]
+      };
 
       // ==================================================
       // === UTILITY HELPERS ==============================
@@ -191,6 +256,9 @@
 
       function migrateSave(raw) {
         let save = raw || createNewSave();
+        if (typeof save.gold === "number") {
+          save.gold = { carried: save.gold, banked: 0 };
+        }
         if (typeof save.version !== "number") save.version = 0;
         while (save.version < SCHEMA_VERSION) {
           switch (save.version) {
@@ -206,6 +274,7 @@
         // Fill any missing keys from a fresh save (safe forward-compat)
         const fresh = createNewSave();
         save.player    = Object.assign({}, fresh.player,    save.player);
+        save.gold      = Object.assign({}, fresh.gold,      save.gold);
         save.dungeon   = Object.assign({}, fresh.dungeon,   save.dungeon);
         save.house     = Object.assign({}, fresh.house,     save.house);
         save.flags     = Object.assign({}, fresh.flags,     save.flags);
@@ -234,6 +303,8 @@
         scene: SCENE.TITLE,   // active scene ID
         save: null,           // loaded save object (null until loaded)
         elapsed: 0,
+        noticeText: "",
+        noticeTimer: 0,
         fadeAlpha: 0,
         fadeDir: 0,           // -1 fade out, +1 fade in, 0 idle
         fadeCallback: null
@@ -258,8 +329,11 @@
         game.fadeCallback = onMidpoint;
       }
 
-      function switchScene(nextScene) {
-        beginFade(() => { game.scene = nextScene; });
+      function switchScene(nextScene, onSwitched) {
+        beginFade(() => {
+          game.scene = nextScene;
+          if (onSwitched) onSwitched();
+        });
       }
 
       // ==================================================
@@ -579,12 +653,16 @@
 
       function createPlayer(save) {
         const s = save ? save.player : {};
+        const maxHp = s.hpMax || s.maxHp || 30;
         return {
           x: s.spawn ? s.spawn.x : 20 * TILE_SIZE + TILE_SIZE / 2,
           y: s.spawn ? s.spawn.y : 13 * TILE_SIZE + TILE_SIZE / 2,
           vx: 0, vy: 0,
           radius: 9, speed: 96, accel: 700,
           dir: "down", walkTime: 0,
+          hp: clamp(s.hp == null ? maxHp : s.hp, 0, maxHp),
+          maxHp,
+          attackCooldown: 0,
           skin:       s.skin       || 0,
           hairStyle:  s.hairStyle  || 0,
           hairColour: s.hairColour || 0,
@@ -593,6 +671,17 @@
       }
 
       let player = createPlayer(null);
+      let dungeon = {
+        floor: 1,
+        data: null,
+        tiles: [],
+        enemies: [],
+        chests: [],
+        barrels: [],
+        stairsUnlocked: false,
+        dmgNumbers: [],
+        playerHpAtEntry: 0
+      };
 
       // ==================================================
       // === SIMULATION SYSTEMS ===========================
@@ -601,6 +690,36 @@
       function getView() {
         const zoom = Math.max(1, Math.ceil(Math.max(canvas.width / WORLD_W, canvas.height / WORLD_H)));
         return { zoom, worldW: canvas.width / zoom, worldH: canvas.height / zoom };
+      }
+
+      function getCarriedGold() {
+        if (!game.save) return 0;
+        if (typeof game.save.gold === "number") return game.save.gold;
+        return game.save.gold && typeof game.save.gold.carried === "number" ? game.save.gold.carried : 0;
+      }
+
+      function setCarriedGold(amount) {
+        if (!game.save) return;
+        if (typeof game.save.gold !== "object" || !game.save.gold) {
+          game.save.gold = { carried: 0, banked: 0 };
+        }
+        game.save.gold.carried = Math.max(0, Math.floor(amount));
+      }
+
+      function addCarriedGold(amount) {
+        setCarriedGold(getCarriedGold() + amount);
+        writeSave(game.save);
+      }
+
+      function syncPlayerVitals() {
+        if (!game.save || !game.save.player) return;
+        game.save.player.hp = Math.round(player.hp);
+        game.save.player.hpMax = Math.round(player.maxHp);
+      }
+
+      function showNotice(text, duration = 2) {
+        game.noticeText = text;
+        game.noticeTimer = duration;
       }
 
       function isBlockingTile(tx, ty) {
@@ -673,6 +792,253 @@
 
         player.x = clamp(player.x, player.radius, WORLD_W - player.radius);
         player.y = clamp(player.y, player.radius, WORLD_H - player.radius);
+      }
+
+      function enterDungeon(floorNum) {
+        switchScene(SCENE.DUNGEON, () => {
+          dungeon.floor = floorNum;
+          const src = FLOOR_01;
+          dungeon.data = src;
+          dungeon.tiles = src.tiles.slice();
+          dungeon.chests = src.chests.map(c => ({ ...c, opened: false }));
+          dungeon.barrels = src.barrels.map(b => ({ ...b, broken: false }));
+          dungeon.stairsUnlocked = false;
+          dungeon.dmgNumbers = [];
+          dungeon.enemies = src.enemySpawns.map((sp, i) => {
+            const stats = ENEMY_STATS[sp.type];
+            return {
+              id: i,
+              type: sp.type,
+              x: sp.x * DTILE_SIZE + DTILE_SIZE / 2,
+              y: sp.y * DTILE_SIZE + DTILE_SIZE / 2,
+              vx: 0,
+              vy: 0,
+              hp: stats.maxHp,
+              maxHp: stats.maxHp,
+              stats,
+              ai: sp.ai,
+              patrol: sp.patrol ? sp.patrol.map(p => ({ x: p.x * DTILE_SIZE + DTILE_SIZE / 2, y: p.y * DTILE_SIZE + DTILE_SIZE / 2 })) : null,
+              patrolIdx: 0,
+              attackCooldown: 0,
+              hitFlash: 0,
+              alive: true
+            };
+          });
+
+          player.x = src.playerSpawn.x * DTILE_SIZE + DTILE_SIZE / 2;
+          player.y = src.playerSpawn.y * DTILE_SIZE + DTILE_SIZE / 2;
+          player.vx = 0;
+          player.vy = 0;
+          player.attackCooldown = 0;
+          dungeon.playerHpAtEntry = player.hp;
+          camera.x = 0;
+          camera.y = 0;
+        });
+      }
+
+      function dungeonTileAt(wx, wy) {
+        if (!dungeon.data) return DTILE.WALL;
+        const tx = Math.floor(wx / DTILE_SIZE);
+        const ty = Math.floor(wy / DTILE_SIZE);
+        if (tx < 0 || ty < 0 || tx >= dungeon.data.w || ty >= dungeon.data.h) return DTILE.WALL;
+        return dungeon.tiles[ty * dungeon.data.w + tx];
+      }
+
+      function isDungeonBlockingTile(tile) {
+        return tile === DTILE.WALL || tile === DTILE.CHEST || tile === DTILE.BARREL || tile === DTILE.STAIRS_LOCKED;
+      }
+
+      function collidesDungeonCircle(x, y, radius) {
+        const minX = Math.floor((x - radius) / DTILE_SIZE);
+        const maxX = Math.floor((x + radius) / DTILE_SIZE);
+        const minY = Math.floor((y - radius) / DTILE_SIZE);
+        const maxY = Math.floor((y + radius) / DTILE_SIZE);
+        for (let ty = minY; ty <= maxY; ty++) {
+          for (let tx = minX; tx <= maxX; tx++) {
+            const tile = dungeonTileAt(tx * DTILE_SIZE + DTILE_SIZE / 2, ty * DTILE_SIZE + DTILE_SIZE / 2);
+            if (!isDungeonBlockingTile(tile)) continue;
+            const tileX = tx * DTILE_SIZE;
+            const tileY = ty * DTILE_SIZE;
+            const nearestX = clamp(x, tileX, tileX + DTILE_SIZE);
+            const nearestY = clamp(y, tileY, tileY + DTILE_SIZE);
+            const dx = x - nearestX;
+            const dy = y - nearestY;
+            if (dx * dx + dy * dy < radius * radius) return true;
+          }
+        }
+        return false;
+      }
+
+      function unlockDungeonStairs() {
+        if (dungeon.stairsUnlocked || !dungeon.data) return;
+        dungeon.stairsUnlocked = true;
+        const sp = dungeon.data.stairsPos;
+        dungeon.tiles[sp.y * dungeon.data.w + sp.x] = DTILE.STAIRS_UNLOCKED;
+        showNotice("The stairs unlocked!", 1.8);
+      }
+
+      function updateDungeon(dt) {
+        if (!dungeon.data) return;
+
+        let inputX = 0, inputY = 0;
+        if (keys.left)  inputX -= 1;
+        if (keys.right) inputX += 1;
+        if (keys.up)    inputY -= 1;
+        if (keys.down)  inputY += 1;
+
+        const len = Math.hypot(inputX, inputY) || 1;
+        inputX /= len;
+        inputY /= len;
+
+        const targetVX = inputX * player.speed;
+        const targetVY = inputY * player.speed;
+        const step = player.accel * dt;
+        player.vx += clamp(targetVX - player.vx, -step, step);
+        player.vy += clamp(targetVY - player.vy, -step, step);
+
+        if (Math.abs(inputX) > 0.01 || Math.abs(inputY) > 0.01) {
+          if (Math.abs(inputX) > Math.abs(inputY)) {
+            player.dir = inputX > 0 ? "right" : "left";
+          } else {
+            player.dir = inputY > 0 ? "down" : "up";
+          }
+        }
+
+        if (Math.hypot(player.vx, player.vy) > 4) {
+          player.walkTime += dt * 9;
+        }
+
+        const nextX = player.x + player.vx * dt;
+        if (!collidesDungeonCircle(nextX, player.y, player.radius)) {
+          player.x = nextX;
+        } else {
+          player.vx = 0;
+        }
+
+        const nextY = player.y + player.vy * dt;
+        if (!collidesDungeonCircle(player.x, nextY, player.radius)) {
+          player.y = nextY;
+        } else {
+          player.vy = 0;
+        }
+
+        if (player.attackCooldown > 0) player.attackCooldown -= dt;
+        if (justPressedKeys.attack && player.attackCooldown <= 0) {
+          player.attackCooldown = 0.4;
+          const range = 38;
+          dungeon.enemies.forEach(en => {
+            if (!en.alive) return;
+            if (Math.hypot(en.x - player.x, en.y - player.y) >= range) return;
+            const dmg = 5 + Math.floor(Math.random() * 4);
+            en.hp -= dmg;
+            en.hitFlash = 0.15;
+            dungeon.dmgNumbers.push({ x: en.x, y: en.y - 20, val: `-${dmg}`, age: 0, color: "#ffffff" });
+            if (en.hp <= 0) {
+              en.alive = false;
+              const minGold = en.stats.gold[0];
+              const maxGold = en.stats.gold[1];
+              const gold = minGold + Math.floor(Math.random() * (maxGold - minGold + 1));
+              addCarriedGold(gold);
+              dungeon.dmgNumbers.push({ x: en.x, y: en.y - 36, val: `+${gold}`, age: 0, color: "#ffd700" });
+            }
+          });
+          if (dungeon.enemies.every(e => !e.alive)) unlockDungeonStairs();
+        }
+
+        dungeon.enemies.forEach(en => {
+          if (!en.alive) return;
+          en.hitFlash = Math.max(0, en.hitFlash - dt);
+          en.attackCooldown = Math.max(0, en.attackCooldown - dt);
+
+          if (en.ai === "patrol" && en.patrol && en.patrol.length) {
+            const target = en.patrol[en.patrolIdx];
+            const dx = target.x - en.x;
+            const dy = target.y - en.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 4) {
+              en.patrolIdx = (en.patrolIdx + 1) % en.patrol.length;
+            } else {
+              en.x += (dx / dist) * en.stats.speed * dt;
+              en.y += (dy / dist) * en.stats.speed * dt;
+            }
+          }
+
+          const hitRange = en.type === "small_slime" ? 28 : 22;
+          if (Math.hypot(en.x - player.x, en.y - player.y) < hitRange && en.attackCooldown <= 0) {
+            en.attackCooldown = en.ai === "stationary" ? 1.2 : 1.0;
+            const dmg = en.stats.damage;
+            player.hp = Math.max(0, player.hp - dmg);
+            dungeon.dmgNumbers.push({ x: player.x, y: player.y - 20, val: `-${dmg}`, age: 0, color: "#ff6060" });
+          }
+        });
+
+        dungeon.chests.forEach(ch => {
+          if (ch.opened) return;
+          const cx = ch.x * DTILE_SIZE + DTILE_SIZE / 2;
+          const cy = ch.y * DTILE_SIZE + DTILE_SIZE / 2;
+          if (Math.hypot(player.x - cx, player.y - cy) < 36 && justPressedKeys.interact) {
+            ch.opened = true;
+            dungeon.tiles[ch.y * dungeon.data.w + ch.x] = DTILE.FLOOR;
+            const gold = 8 + Math.floor(Math.random() * 8);
+            addCarriedGold(gold);
+            dungeon.dmgNumbers.push({ x: cx, y: cy - 20, val: `+${gold}`, age: 0, color: "#ffd700" });
+            showNotice("Chest opened!", 1.4);
+          }
+        });
+
+        dungeon.barrels.forEach(br => {
+          if (br.broken) return;
+          const bx = br.x * DTILE_SIZE + DTILE_SIZE / 2;
+          const by = br.y * DTILE_SIZE + DTILE_SIZE / 2;
+          if (Math.hypot(player.x - bx, player.y - by) < 36 && (justPressedKeys.interact || justPressedKeys.attack)) {
+            br.broken = true;
+            dungeon.tiles[br.y * dungeon.data.w + br.x] = DTILE.FLOOR;
+            if (Math.random() < 0.6) {
+              const gold = 1 + Math.floor(Math.random() * 3);
+              addCarriedGold(gold);
+              dungeon.dmgNumbers.push({ x: bx, y: by - 20, val: `+${gold}`, age: 0, color: "#ffd700" });
+            }
+          }
+        });
+
+        const sp = dungeon.data.stairsPos;
+        const sx = sp.x * DTILE_SIZE + DTILE_SIZE / 2;
+        const sy = sp.y * DTILE_SIZE + DTILE_SIZE / 2;
+        if (dungeon.stairsUnlocked && Math.hypot(player.x - sx, player.y - sy) < 32 && justPressedKeys.interact) {
+          showNotice("Floor 2 — Coming soon!", 2.5);
+          switchScene(SCENE.CITY, () => {
+            player.x = 17 * TILE_SIZE + TILE_SIZE / 2;
+            player.y = 56 * TILE_SIZE + TILE_SIZE / 2;
+            player.vx = 0;
+            player.vy = 0;
+            player.attackCooldown = 0;
+          });
+        }
+
+        if (player.hp <= 0) {
+          setCarriedGold(getCarriedGold() * 0.8);
+          player.hp = player.maxHp;
+          syncPlayerVitals();
+          writeSave(game.save);
+          showNotice("You blacked out and dropped some gold.", 2.5);
+          switchScene(SCENE.CITY, () => {
+            player.x = 20 * TILE_SIZE + TILE_SIZE / 2;
+            player.y = 13 * TILE_SIZE + TILE_SIZE / 2;
+            player.vx = 0;
+            player.vy = 0;
+            player.attackCooldown = 0;
+          });
+          return;
+        }
+
+        dungeon.dmgNumbers = dungeon.dmgNumbers.filter(d => d.age < 1.2);
+        dungeon.dmgNumbers.forEach(d => { d.age += dt; });
+        syncPlayerVitals();
+
+        const dungeonW = dungeon.data.w * DTILE_SIZE;
+        const dungeonH = dungeon.data.h * DTILE_SIZE;
+        camera.x = clamp(player.x - canvas.width / 2, 0, Math.max(0, dungeonW - canvas.width));
+        camera.y = clamp(player.y - canvas.height / 2, 0, Math.max(0, dungeonH - canvas.height));
       }
 
       // ==================================================
@@ -985,6 +1351,13 @@
       // drawPlayer uses the live player object — called by city scene
       function drawPlayer(time) { drawPlayerSprite(time, player); }
 
+      function drawFade() {
+        if (game.fadeAlpha < 0) {
+          ctx.fillStyle = `rgba(0,0,0,${Math.min(1, -game.fadeAlpha)})`;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+
       function drawWorld(time, view) {
         const startX = clamp(Math.floor(camera.x / TILE_SIZE) - 2, 0, MAP_W - 1);
         const startY = clamp(Math.floor(camera.y / TILE_SIZE) - 2, 0, MAP_H - 1);
@@ -1037,6 +1410,203 @@
         ctx.fillText(dayText, canvas.width - 26 - dayWidth, 37);
 
         ctx.restore();
+      }
+
+      function drawNotice() {
+        if (!game.noticeText || game.noticeTimer <= 0) return;
+        ctx.font = "bold 16px Trebuchet MS, Arial, sans-serif";
+        const textW = Math.max(220, ctx.measureText(game.noticeText).width + 36);
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        ctx.fillRect(canvas.width / 2 - textW / 2, 16, textW, 30);
+        ctx.fillStyle = "#f0e8c8";
+        ctx.textAlign = "center";
+        ctx.fillText(game.noticeText, canvas.width / 2, 37);
+        ctx.textAlign = "left";
+      }
+
+      function drawDungeon(time) {
+        if (!dungeon.data) return;
+
+        const data = dungeon.data;
+        const dungeonW = data.w * DTILE_SIZE;
+        const dungeonH = data.h * DTILE_SIZE;
+        const offX = dungeonW < canvas.width ? Math.floor((canvas.width - dungeonW) / 2) : -camera.x;
+        const offY = dungeonH < canvas.height ? Math.floor((canvas.height - dungeonH) / 2) : -camera.y;
+
+        ctx.fillStyle = "#080a10";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const startTX = Math.max(0, Math.floor((camera.x || 0) / DTILE_SIZE) - 1);
+        const startTY = Math.max(0, Math.floor((camera.y || 0) / DTILE_SIZE) - 1);
+        const endTX = Math.min(data.w - 1, Math.ceil(((camera.x || 0) + canvas.width) / DTILE_SIZE) + 1);
+        const endTY = Math.min(data.h - 1, Math.ceil(((camera.y || 0) + canvas.height) / DTILE_SIZE) + 1);
+
+        for (let ty = startTY; ty <= endTY; ty++) {
+          for (let tx = startTX; tx <= endTX; tx++) {
+            const t = dungeon.tiles[ty * data.w + tx];
+            const px = tx * DTILE_SIZE + offX;
+            const py = ty * DTILE_SIZE + offY;
+            const floorColor = (tx + ty) % 2 === 0 ? DUNGEON_COLORS.floor : DUNGEON_COLORS.floorHi;
+
+            if (t === DTILE.WALL) {
+              ctx.fillStyle = DUNGEON_COLORS.wall;
+              ctx.fillRect(px, py, DTILE_SIZE, DTILE_SIZE);
+              ctx.fillStyle = DUNGEON_COLORS.wallHi;
+              ctx.fillRect(px + 2, py + 2, DTILE_SIZE - 4, 4);
+              if ((tx * 7 + ty * 13) % 5 === 0) {
+                ctx.fillStyle = DUNGEON_COLORS.wallMoss;
+                ctx.fillRect(px + 4, py + DTILE_SIZE - 7, DTILE_SIZE - 8, 5);
+              }
+              continue;
+            }
+
+            ctx.fillStyle = floorColor;
+            ctx.fillRect(px, py, DTILE_SIZE, DTILE_SIZE);
+
+            if (t === DTILE.STAIRS_LOCKED || t === DTILE.STAIRS_UNLOCKED) {
+              ctx.fillStyle = t === DTILE.STAIRS_UNLOCKED ? DUNGEON_COLORS.stairsUnlocked : DUNGEON_COLORS.stairs;
+              ctx.fillRect(px + 4, py + 4, DTILE_SIZE - 8, DTILE_SIZE - 8);
+              for (let s = 0; s < 4; s++) {
+                ctx.fillStyle = t === DTILE.STAIRS_UNLOCKED ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.25)";
+                ctx.fillRect(px + 6 + s * 4, py + 8 + s * 4, DTILE_SIZE - 12 - s * 8, 3);
+              }
+            } else if (t === DTILE.SLIME_PUDDLE) {
+              ctx.fillStyle = DUNGEON_COLORS.slime;
+              ctx.beginPath();
+              ctx.ellipse(px + DTILE_SIZE / 2, py + DTILE_SIZE / 2, DTILE_SIZE / 2 - 4, DTILE_SIZE / 2 - 6, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = DUNGEON_COLORS.slimeHi;
+              ctx.beginPath();
+              ctx.ellipse(px + DTILE_SIZE / 2 - 4, py + DTILE_SIZE / 2 - 4, 5, 4, -0.5, 0, Math.PI * 2);
+              ctx.fill();
+            } else if (t === DTILE.BARREL) {
+              ctx.fillStyle = DUNGEON_COLORS.barrel;
+              ctx.fillRect(px + 6, py + 5, DTILE_SIZE - 12, DTILE_SIZE - 10);
+              ctx.fillStyle = shade(DUNGEON_COLORS.barrel, -32);
+              ctx.fillRect(px + 5, py + 8, DTILE_SIZE - 10, 3);
+              ctx.fillRect(px + 5, py + DTILE_SIZE - 13, DTILE_SIZE - 10, 3);
+            } else if (t === DTILE.CHEST) {
+              ctx.fillStyle = DUNGEON_COLORS.chest;
+              ctx.fillRect(px + 5, py + 8, DTILE_SIZE - 10, DTILE_SIZE - 16);
+              ctx.fillStyle = shade(DUNGEON_COLORS.chest, -20);
+              ctx.fillRect(px + 5, py + 8, DTILE_SIZE - 10, 4);
+              ctx.fillStyle = "#ffd700";
+              ctx.fillRect(px + DTILE_SIZE / 2 - 2, py + DTILE_SIZE / 2 - 1, 4, 4);
+            }
+          }
+        }
+
+        dungeon.enemies.forEach(en => {
+          if (!en.alive) return;
+          const ex = en.x + offX;
+          const ey = en.y + offY;
+          const stats = en.stats;
+
+          ctx.fillStyle = "rgba(0,0,0,0.3)";
+          ctx.beginPath();
+          ctx.ellipse(ex, ey + stats.size - 2, stats.size - 1, 3, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (en.type === "small_slime") {
+            const wobble = Math.sin(time * 3 + en.id) * 1.5;
+            ctx.fillStyle = en.hitFlash > 0 ? "#ffffff" : stats.color;
+            ctx.beginPath();
+            ctx.ellipse(ex, ey, stats.size + wobble, stats.size - wobble * 0.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(ex - 4, ey - 3, 3, 3);
+            ctx.fillRect(ex + 2, ey - 3, 3, 3);
+            ctx.fillStyle = "#222";
+            ctx.fillRect(ex - 3, ey - 2, 2, 2);
+            ctx.fillRect(ex + 3, ey - 2, 2, 2);
+          } else {
+            ctx.fillStyle = en.hitFlash > 0 ? "#ffffff" : stats.color;
+            ctx.fillRect(ex - stats.size, ey - stats.size + 2, stats.size * 2, stats.size);
+            ctx.fillRect(ex - stats.size + 2, ey - stats.size - 2, stats.size - 2, stats.size);
+            ctx.fillRect(ex - stats.size + 4, ey - stats.size - 5, 4, 4);
+            ctx.fillStyle = "#ff4444";
+            ctx.fillRect(ex - stats.size + 4, ey - stats.size, 2, 2);
+            ctx.strokeStyle = en.hitFlash > 0 ? "#ffffff" : shade(stats.color, -32);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(ex + stats.size, ey);
+            ctx.quadraticCurveTo(ex + stats.size + 6, ey - 4, ex + stats.size + 4, ey - 8);
+            ctx.stroke();
+          }
+
+          const barW = 24;
+          const barH = 3;
+          const bx = ex - barW / 2;
+          const by = ey - stats.size - 10;
+          ctx.fillStyle = "#400";
+          ctx.fillRect(bx, by, barW, barH);
+          ctx.fillStyle = en.hp / en.maxHp > 0.5 ? "#4c4" : en.hp / en.maxHp > 0.25 ? "#cc4" : "#c44";
+          ctx.fillRect(bx, by, barW * (en.hp / en.maxHp), barH);
+        });
+
+        const prevX = player.x;
+        const prevY = player.y;
+        player.x += offX;
+        player.y += offY;
+        drawPlayerSprite(time, player);
+        player.x = prevX;
+        player.y = prevY;
+
+        dungeon.dmgNumbers.forEach(d => {
+          const alpha = 1 - d.age / 1.2;
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = d.color;
+          ctx.font = "bold 14px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(d.val, d.x + offX, d.y + offY - d.age * 20);
+          ctx.globalAlpha = 1;
+        });
+
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        ctx.fillRect(8, 8, 174, 40);
+        ctx.fillStyle = "#c22";
+        ctx.fillRect(12, 14, 100, 10);
+        ctx.fillStyle = "#e55";
+        ctx.fillRect(12, 14, 100 * (player.hp / player.maxHp), 10);
+        ctx.fillStyle = "#fff";
+        ctx.font = "11px Arial";
+        ctx.textAlign = "left";
+        ctx.fillText(`HP ${player.hp} / ${player.maxHp}`, 12, 36);
+        ctx.fillStyle = "#ffd700";
+        ctx.fillText(`⬡ ${getCarriedGold()}`, 90, 36);
+        ctx.fillStyle = "#aaa";
+        ctx.textAlign = "right";
+        ctx.fillText(`Floor ${dungeon.floor}`, canvas.width - 12, 26);
+
+        if (player.attackCooldown <= 0) {
+          ctx.fillStyle = "rgba(0,0,0,0.5)";
+          ctx.fillRect(canvas.width / 2 - 110, canvas.height - 36, 220, 24);
+          ctx.fillStyle = "#ccc";
+          ctx.font = "12px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText("Z / Space — Attack   E — Interact", canvas.width / 2, canvas.height - 20);
+        }
+
+        const sp = dungeon.data.stairsPos;
+        const stairPx = sp.x * DTILE_SIZE + offX + DTILE_SIZE / 2;
+        const stairPy = sp.y * DTILE_SIZE + offY;
+        if (dungeon.stairsUnlocked) {
+          ctx.fillStyle = "#8a6ad0";
+          ctx.font = "bold 11px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText("E — Descend", stairPx, stairPy - 8);
+        } else {
+          const remaining = dungeon.enemies.filter(e => e.alive).length;
+          if (remaining > 0) {
+            ctx.fillStyle = "#cc8844";
+            ctx.font = "11px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(`${remaining} enemy${remaining > 1 ? "s" : ""} remain`, canvas.width / 2, canvas.height / 2 - 60);
+          }
+        }
+
+        drawNotice();
+        ctx.textAlign = "left";
       }
 
       // ==================================================
@@ -1332,6 +1902,10 @@
             }
           }
         }
+
+        if (Math.hypot(player.x - SEWER_ENTRANCE.x, player.y - SEWER_ENTRANCE.y) < 40 && (justPressedKeys.interact || justPressedKeys.attack)) {
+          enterDungeon(1);
+        }
       }
 
       function drawCity(time) {
@@ -1342,6 +1916,24 @@
         drawWorld(time, view);
         ctx.restore();
         drawCityHUD(game.save);
+        if (Math.hypot(player.x - SEWER_ENTRANCE.x, player.y - SEWER_ENTRANCE.y) < 60) {
+          ctx.fillStyle = "rgba(0,0,0,0.55)";
+          ctx.fillRect(canvas.width / 2 - 112, canvas.height - 42, 224, 24);
+          ctx.fillStyle = "#d8ddd0";
+          ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Press E or Space to enter sewer", canvas.width / 2, canvas.height - 25);
+          ctx.textAlign = "left";
+        }
+        drawNotice();
+      }
+
+      function updateDungeonScene(dt) {
+        updateDungeon(dt);
+      }
+
+      function drawDungeonScene(time) {
+        drawDungeon(time);
       }
 
       // ==================================================
@@ -1372,12 +1964,17 @@
         }
 
         updateShake(dt);
+        if (game.noticeTimer > 0) {
+          game.noticeTimer = Math.max(0, game.noticeTimer - dt);
+          if (game.noticeTimer === 0) game.noticeText = "";
+        }
 
         // Scene update
         switch (game.scene) {
           case SCENE.TITLE:              updateTitle();           break;
           case SCENE.CHARACTER_CREATION: updateCharacterCreation(); break;
           case SCENE.CITY:               updateCity(dt);          break;
+          case SCENE.DUNGEON:            updateDungeonScene(dt);  break;
         }
 
         // Clear
@@ -1390,13 +1987,10 @@
           case SCENE.TITLE:              drawTitle(game.elapsed);            break;
           case SCENE.CHARACTER_CREATION: drawCharacterCreation(game.elapsed); break;
           case SCENE.CITY:               drawCity(game.elapsed);             break;
+          case SCENE.DUNGEON:            drawDungeonScene(game.elapsed);     break;
         }
 
-        // Fade overlay
-        if (game.fadeAlpha < 0) {
-          ctx.fillStyle = `rgba(0,0,0,${Math.min(1, -game.fadeAlpha)})`;
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
+        drawFade();
 
         clearJustPressed();
         requestAnimationFrame(tick);
@@ -1415,6 +2009,7 @@
         game.scene = SCENE.TITLE;
         requestAnimationFrame(tick);
       })();
+    })();
   </script>
 </body>
 </html>
