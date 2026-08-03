@@ -1226,6 +1226,18 @@
         });
       }
 
+      function enterCandyStore() {
+        game.houseExitX = 32 * 32 + 16;  // tile 32,20 — just south of door
+        game.houseExitY = 20 * 32 + 16;
+        game.inCandyStore = true;
+        switchScene(SCENE.HOUSE_INTERIOR, () => {
+          player.x = 5 * 36 + 18;
+          player.y = 6 * 36 + 18;
+          player.vx = 0; player.vy = 0;
+          player.dir = "up";
+        });
+      }
+
       function enterHouse() {
         const hn = game.save && game.save.player ? (game.save.player.houseNum || 1) : 1;
         const door = HOUSE_DOORS[hn];
@@ -1241,9 +1253,11 @@
       }
 
       function exitHouse() {
+        const wasCandyStore = game.inCandyStore;
+        game.inCandyStore = false;
         switchScene(SCENE.CITY, () => {
-          player.x = game.houseExitX || 47 * 32 + 16;
-          player.y = game.houseExitY || 24 * 32 + 16;
+          player.x = wasCandyStore ? 32 * 32 + 16 : (game.houseExitX || 47 * 32 + 16);
+          player.y = wasCandyStore ? 20 * 32 + 16 : (game.houseExitY || 24 * 32 + 16);
           player.vx = 0; player.vy = 0;
         });
       }
@@ -2681,6 +2695,13 @@
           enterDungeon(1);
         }
 
+        // Check candy store door (tile 32,19 → world 1040,608; player stands one tile south)
+        const _candyDoorX = 32 * 32 + 16, _candyDoorY = 20 * 32 + 16;
+        if (Math.hypot(player.x - _candyDoorX, player.y - _candyDoorY) < 52 && justPressedKeys.interact) {
+          enterCandyStore();
+          return;
+        }
+
         // Check player's own house door
         const _hn = game.save && game.save.player ? (game.save.player.houseNum || 0) : 0;
         if (_hn > 0) {
@@ -2923,7 +2944,141 @@
         }
       }
 
+      function drawCandyStoreInterior(time) {
+        const w = canvas.width, h = canvas.height;
+        const ts = 36, roomW = 11, roomH = 8;
+        const ox = Math.floor((w - roomW * ts) / 2);
+        const oy = Math.floor((h - roomH * ts) / 2);
+
+        // Background
+        ctx.fillStyle = "#0d0a14";
+        ctx.fillRect(0, 0, w, h);
+
+        // Floor — pink-and-white checkerboard
+        for (let ty = 1; ty < roomH - 1; ty++) {
+          for (let tx = 1; tx < roomW - 1; tx++) {
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? "#f5c8d8" : "#fdf0f5";
+            ctx.fillRect(ox + tx * ts, oy + ty * ts, ts, ts);
+            ctx.strokeStyle = "rgba(200,140,160,0.3)";
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(ox + tx * ts, oy + ty * ts, ts, ts);
+          }
+        }
+
+        // Walls — pink plaster
+        ctx.fillStyle = "#f0a0c0";
+        ctx.fillRect(ox + ts, oy, (roomW - 2) * ts, ts * 2);
+        ctx.fillStyle = "#2a1e10";
+        for (let ty = 0; ty < roomH; ty++) {
+          ctx.fillRect(ox, oy + ty * ts, ts, ts);
+          ctx.fillRect(ox + (roomW - 1) * ts, oy + ty * ts, ts, ts);
+        }
+        ctx.fillRect(ox + ts, oy + (roomH - 1) * ts, (roomW - 2) * ts, ts);
+        // Skirting
+        ctx.fillStyle = "#d060a0";
+        ctx.fillRect(ox + ts, oy + (roomH - 2) * ts + ts - 6, (roomW - 2) * ts, 6);
+
+        // ── Candy shelves (left side) ──────────────────────
+        const shColors = ["#e83030","#e8a020","#40b840","#a020e8","#e82090","#3060e8"];
+        for (let row = 0; row < 3; row++) {
+          const shY = oy + ts + row * ts;
+          ctx.fillStyle = "#c07040";
+          ctx.fillRect(ox + ts, shY, ts * 3, ts);
+          // Jars on shelf
+          for (let j = 0; j < 5; j++) {
+            const jx = ox + ts + 8 + j * (ts * 3 / 5), jy = shY + 6;
+            ctx.fillStyle = "rgba(255,255,255,0.7)";
+            ctx.beginPath();
+            ctx.ellipse(jx, jy + 10, 9, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = shColors[(row * 5 + j) % shColors.length] + "99";
+            ctx.beginPath();
+            ctx.ellipse(jx, jy + 12, 7, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#c07040";
+            ctx.fillRect(jx - 7, jy - 1, 14, 5);
+          }
+        }
+
+        // ── Counter (right side, rows 3-4) ─────────────────
+        const ctX = ox + ts * 7, ctY = oy + ts * 3;
+        ctx.fillStyle = "#d080b0";
+        ctx.fillRect(ctX, ctY, ts * 3, ts);
+        ctx.fillStyle = "#a050a0";
+        ctx.fillRect(ctX, ctY + ts - 8, ts * 3, 8);
+        // Cash register
+        ctx.fillStyle = "#505050";
+        ctx.fillRect(ctX + ts, ctY - ts + 8, ts * 1.5, ts - 4);
+        ctx.fillStyle = "#202020";
+        ctx.fillRect(ctX + ts + 4, ctY - ts + 12, ts * 1.5 - 8, ts - 12);
+        ctx.fillStyle = "#40ff40";
+        ctx.fillRect(ctX + ts + 8, ctY - ts + 16, ts * 1.5 - 16, ts - 18);
+
+        // ── Lollipop display (back-right) ──────────────────
+        for (let i = 0; i < 4; i++) {
+          const lpX = ox + ts * 7 + i * (ts * 0.7), lpY = oy + ts + 8;
+          const lpC = shColors[i];
+          ctx.strokeStyle = "#c07040";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(lpX + 8, lpY + 32); ctx.lineTo(lpX + 8, lpY + 6);
+          ctx.stroke();
+          ctx.fillStyle = lpC;
+          ctx.beginPath();
+          ctx.arc(lpX + 8, lpY + 4, 9, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,0.4)";
+          ctx.beginPath();
+          ctx.arc(lpX + 5, lpY + 1, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // ── Sign ────────────────────────────────────────────
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        ctx.fillRect(w / 2 - 100, oy + 6, 200, 22);
+        ctx.fillStyle = "#ffe0f0";
+        ctx.font = "bold 13px Trebuchet MS, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("🍬  Sweet Dreams Candy Store", w / 2, oy + 22);
+
+        // Floating candy sparkles
+        for (let s = 0; s < 8; s++) {
+          const sx = ox + ts + Math.sin(time * 1.2 + s * 1.4) * 60 + 160;
+          const sy = oy + ts * 2 + Math.cos(time * 0.9 + s * 2.1) * 30 + 40;
+          const alpha = 0.3 + 0.4 * Math.sin(time * 3 + s);
+          ctx.fillStyle = `rgba(255,100,180,${alpha})`;
+          ctx.font = "14px serif";
+          ctx.fillText(s % 2 === 0 ? "✦" : "🍬", sx, sy);
+        }
+
+        // ── Door (bottom-centre) ────────────────────────────
+        const dX = ox + ts * 5, dY = oy + (roomH - 1) * ts;
+        ctx.fillStyle = "#e060a0";
+        ctx.fillRect(dX, dY - ts + 4, ts, ts);
+        ctx.fillStyle = "#b03080";
+        ctx.fillRect(dX + 2, dY - ts + 4, ts - 4, 4);
+        ctx.fillStyle = "#ffd700";
+        ctx.fillRect(dX + ts - 12, dY - ts / 2, 6, 6);
+
+        // ── Player ─────────────────────────────────────────
+        drawPlayerSprite(time, { ...player, x: ox + player.x, y: oy + player.y });
+
+        // ── Exit hint ───────────────────────────────────────
+        const nearDoor = Math.hypot(player.x - ts * 5 - ts/2, player.y - ts * (roomH-1)) < 52;
+        if (nearDoor) {
+          ctx.fillStyle = "rgba(0,0,0,0.7)";
+          roundRect(ctx, w/2-80, h-50, 160, 28, 8);
+          ctx.fill();
+          ctx.fillStyle = "#ffe0f0";
+          ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Press E to leave", w / 2, h - 31);
+          ctx.textAlign = "left";
+        }
+      }
+
       function drawHouseInterior(time) {
+        if (game.inCandyStore) { drawCandyStoreInterior(time); return; }
         const w = canvas.width, h = canvas.height;
         const ts = 36; // interior tile size (slightly larger for cozy feel)
         const roomW = 11, roomH = 8;
