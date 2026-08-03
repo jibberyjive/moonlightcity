@@ -868,18 +868,26 @@
 
       // ── Odin — town dog (Rhodesian Ridgeback) ─────────────────────────────
       function initDogs() {
-        dogs = [{
-          name:    "Odin",
-          homeX:   34*32+16, homeY: 36*32+16,  // park area
-          x: 34*32+16, y: 36*32+16,
-          vx: 0, vy: 0,
-          dir:      "right",
-          walkTime: 0,
-          wagTime:  0,
-          wanderTimer: 1,
-          targetX: 34*32+16, targetY: 36*32+16,
-          chasing: false
-        }];
+        dogs = [
+          {
+            name: "Odin",
+            homeX: 34*32+16, homeY: 36*32+16,
+            x: 34*32+16, y: 36*32+16,
+            vx: 0, vy: 0, dir: "right", walkTime: 0, wagTime: 0,
+            wanderTimer: 1, targetX: 34*32+16, targetY: 36*32+16, chasing: false,
+            coat: "#c07a3a", coatD: "#8a5228", ridge: "#6e3e18",
+            ear:  "#7a4820", nose: "#1a0800", eye: "#3a1800", belly: "#d4924e"
+          },
+          {
+            name: "Mist",
+            homeX: 12*32+16, homeY: 10*32+16,   // downtown / market area
+            x: 12*32+16, y: 10*32+16,
+            vx: 0, vy: 0, dir: "left", walkTime: 0, wagTime: 2, // offset wag phase
+            wanderTimer: 2, targetX: 12*32+16, targetY: 10*32+16, chasing: false,
+            coat: "#1c1c1c", coatD: "#0a0a0a", ridge: "#0d0d0d",
+            ear:  "#111111", nose: "#080808", eye: "#6b3d10", belly: "#2a2a2a"
+          }
+        ];
       }
 
       function updateDogs(dt) {
@@ -927,13 +935,13 @@
       }
 
       function drawDogSprite(time, dog) {
-        const coat   = "#c07a3a";   // wheaten tan
-        const coatD  = "#8a5228";   // darker shading
-        const ridge  = "#6e3e18";   // reversed ridge stripe
-        const ear    = "#7a4820";   // floppy ear
-        const nose   = "#1a0800";
-        const eye    = "#3a1800";
-        const belly  = "#d4924e";
+        const coat   = dog.coat  || "#c07a3a";
+        const coatD  = dog.coatD || shade(coat, -30);
+        const ridge  = dog.ridge || shade(coat, -40);
+        const ear    = dog.ear   || shade(coat, -20);
+        const nose   = dog.nose  || "#1a0800";
+        const eye    = dog.eye   || "#3a1800";
+        const belly  = dog.belly || shade(coat, 18);
 
         const moving = Math.hypot(dog.vx, dog.vy) > 6;
         const frame  = moving ? Math.floor(dog.walkTime) % 4 : 0;
