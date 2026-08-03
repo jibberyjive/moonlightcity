@@ -111,6 +111,7 @@
       ];
       // 6 hair style indices (0–5); style shapes are handled in drawPlayerSprite
       const HAIR_STYLE_COUNT = 6;
+      const HAIR_STYLE_NAMES = ["Crop", "Fringe", "Long", "Curly", "Bun", "Shaved"];
       const CLASS_OPTIONS = [{ id: "adventurer", label: "Adventurer" }];
 
       // ==================================================
@@ -909,9 +910,6 @@
           rect(7.5 - legSwing, 15, 3, 5, outfit.legs);
           rect(10.5 + legSwing, 15, 3, 5, outfit.legs);
           rect(6, 0, 8, 8, skinColor);
-          rect(5, 0, 10, 3, hairColor);
-          rect(5, 2, 2, 3, hairColor);
-          rect(13, 2, 2, 3, hairColor);
           rect(7, 4, 1, 1, "#1d1d1d");
           rect(12, 4, 1, 1, "#1d1d1d");
         } else if (p.dir === "up") {
@@ -921,8 +919,6 @@
           rect(7.5 - legSwing, 15, 3, 5, shade(outfit.legs, -10));
           rect(10.5 + legSwing, 15, 3, 5, shade(outfit.legs, -10));
           rect(6, 0, 8, 8, skinBack);
-          rect(5, 0, 10, 5, hairColor);
-          rect(6, 5, 8, 1, hairColor);
         } else if (p.dir === "left") {
           rect(7, 7, 6, 8, outfit.torso);
           rect(6, 9 + armSwing * 0.4, 2, 6, skinColor);
@@ -930,8 +926,6 @@
           rect(7.5 - legSwing, 15, 3, 5, outfit.legs);
           rect(10.5 + legSwing, 15, 3, 5, outfit.legs);
           rect(6, 0, 8, 8, skinColor);
-          rect(5, 0, 8, 3, hairColor);
-          rect(5, 2, 2, 4, hairColor);
           rect(8, 4, 1, 1, "#1d1d1d");
         } else {
           rect(7, 7, 6, 8, outfit.torso);
@@ -940,9 +934,51 @@
           rect(7.5 - legSwing, 15, 3, 5, outfit.legs);
           rect(10.5 + legSwing, 15, 3, 5, outfit.legs);
           rect(6, 0, 8, 8, skinColor);
-          rect(7, 0, 8, 3, hairColor);
-          rect(13, 2, 2, 4, hairColor);
           rect(11, 4, 1, 1, "#1d1d1d");
+        }
+
+        // ── Hair styles ──────────────────────────────────────────────────────
+        // Each style draws differently per facing direction.
+        // hairStyle 0=crop 1=fringe 2=long 3=curly 4=bun 5=shaved
+        const hs = p.hairStyle || 0;
+        const h  = hairColor;
+        const d  = p.dir;
+        if (hs === 0) {
+          // Short crop — neat band, no side pieces
+          if (d === "down")  { rect(6, 0, 8, 2, h); }
+          if (d === "up")    { rect(6, 0, 8, 3, h); }
+          if (d === "left")  { rect(5, 0, 8, 2, h); }
+          if (d === "right") { rect(7, 0, 8, 2, h); }
+        } else if (hs === 1) {
+          // Fringe — original default with side curtains
+          if (d === "down")  { rect(5, 0, 10, 3, h); rect(5, 2, 2, 3, h); rect(13, 2, 2, 3, h); }
+          if (d === "up")    { rect(5, 0, 10, 5, h); rect(6, 5, 8, 1, h); }
+          if (d === "left")  { rect(5, 0, 8, 3, h); rect(5, 2, 2, 4, h); }
+          if (d === "right") { rect(7, 0, 8, 3, h); rect(13, 2, 2, 4, h); }
+        } else if (hs === 2) {
+          // Long — fringe plus ponytail flowing behind
+          if (d === "down")  { rect(5, 0, 10, 3, h); rect(5, 2, 2, 3, h); rect(13, 2, 2, 3, h); rect(6, 7, 8, 5, h); }
+          if (d === "up")    { rect(5, 0, 10, 5, h); rect(6, 5, 8, 6, h); }
+          if (d === "left")  { rect(5, 0, 8, 3, h); rect(5, 2, 2, 4, h); rect(12, 0, 3, 8, h); }
+          if (d === "right") { rect(7, 0, 8, 3, h); rect(13, 2, 2, 4, h); rect(5, 0, 3, 8, h); }
+        } else if (hs === 3) {
+          // Curly — wide poofy shape with side volume
+          if (d === "down")  { rect(4, 0, 12, 4, h); rect(3, 1, 3, 5, h); rect(14, 1, 3, 5, h); rect(4, 4, 3, 2, h); rect(13, 4, 3, 2, h); }
+          if (d === "up")    { rect(4, 0, 12, 5, h); rect(3, 1, 3, 5, h); rect(14, 1, 3, 5, h); rect(5, 5, 10, 2, h); }
+          if (d === "left")  { rect(4, 0, 9, 4, h); rect(3, 1, 3, 5, h); rect(4, 4, 4, 2, h); }
+          if (d === "right") { rect(7, 0, 9, 4, h); rect(14, 1, 3, 5, h); rect(12, 4, 4, 2, h); }
+        } else if (hs === 4) {
+          // Bun — small bun knot on top of head
+          if (d === "down")  { rect(5, 0, 10, 2, h); rect(7, -4, 6, 5, h); }
+          if (d === "up")    { rect(5, 0, 10, 2, h); rect(7, -4, 6, 5, h); }
+          if (d === "left")  { rect(5, 0, 8, 2, h); rect(6, -4, 6, 5, h); }
+          if (d === "right") { rect(7, 0, 8, 2, h); rect(8, -4, 6, 5, h); }
+        } else {
+          // Shaved (5) — barely-visible stubble line
+          if (d === "down")  { rect(5, 0, 10, 1, h); }
+          if (d === "up")    { rect(5, 0, 10, 1, h); }
+          if (d === "left")  { rect(5, 0, 8, 1, h); }
+          if (d === "right") { rect(7, 0, 8, 1, h); }
         }
       }
 
@@ -1131,7 +1167,7 @@
         typedName: "Hero"
       };
 
-      const CC_FIELDS = ["name", "skin", "hairColour", "outfit", "done"];
+      const CC_FIELDS = ["name", "skin", "hairColour", "hairStyle", "outfit", "done"];
 
       function updateCharacterCreation() {
         // Navigate fields with left/right
@@ -1220,11 +1256,12 @@
 
         // Option panels
         const panels = [
-          { key: "name",      label: "Name",      value: cc.name, x: w * 0.12 },
-          { key: "skin",      label: "Skin",       value: `${cc.skin + 1} / ${SKIN_TONES.length}`, x: w * 0.30 },
-          { key: "hairColour",label: "Hair Color", value: `${cc.hairColour + 1} / ${HAIR_COLORS.length}`, x: w * 0.50 },
-          { key: "outfit",    label: "Outfit",     value: `${cc.outfit + 1} / ${OUTFIT_COLORS.length}`, x: w * 0.70 },
-          { key: "done",      label: "▶ Play!",    value: "",  x: w * 0.88 }
+          { key: "name",      label: "Name",       value: cc.name, x: w * 0.09 },
+          { key: "skin",      label: "Skin",        value: `${cc.skin + 1} / ${SKIN_TONES.length}`, x: w * 0.24 },
+          { key: "hairColour",label: "Hair Colour", value: `${cc.hairColour + 1} / ${HAIR_COLORS.length}`, x: w * 0.39 },
+          { key: "hairStyle", label: "Hair Style",  value: HAIR_STYLE_NAMES[cc.hairStyle], x: w * 0.54 },
+          { key: "outfit",    label: "Outfit",      value: `${cc.outfit + 1} / ${OUTFIT_COLORS.length}`, x: w * 0.69 },
+          { key: "done",      label: "▶ Play!",     value: "",  x: w * 0.86 }
         ];
 
         const panelY = h * 0.72;
