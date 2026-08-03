@@ -15,7 +15,7 @@ A 2D city life & dungeon adventure game built by a dad and daughter team. 🌙
 | Tag | What it includes | Link |
 |-----|-----------------|------|
 | Stage 0 — Walking World | Walk around, camera, trees, water | *(prototype)* |
-| Stage 1 — A Face in the Crowd | Title screen · Character creation · Save/load | [▶ Play Stage 1](https://jibberyjive.github.io/moonlightcity/game.html) |
+| [v0.1](https://github.com/jibberyjive/moonlightcity/releases/tag/v0.1) — A Face in the Crowd | Title · Character creation · 6 hair styles · 64×64 city map · NPC houses · Save/load | [▶ Play v0.1](https://jibberyjive.github.io/moonlightcity/game.html) |
 
 ---
 
