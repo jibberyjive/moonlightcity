@@ -131,6 +131,16 @@
         "47,25": "north", "57,25": "north",  // Row 2 — door faces Elm Road from below
         "47,39": "north", "57,39": "north",  // Row 3 — door faces Blossom Lane
       };
+      // Named NPC definitions — position is their home wander centre
+      const NPC_DATA = [
+        { id: "ella",   name: "Ella",   homeX: 20*32+16, homeY: 22*32+16, skin: "#e8c49a", hair: "#b85c2a", torso: "#f5e6c8", legs: "#8b5e3c", hairStyle: 1 },
+        { id: "will",   name: "Will",   homeX: 48*32+16, homeY: 22*32+16, skin: "#7a4a2e", hair: "#1a0f00", torso: "#2c3e6b", legs: "#1a2440", hairStyle: 0 },
+        { id: "pipper", name: "Pipper", homeX: 24*32+16, homeY: 30*32+16, skin: "#f5d5a0", hair: "#e84a10", torso: "#4a9a3c", legs: "#3a6fcd", hairStyle: 3 },
+        { id: "rose",   name: "Rose",   homeX: 47*32+16, homeY: 52*32+16, skin: "#d4b8c4", hair: "#0a0a1a", torso: "#2a1a3a", legs: "#1a0a2a", hairStyle: 2 },
+        { id: "lumi",   name: "Lumi",   homeX: 57*32+16, homeY: 22*32+16, skin: "#f0e8d8", hair: "#d8d8f0", torso: "#c8b8e0", legs: "#8898a8", hairStyle: 4 },
+        { id: "rex",    name: "Rex",    homeX:  3*32+16, homeY: 40*32+16, skin: "#8a5a3a", hair: "#5a5050", torso: "#5a3a1a", legs: "#2a2010", hairStyle: 5 },
+      ];
+
       const DTILE_SIZE = 32;
       const SEWER_ENTRANCE = { x: 19 * TILE_SIZE + TILE_SIZE / 2, y: 58 * TILE_SIZE + TILE_SIZE / 2 };
 
@@ -762,6 +772,7 @@
       }
 
       let player = createPlayer(null);
+      let npcs = [];
       let dungeon = {
         floor: 1,
         data: null,
@@ -777,6 +788,45 @@
       // ==================================================
       // === SIMULATION SYSTEMS ===========================
       // ==================================================
+
+      function initNpcs() {
+        npcs = NPC_DATA.map(def => ({
+          ...def,
+          x: def.homeX, y: def.homeY,
+          vx: 0, vy: 0,
+          dir: "down",
+          walkTime: 0,
+          wanderTimer: Math.random() * 3,
+          targetX: def.homeX, targetY: def.homeY
+        }));
+      }
+
+      function updateNpcs(dt) {
+        for (const npc of npcs) {
+          npc.wanderTimer -= dt;
+          if (npc.wanderTimer <= 0) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist  = 24 + Math.random() * 48;
+            npc.targetX    = npc.homeX + Math.cos(angle) * dist;
+            npc.targetY    = npc.homeY + Math.sin(angle) * dist;
+            npc.wanderTimer = 2.5 + Math.random() * 4;
+          }
+          const dx = npc.targetX - npc.x;
+          const dy = npc.targetY - npc.y;
+          const d  = Math.hypot(dx, dy);
+          if (d > 6) {
+            const spd = 26;
+            npc.vx = (dx / d) * spd;
+            npc.vy = (dy / d) * spd;
+            npc.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+            npc.walkTime += dt * 5;
+          } else {
+            npc.vx = 0; npc.vy = 0;
+          }
+          npc.x += npc.vx * dt;
+          npc.y += npc.vy * dt;
+        }
+      }
 
       function getView() {
         const zoom = Math.max(1, Math.ceil(Math.max(canvas.width / WORLD_W, canvas.height / WORLD_H)));
@@ -1441,117 +1491,157 @@
       }
 
       function drawPlayerSprite(time, p) {
-        const skinColor = SKIN_TONES[p.skin]   || SKIN_TONES[0];
-        const hairColor = HAIR_COLORS[p.hairColour] || HAIR_COLORS[0];
-        const outfit    = OUTFIT_COLORS[p.outfit]   || OUTFIT_COLORS[0];
-        const skinBack  = shade(skinColor, -18);
-
-        const bob = Math.hypot(p.vx, p.vy) > 4 ? Math.sin(p.walkTime * Math.PI) * 0.5 : Math.sin(time * 2.3) * 0.45;
-        const x = p.x;
-        const y = p.y + bob;
-        const moving = Math.hypot(p.vx, p.vy) > 8;
-        const frame = moving ? Math.floor(p.walkTime) % 4 : 0;
-        const legSwing = [0, 1.5, 0, -1.5][frame];
-        const armSwing = [0, -1.2, 0, 1.2][frame];
-
-        ctx.fillStyle = "rgba(0,0,0,0.24)";
-        ctx.beginPath();
-        ctx.ellipse(x, y + 11, 8, 4, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        const px = x - 10;
-        const py = y - 16;
-
-        function rect(rx, ry, rw, rh, color) {
-          ctx.fillStyle = color;
-          ctx.fillRect(px + rx, py + ry, rw, rh);
-        }
-
-        // Shoes (same for all outfits)
-        rect(7, 14, 3, 6, "#5b3a24");
-        rect(10, 14, 3, 6, "#5b3a24");
-
-        if (p.dir === "down") {
-          rect(6.5 - armSwing, 8, 2, 7, skinColor);
-          rect(11.5 + armSwing, 8, 2, 7, skinColor);
-          rect(7, 7, 6, 8, outfit.torso);
-          rect(7.5 - legSwing, 15, 3, 5, outfit.legs);
-          rect(10.5 + legSwing, 15, 3, 5, outfit.legs);
-          rect(6, 0, 8, 8, skinColor);
-          rect(7, 4, 1, 1, "#1d1d1d");
-          rect(12, 4, 1, 1, "#1d1d1d");
-        } else if (p.dir === "up") {
-          rect(7, 7, 6, 8, shade(outfit.torso, -10));
-          rect(6.5 + armSwing, 8, 2, 7, skinBack);
-          rect(11.5 - armSwing, 8, 2, 7, skinBack);
-          rect(7.5 - legSwing, 15, 3, 5, shade(outfit.legs, -10));
-          rect(10.5 + legSwing, 15, 3, 5, shade(outfit.legs, -10));
-          rect(6, 0, 8, 8, skinBack);
-        } else if (p.dir === "left") {
-          rect(7, 7, 6, 8, outfit.torso);
-          rect(6, 9 + armSwing * 0.4, 2, 6, skinColor);
-          rect(11, 8 - armSwing * 0.4, 2, 6, skinBack);
-          rect(7.5 - legSwing, 15, 3, 5, outfit.legs);
-          rect(10.5 + legSwing, 15, 3, 5, outfit.legs);
-          rect(6, 0, 8, 8, skinColor);
-          rect(8, 4, 1, 1, "#1d1d1d");
-        } else {
-          rect(7, 7, 6, 8, outfit.torso);
-          rect(12, 9 - armSwing * 0.4, 2, 6, skinColor);
-          rect(7, 8 + armSwing * 0.4, 2, 6, skinBack);
-          rect(7.5 - legSwing, 15, 3, 5, outfit.legs);
-          rect(10.5 + legSwing, 15, 3, 5, outfit.legs);
-          rect(6, 0, 8, 8, skinColor);
-          rect(11, 4, 1, 1, "#1d1d1d");
-        }
-
-        // ── Hair styles ──────────────────────────────────────────────────────
-        // Each style draws differently per facing direction.
-        // hairStyle 0=crop 1=fringe 2=long 3=curly 4=bun 5=shaved
-        const hs = p.hairStyle || 0;
-        const h  = hairColor;
-        const d  = p.dir;
-        if (hs === 0) {
-          // Short crop — neat band, no side pieces
-          if (d === "down")  { rect(6, 0, 8, 2, h); }
-          if (d === "up")    { rect(6, 0, 8, 3, h); }
-          if (d === "left")  { rect(5, 0, 8, 2, h); }
-          if (d === "right") { rect(7, 0, 8, 2, h); }
-        } else if (hs === 1) {
-          // Fringe — original default with side curtains
-          if (d === "down")  { rect(5, 0, 10, 3, h); rect(5, 2, 2, 3, h); rect(13, 2, 2, 3, h); }
-          if (d === "up")    { rect(5, 0, 10, 5, h); rect(6, 5, 8, 1, h); }
-          if (d === "left")  { rect(5, 0, 8, 3, h); rect(5, 2, 2, 4, h); }
-          if (d === "right") { rect(7, 0, 8, 3, h); rect(13, 2, 2, 4, h); }
-        } else if (hs === 2) {
-          // Long — fringe plus ponytail flowing behind
-          if (d === "down")  { rect(5, 0, 10, 3, h); rect(5, 2, 2, 3, h); rect(13, 2, 2, 3, h); rect(6, 7, 8, 5, h); }
-          if (d === "up")    { rect(5, 0, 10, 5, h); rect(6, 5, 8, 6, h); }
-          if (d === "left")  { rect(5, 0, 8, 3, h); rect(5, 2, 2, 4, h); rect(12, 0, 3, 8, h); }
-          if (d === "right") { rect(7, 0, 8, 3, h); rect(13, 2, 2, 4, h); rect(5, 0, 3, 8, h); }
-        } else if (hs === 3) {
-          // Curly — wide poofy shape with side volume
-          if (d === "down")  { rect(4, 0, 12, 4, h); rect(3, 1, 3, 5, h); rect(14, 1, 3, 5, h); rect(4, 4, 3, 2, h); rect(13, 4, 3, 2, h); }
-          if (d === "up")    { rect(4, 0, 12, 5, h); rect(3, 1, 3, 5, h); rect(14, 1, 3, 5, h); rect(5, 5, 10, 2, h); }
-          if (d === "left")  { rect(4, 0, 9, 4, h); rect(3, 1, 3, 5, h); rect(4, 4, 4, 2, h); }
-          if (d === "right") { rect(7, 0, 9, 4, h); rect(14, 1, 3, 5, h); rect(12, 4, 4, 2, h); }
-        } else if (hs === 4) {
-          // Bun — small bun knot on top of head
-          if (d === "down")  { rect(5, 0, 10, 2, h); rect(7, -4, 6, 5, h); }
-          if (d === "up")    { rect(5, 0, 10, 2, h); rect(7, -4, 6, 5, h); }
-          if (d === "left")  { rect(5, 0, 8, 2, h); rect(6, -4, 6, 5, h); }
-          if (d === "right") { rect(7, 0, 8, 2, h); rect(8, -4, 6, 5, h); }
-        } else {
-          // Shaved (5) — barely-visible stubble line
-          if (d === "down")  { rect(5, 0, 10, 1, h); }
-          if (d === "up")    { rect(5, 0, 10, 1, h); }
-          if (d === "left")  { rect(5, 0, 8, 1, h); }
-          if (d === "right") { rect(7, 0, 8, 1, h); }
-        }
+        const skinColor = SKIN_TONES[p.skin]        || SKIN_TONES[0];
+        const hairColor = HAIR_COLORS[p.hairColour]  || HAIR_COLORS[0];
+        const outfit    = OUTFIT_COLORS[p.outfit]    || OUTFIT_COLORS[0];
+        // Convert player's indexed colours into the same NPC-style hex object,
+        // then let drawNpcSprite handle all the drawing.
+        drawNpcSprite(time, {
+          id: "__player__", name: "",
+          x: p.x, y: p.y,
+          vx: p.vx || 0, vy: p.vy || 0,
+          dir: p.dir || "down",
+          walkTime: p.walkTime || 0,
+          homeX: p.x,
+          skin:      skinColor,
+          hair:      hairColor,
+          torso:     outfit.torso,
+          legs:      outfit.legs,
+          hairStyle: p.hairStyle || 0
+        });
       }
-
       // drawPlayer uses the live player object — called by city scene
       function drawPlayer(time) { drawPlayerSprite(time, player); }
+
+      function drawNpcSprite(time, npc) {
+        const skin  = npc.skin;
+        const hair  = npc.hair;
+        const skinS = shade(skin, -15);
+        const hairD = shade(hair, -25);
+        const blush = shade(skin, 16);
+        const T     = npc.torso;
+        const TS    = shade(T, -18);
+        const L     = npc.legs;
+        const LS    = shade(L, -18);
+        const SH    = "#3a2010";
+
+        const moving = Math.hypot(npc.vx, npc.vy) > 4;
+        const bob    = moving ? Math.sin(npc.walkTime * Math.PI) * 0.6 : Math.sin(time * 1.8 + npc.homeX * 0.01) * 0.4;
+        const frame  = moving ? Math.floor(npc.walkTime) % 4 : 0;
+        const ls = [0, 2, 0, -2][frame];
+        const as = [0, -1.5, 0, 1.5][frame];
+        const x  = npc.x, y = npc.y + bob, d = npc.dir;
+
+        ctx.fillStyle = "rgba(0,0,0,0.18)";
+        ctx.beginPath();
+        ctx.ellipse(x, y + 14, 8, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const px = x - 10, py = y - 20;
+        function r(rx, ry, rw, rh, c) {
+          ctx.fillStyle = c;
+          ctx.fillRect(Math.round(px + rx), Math.round(py + ry), rw, rh);
+        }
+
+        if (d === "down") {
+          r(4-ls, 28,6,4,SH); r(10+ls,28,6,4,SH);
+          r(5-ls, 22,5,7,L);  r(10+ls,22,5,7,L);
+          r(1-as*0.5,16,4,9,skin); r(15+as*0.5,16,4,9,skin);
+          r(4,14,12,9,T);
+          r(7,11,6,4,skin);
+          r(3,0,14,13,skin); r(2,4,2,5,skinS); r(16,4,2,5,skinS);
+          r(4,8,3,2,blush); r(13,8,3,2,blush);
+          r(6,4,3,4,"#fff"); r(11,4,3,4,"#fff");
+          r(7,5,2,3,"#1a1a2e"); r(12,5,2,3,"#1a1a2e");
+          r(7,5,1,1,"#fff"); r(12,5,1,1,"#fff");
+          r(8,10,4,1,skinS);
+        } else if (d === "up") {
+          r(4-ls,28,6,4,SH); r(10+ls,28,6,4,SH);
+          r(5-ls,22,5,7,LS); r(10+ls,22,5,7,LS);
+          r(1+as*0.5,16,4,9,shade(skin,-15)); r(15-as*0.5,16,4,9,shade(skin,-15));
+          r(4,14,12,9,TS); r(7,11,6,4,shade(skin,-15));
+          r(3,0,14,13,shade(skin,-15)); r(2,4,2,5,shade(skin,-22)); r(16,4,2,5,shade(skin,-22));
+        } else if (d === "left") {
+          r(4-ls*0.6,28,6,4,SH); r(9+ls*0.6,28,6,4,SH);
+          r(5-ls*0.6,22,5,7,L); r(9+ls*0.6,22,5,7,LS);
+          r(2,15+as*0.5,4,9,skin); r(14,14-as*0.5,3,8,skinS);
+          r(4,14,12,9,T); r(13,14,3,9,TS);
+          r(7,11,5,4,skin); r(11,11,2,4,skinS);
+          r(3,0,14,13,skin); r(14,0,3,13,skinS); r(2,4,2,5,skinS);
+          r(4,8,2,2,blush);
+          r(5,4,3,4,"#fff"); r(6,5,2,3,"#1a1a2e"); r(6,5,1,1,"#fff");
+          r(5,10,3,1,skinS);
+        } else {
+          r(6-ls*0.6,28,6,4,SH); r(10+ls*0.6,28,6,4,SH);
+          r(6-ls*0.6,22,5,7,LS); r(10+ls*0.6,22,5,7,L);
+          r(13,15-as*0.5,4,9,skin); r(3,14+as*0.5,3,8,skinS);
+          r(4,14,12,9,T); r(4,14,3,9,TS);
+          r(8,11,5,4,skin); r(8,11,2,4,skinS);
+          r(3,0,14,13,skin); r(3,0,3,13,skinS); r(16,4,2,5,skinS);
+          r(14,8,2,2,blush);
+          r(12,4,3,4,"#fff"); r(12,5,2,3,"#1a1a2e"); r(13,5,1,1,"#fff");
+          r(12,10,3,1,skinS);
+        }
+
+        // Hair
+        const h = hair, hd = hairD;
+        if (npc.hairStyle === 0) { // crop
+          if (d==="down")  { r(3,-1,14,4,h); r(2,2,3,3,hd); r(15,2,3,3,hd); }
+          if (d==="up")    { r(3,-1,14,5,h); }
+          if (d==="left")  { r(3,-1,12,4,h); r(3,3,3,3,hd); }
+          if (d==="right") { r(5,-1,12,4,h); r(14,3,3,3,hd); }
+        } else if (npc.hairStyle === 1) { // fringe
+          if (d==="down")  { r(3,-1,14,5,h); r(2,3,4,5,hd); r(14,3,4,5,hd); r(5,4,3,4,h); r(12,4,3,4,h); }
+          if (d==="up")    { r(3,-1,14,6,h); r(4,5,12,2,hd); }
+          if (d==="left")  { r(3,-1,12,5,h); r(3,3,4,5,hd); r(13,3,3,4,h); }
+          if (d==="right") { r(5,-1,12,5,h); r(13,3,4,5,hd); r(4,3,3,4,h); }
+        } else if (npc.hairStyle === 2) { // long
+          if (d==="down")  { r(3,-1,14,5,h); r(2,3,4,5,hd); r(14,3,4,5,hd); r(3,13,4,8,hd); r(13,13,4,8,hd); }
+          if (d==="up")    { r(3,-1,14,6,h); r(4,5,12,2,hd); r(3,7,3,8,h); r(14,7,3,8,h); }
+          if (d==="left")  { r(3,-1,12,5,h); r(3,3,4,5,hd); r(13,-1,4,14,h); r(15,3,2,10,hd); }
+          if (d==="right") { r(5,-1,12,5,h); r(13,3,4,5,hd); r(3,-1,4,14,h); r(3,3,2,10,hd); }
+        } else if (npc.hairStyle === 3) { // curly
+          if (d==="down")  { r(1,-2,18,6,h); r(0,2,4,8,hd); r(16,2,4,8,hd); r(2,9,3,4,hd); r(15,9,3,4,hd); r(3,-1,14,5,shade(h,12)); }
+          if (d==="up")    { r(1,-2,18,7,h); r(0,2,4,7,hd); r(16,2,4,7,hd); r(3,5,14,3,shade(h,10)); }
+          if (d==="left")  { r(1,-2,16,6,h); r(0,2,4,7,hd); r(2,8,3,5,hd); r(3,-1,12,4,shade(h,12)); }
+          if (d==="right") { r(3,-2,16,6,h); r(16,2,4,7,hd); r(15,8,3,5,hd); r(5,-1,12,4,shade(h,12)); }
+        } else if (npc.hairStyle === 4) { // bun
+          if (d==="down"||d==="up") { r(3,-1,14,3,h); r(6,-7,8,7,h); r(7,-8,6,2,hd); r(13,-4,3,3,hd); }
+          if (d==="left")  { r(3,-1,12,3,h); r(5,-7,8,7,h); r(10,-8,5,3,hd); }
+          if (d==="right") { r(5,-1,12,3,h); r(7,-7,8,7,h); r(7,-8,5,3,hd); }
+        } else { // shaved (5)
+          if (d==="down"||d==="up") { r(3,-1,14,2,hd); }
+          else { r(3,-1,12,2,hd); }
+        }
+
+        // Unique per-character accessories
+        if (npc.id === "ella") {
+          if (d !== "up") { r(7,17,6,7,"rgba(255,255,255,0.5)"); } // apron
+        } else if (npc.id === "will") {
+          if (d !== "up") { r(4,21,12,2,shade(T,-32)); }           // tool belt
+        } else if (npc.id === "rose") {
+          r(2,-1,16,7,"rgba(18,4,28,0.75)"); r(0,3,20,5,"rgba(18,4,28,0.5)"); // hood
+        } else if (npc.id === "lumi") {
+          if (d !== "up") { r(9,18,3,2,"#4ec9b0"); r(8,19,2,2,"#4ec9b0"); } // paint smudge
+        } else if (npc.id === "rex") {
+          if (d==="down") { r(5,9,10,4,"#888"); r(6,12,8,2,"#777"); }       // beard
+          if (d==="left") { r(4,9,6,4,"#888"); }
+          if (d==="right") { r(10,9,6,4,"#888"); }
+        }
+
+        // Name tag above head when player is nearby (skip for player's own wrapper)
+        if (npc.name && Math.hypot(player.x - npc.x, player.y - npc.y) < 80) {
+          ctx.save();
+          ctx.fillStyle = "rgba(0,0,0,0.65)";
+          ctx.fillRect(Math.round(x - 22), Math.round(y - 34), 44, 14);
+          ctx.fillStyle = "#f0e8c0";
+          ctx.font = "bold 9px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(npc.name, Math.round(x), Math.round(y - 23));
+          ctx.textAlign = "left";
+          ctx.restore();
+        }
+      }
 
       function drawFade() {
         if (game.fadeAlpha < 0) {
@@ -1586,7 +1676,15 @@
           }
         }
 
-        drawPlayer(time);
+        // Draw all characters (player + NPCs) sorted by Y so taller-Y sprites appear in front
+        const chars = [{ isPlayer: true, y: player.y }];
+        for (const npc of npcs) chars.push({ isPlayer: false, y: npc.y, npc });
+        chars.sort((a, b) => a.y - b.y);
+
+        for (const c of chars) {
+          if (c.isPlayer) drawPlayer(time);
+          else drawNpcSprite(time, c.npc);
+        }
 
         for (const [tile, x, y] of lateObstacles) {
           drawObstacle(tile, x, y, time);
@@ -2100,6 +2198,7 @@
           // Push pause overlay — not yet implemented, just ignore for now
         }
         movePlayer(dt);
+        updateNpcs(dt);
 
         const view = getView();
         const targetX = clamp(player.x - view.worldW / 2, 0, Math.max(0, WORLD_W - view.worldW));
@@ -2480,6 +2579,7 @@
 
       (function startup() {
         buildMap();
+        initNpcs();
         const saved = loadSave();
         game.save = saved;
         // If a save exists, go straight to title (Continue is lit)
