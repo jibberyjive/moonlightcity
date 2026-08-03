@@ -46,7 +46,7 @@
       // === CONSTANTS & ENUMS ============================
       // ==================================================
 
-      const SCHEMA_VERSION = 2;
+      const SCHEMA_VERSION = 3;
       const SAVE_KEY = "moonlight-city-save";
 
       // Scene IDs
@@ -142,12 +142,32 @@
         "58,51": "south",   // old mansion (kept in case legacy save)
         "73,16": "south",   // Moonlight Mansion — south door
         "7,34":  "south",   // Moonlight Cinemas — south door
+        "46,62": "south",   // Pawsome Pets — south door
       };
       const CANDY_STORE = { x1: 56, y1: 49, x2: 60, y2: 53 };
       const SCHOOL = { x1: 30, y1: 41, x2: 41, y2: 48 };
       const PRESTIGE_STORE = { x1: 44, y1: 15, x2: 55, y2: 21 };
       const MANSION = { x1: 68, y1: 5, x2: 79, y2: 16 };
       const THEATER = { x1: 2, y1: 25, x2: 13, y2: 34 };
+      const PET_SHOP = { x1: 43, y1: 56, x2: 49, y2: 62 };
+      const PETS_FOR_SALE = [
+        { id:"cat_orange", emoji:"🐱", name:"Orange Cat",       price:200, color:"#e87820", kind:"cat" },
+        { id:"cat_grey",   emoji:"🐱", name:"Grey Cat",         price:200, color:"#7a7888", kind:"cat" },
+        { id:"dog_golden", emoji:"🐶", name:"Golden Retriever", price:300, color:"#e8b830", kind:"dog" },
+        { id:"dog_black",  emoji:"🐶", name:"Black Lab",        price:300, color:"#282020", kind:"dog" },
+        { id:"dog_white",  emoji:"🐶", name:"White Husky",      price:350, color:"#f0ece8", kind:"dog" },
+      ];
+      const SEASONS = ["🌸 Spring", "☀️ Summer", "🍂 Autumn", "❄️ Winter"];
+      function getSeason(day) { return SEASONS[Math.floor((day - 1) / 30) % 4]; }
+      function getSeasonIdx(day) { return Math.floor((day - 1) / 30) % 4; }
+      const JOB_SPOTS = [
+        { id:"bakery",  x:18*32+16, y:20*32+16, gold:10, label:"Baker's Assistant",  emoji:"🧁", dur:3 },
+        { id:"docks",   x:52*32+16, y:57*32+16, gold:15, label:"Dock Worker",        emoji:"⚓", dur:4 },
+        { id:"park",    x:35*32+16, y:29*32+16, gold:8,  label:"Park Maintainer",    emoji:"🌿", dur:3 },
+        { id:"school",  x:35*32+16, y:47*32+16, gold:12, label:"Teaching Assistant", emoji:"📚", dur:4 },
+        { id:"clinic",  x:31*32+16, y:17*32+16, gold:12, label:"Medical Assistant",  emoji:"💊", dur:4 },
+      ];
+      const FISHING_SPOT = { x: 51*32+16, y: 57*32+16 };
 
       const MOVIES = [
         { id: "action",  emoji: "⚔️",  title: "Dungeon Warriors III",   desc: "Speed + HP boost for 60s",   price: 8,
@@ -620,6 +640,7 @@
           inventory: [],
           houseUpgrades: [],
           ownedHouses: [],
+          ownedPets: [],
           dungeon: {
             currentFloor: 1,
             deepestFloorCleared: 0,
@@ -635,6 +656,8 @@
           relationships: { ella: 0, rex: 0, lumi: 0 },
           friendship: { ella: 0, will: 0, pipper: 0, rose: 0, lumi: 0, rex: 0, mabel: 0, finn: 0, doc: 0, nora: 0, sam: 0, cleo: 0 },
           married: null,
+          marriageDay: 0,
+          hasBaby: false,
           hasRing: false,
           time: { currentDay: 1, currentHour: 8, currentMinute: 0 },
           flags: {
@@ -666,6 +689,12 @@
               save.hasRing  = save.hasRing  ?? false;
               save.version = 2;
               break;
+            case 2:
+              save.ownedPets = Array.isArray(save.ownedPets) ? save.ownedPets : [];
+              save.marriageDay = save.marriageDay || 0;
+              save.hasBaby = !!save.hasBaby;
+              save.version = 3;
+              break;
             default:
               return createNewSave();
           }
@@ -680,8 +709,11 @@
         save.time      = Object.assign({}, fresh.time,      save.time);
         save.houseUpgrades = Array.isArray(save.houseUpgrades) ? save.houseUpgrades.slice() : fresh.houseUpgrades.slice();
         save.ownedHouses   = Array.isArray(save.ownedHouses)   ? save.ownedHouses.slice()   : fresh.ownedHouses.slice();
+        save.ownedPets     = Array.isArray(save.ownedPets)     ? save.ownedPets.slice()     : fresh.ownedPets.slice();
         save.friendship    = Object.assign({}, fresh.friendship, save.friendship || {});
         if (save.married  === undefined) save.married  = null;
+        if (save.marriageDay === undefined) save.marriageDay = 0;
+        if (save.hasBaby === undefined) save.hasBaby = false;
         if (save.hasRing  === undefined) save.hasRing  = false;
         return save;
       }
@@ -717,6 +749,7 @@
         inPrestigeStore: false,
         inMansion: false,
         inTheater: false,
+        inPetShop: false,
         theater: { movieMenu: false, selected: 0 }
       };
 
@@ -1119,6 +1152,11 @@
         fillRectTiles(65, 38, 1, 1,  TILE.PATH);         // House 9 doorstep
         stampTiles([[62,15],[68,15],[62,35],[68,35],[63,24],[63,38]], TILE.FLOWERS);
 
+        // ── Pawsome Pets shop (x:43-49, y:56-62, near candy store) ──
+        fillRectTiles(43, 56, 7, 7, TILE.STONE);
+        fillRectTiles(45, 62, 2, 1, TILE.PATH); // doorstep
+        stampTiles([[42,56],[50,56],[42,62],[50,62]], TILE.FLOWERS);
+
         // ══════════════════════════════════════════════════════════
         // EASTERN HILLS  (x:64-95, y:0-63)
         // Rolling countryside, forest, mansion estate to the east
@@ -1219,7 +1257,12 @@
       let inventory = { open: false, selected: 0 };
       let cheatBox  = { open: false, selected: 0, flash: "" };
       let prestigeShop = { open: false, selected: 0 };
+      let petShopState = { open: false, selected: 0 };
       let proposal  = { active: false, npc: null, selected: 0 }; // 0=Yes 1=No
+      let weather = { type: "clear", particles: [], changeTimer: 90 + Math.random() * 60 };
+      let workState = { active: false, jobId: null, timer: 0, dur: 3 };
+      let jobCooldowns = {};
+      let fishState = { active: false, phase: "casting", timer: 0, biteAt: 0 };
       let dungeon = {
         floor: 1,
         data: null,
@@ -1252,12 +1295,66 @@
           const m = npcs.find(n => n.id === game.save.married);
           if (m) m.married = true;
         }
+        if (game.save && game.save.hasBaby && game.save.married) {
+          const spouse = npcs.find(n => n.id === game.save.married);
+          if (spouse) {
+            npcs.push({
+              id: "__baby__", name: "Baby",
+              x: spouse.homeX, y: spouse.homeY,
+              vx: 0, vy: 0, dir: "down", walkTime: 0,
+              wanderTimer: 3, targetX: spouse.homeX, targetY: spouse.homeY,
+              skin: spouse.skin, hair: spouse.hair, torso: "#f8d8b0", legs: "#a8d8f0",
+              hairStyle: 0, ageType: "toddler", married: false, homeX: spouse.homeX, homeY: spouse.homeY,
+              isFollowingSpouse: true, spouseId: game.save.married
+            });
+          }
+        }
+      }
+
+      function createOwnedPetEntity(petId, followSlot = 0, spawnX = player.x, spawnY = player.y) {
+        const pet = PETS_FOR_SALE.find(p => p.id === petId);
+        if (!pet) return null;
+        const offsetX = 24 + (followSlot % 3) * 16;
+        const offsetY = 24 + Math.floor(followSlot / 3) * 16;
+        return {
+          id: `pet_${pet.id}`,
+          name: pet.name,
+          kind: pet.kind,
+          isOwnedPet: true,
+          followSlot,
+          homeX: spawnX + offsetX,
+          homeY: spawnY + offsetY,
+          x: spawnX + offsetX,
+          y: spawnY + offsetY,
+          vx: 0, vy: 0, dir: "right", walkTime: 0, wagTime: followSlot * 0.8,
+          wanderTimer: 1, targetX: spawnX + offsetX, targetY: spawnY + offsetY, chasing: false,
+          coat: pet.color, coatD: shade(pet.color, -28), ridge: shade(pet.color, -38),
+          ear: shade(pet.color, -18), nose: "#1a0800", eye: pet.kind === "cat" ? "#2a9d8f" : "#3a1800",
+          belly: shade(pet.color, 16), emoji: pet.emoji
+        };
       }
 
       function updateNpcs(dt) {
         for (const npc of npcs) {
+          if (npc.isFollowingSpouse) {
+            const spouseNpc = npcs.find(n => n.id === npc.spouseId);
+            const target = spouseNpc || player;
+            const dx = target.x - npc.x, dy = target.y - npc.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 36) {
+              const spd = 50;
+              npc.vx = (dx / dist) * spd;
+              npc.vy = (dy / dist) * spd;
+              npc.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+              npc.x += npc.vx * dt; npc.y += npc.vy * dt;
+              npc.walkTime += dt * 2;
+            } else {
+              npc.vx *= 0.8; npc.vy *= 0.8;
+            }
+            continue;
+          }
           // Married NPC follows the player
-          if (npc.married && game.scene === 1 /* CITY */) {
+          if (npc.married && game.scene === SCENE.CITY) {
             const dx = player.x - npc.x, dy = player.y - npc.y;
             const dist = Math.hypot(dx, dy);
             if (dist > 52) {
@@ -1319,6 +1416,13 @@
             ear:  "#222228", nose: "#0a0a0a", eye: "#7a4a12", belly: "#363642"
           }
         ];
+        const ownedPets = game.save && Array.isArray(game.save.ownedPets) ? game.save.ownedPets : [];
+        const spawnX = player.x || (game.save && game.save.player && game.save.player.spawn ? game.save.player.spawn.x : 20 * 32 + 16);
+        const spawnY = player.y || (game.save && game.save.player && game.save.player.spawn ? game.save.player.spawn.y : 13 * 32 + 16);
+        ownedPets.forEach((petId, idx) => {
+          const petEntity = createOwnedPetEntity(petId, idx, spawnX, spawnY);
+          if (petEntity) dogs.push(petEntity);
+        });
       }
 
       function updateDogs(dt) {
@@ -1326,6 +1430,27 @@
           dog.wagTime += dt * 6;
 
           const distToPlayer = Math.hypot(player.x - dog.x, player.y - dog.y);
+
+          if (dog.isOwnedPet) {
+            const angle = Math.PI * 0.9 + dog.followSlot * 0.85;
+            const targetX = player.x + Math.cos(angle) * 28;
+            const targetY = player.y + Math.sin(angle) * 20;
+            const dx = targetX - dog.x, dy = targetY - dog.y;
+            const d = Math.hypot(dx, dy) || 1;
+            if (d > 12) {
+              const spd = dog.kind === "cat" ? 78 : 74;
+              dog.vx = (dx / d) * spd;
+              dog.vy = (dy / d) * spd;
+              dog.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+              dog.walkTime += dt * 9;
+            } else {
+              dog.vx *= 0.65;
+              dog.vy *= 0.65;
+            }
+            dog.x += dog.vx * dt;
+            dog.y += dog.vy * dt;
+            continue;
+          }
 
           if (distToPlayer < 80 && distToPlayer > 20) {
             // Chase player when nearby
@@ -1366,6 +1491,43 @@
       }
 
       function drawDogSprite(time, dog) {
+        if (dog.kind === "cat") {
+          const coat = dog.coat || "#808080";
+          const coatD = dog.coatD || shade(coat, -28);
+          const belly = dog.belly || shade(coat, 18);
+          const eye = dog.eye || "#3a1800";
+          const x = dog.x, y = dog.y;
+          const moving = Math.hypot(dog.vx, dog.vy) > 6;
+          const frame = moving ? Math.floor(dog.walkTime) % 4 : 0;
+          const pawA = [0, 2, 0, -2][frame];
+          const pawB = [0, -2, 0, 2][frame];
+          const tail = Math.sin(dog.wagTime * 1.3) * 5;
+          const px = x - 10, py = y - 9;
+          function r(rx, ry, rw, rh, c) {
+            ctx.fillStyle = c;
+            ctx.fillRect(Math.round(px + rx), Math.round(py + ry), rw, rh);
+          }
+          ctx.fillStyle = "rgba(0,0,0,0.18)";
+          ctx.beginPath();
+          ctx.ellipse(x, y + 7, 9, 3, 0, 0, Math.PI * 2);
+          ctx.fill();
+          if (dog.dir === "left") {
+            r(15, 1 + tail * 0.35, 3, 2, coatD);
+            r(4, 5, 10, 6, coat);
+            r(5, 9, 8, 2, belly);
+            r(4, 10 + pawA, 2, 4, coatD); r(10, 10 + pawB, 2, 4, coatD);
+            r(0, 2, 6, 7, coat); r(1, 0, 2, 3, coatD); r(3, 0, 2, 3, coatD);
+            r(1, 1, 1, 2, eye); r(0, 5, 2, 2, "#f3d0d0");
+          } else {
+            r(2, 1 + tail * 0.35, 3, 2, coatD);
+            r(6, 5, 10, 6, coat);
+            r(7, 9, 8, 2, belly);
+            r(8, 10 + pawA, 2, 4, coatD); r(14, 10 + pawB, 2, 4, coatD);
+            r(14, 2, 6, 7, coat); r(15, 0, 2, 3, coatD); r(17, 0, 2, 3, coatD);
+            r(18, 1, 1, 2, eye); r(18, 5, 2, 2, "#f3d0d0");
+          }
+          return;
+        }
         const coat   = dog.coat  || "#c07a3a";
         const coatD  = dog.coatD || shade(coat, -30);
         const ridge  = dog.ridge || shade(coat, -40);
@@ -1660,6 +1822,8 @@
         game.inSchool = false;
         game.inPrestigeStore = false;
         game.inMansion = false;
+        game.inTheater = false;
+        game.inPetShop = false;
         game.inCandyStore = true;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           player.x = 5 * 36 + 18;
@@ -1676,6 +1840,8 @@
         game.inCandyStore = false;
         game.inSchool = false;
         game.inMansion = false;
+        game.inTheater = false;
+        game.inPetShop = false;
         prestigeShop.open = false;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           player.x = 5 * 36 + 18;
@@ -1693,6 +1859,7 @@
         game.inSchool = false;
         game.inPrestigeStore = false;
         game.inMansion = false;
+        game.inPetShop = false;
         game.theater.movieMenu = false;
         game.theater.selected = 0;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
@@ -1714,6 +1881,8 @@
         game.inCandyStore = false;
         game.inSchool = false;
         game.inPrestigeStore = false;
+        game.inTheater = false;
+        game.inPetShop = false;
         prestigeShop.open = false;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           player.x = 6 * 36 + 18;
@@ -1729,6 +1898,8 @@
         game.inCandyStore = false;
         game.inPrestigeStore = false;
         game.inMansion = false;
+        game.inTheater = false;
+        game.inPetShop = false;
         game.inSchool = true;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           player.x = 5 * 36 + 18;
@@ -1747,10 +1918,30 @@
         game.inSchool = false;
         game.inPrestigeStore = false;
         game.inMansion = false;
+        game.inTheater = false;
+        game.inPetShop = false;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           // Place player at interior spawn (near door, bottom centre)
           player.x = 5 * 36 + 18;
           player.y = 6 * 36 + 18;
+          player.vx = 0; player.vy = 0;
+          player.dir = "up";
+        });
+      }
+
+      function enterPetShop() {
+        game.houseExitX = 46 * 32 + 16;
+        game.houseExitY = 63 * 32 + 16;
+        game.inCandyStore = false;
+        game.inSchool = false;
+        game.inPrestigeStore = false;
+        game.inMansion = false;
+        game.inTheater = false;
+        game.inPetShop = true;
+        petShopState.open = false;
+        switchScene(SCENE.HOUSE_INTERIOR, () => {
+          player.x = 5 * 36 + 18;
+          player.y = 7 * 36 + 18;
           player.vx = 0; player.vy = 0;
           player.dir = "up";
         });
@@ -1762,26 +1953,31 @@
         const wasPrestige    = game.inPrestigeStore;
         const wasMansion     = game.inMansion;
         const wasTheater     = game.inTheater;
+        const wasPetShop     = game.inPetShop;
         game.inCandyStore    = false;
         game.inSchool        = false;
         game.inPrestigeStore = false;
         game.inMansion       = false;
         game.inTheater       = false;
+        game.inPetShop       = false;
         game.theater.movieMenu = false;
         candyShop.open = false;
         prestigeShop.open = false;
+        petShopState.open = false;
         switchScene(SCENE.CITY, () => {
           player.x = wasCandyStore ? 58*32+16
                    : wasSchool     ? 35*32+16
                    : wasPrestige   ? 49*32+16
                    : wasMansion    ? 73*32+16
                    : wasTheater    ?  7*32+16
+                   : wasPetShop    ? 46*32+16
                    : (game.houseExitX || 47*32+16);
           player.y = wasCandyStore ? 54*32+16
                    : wasSchool     ? 49*32+16
                    : wasPrestige   ? 22*32+16
                    : wasMansion    ? 17*32+16
                    : wasTheater    ? 35*32+16
+                   : wasPetShop    ? 63*32+16
                    : (game.houseExitY || 24*32+16);
           player.vx = 0; player.vy = 0;
         });
@@ -2126,6 +2322,8 @@
                           tileY >= MANSION.y1 && tileY <= MANSION.y2;
         const isTheater = tileX >= THEATER.x1 && tileX <= THEATER.x2 &&
                           tileY >= THEATER.y1 && tileY <= THEATER.y2;
+        const isPetShop = tileX >= PET_SHOP.x1 && tileX <= PET_SHOP.x2 &&
+                          tileY >= PET_SHOP.y1 && tileY <= PET_SHOP.y2;
 
         if (isCandy) {
           // ── Candy Store roof — pink tiles ───────────────────────
@@ -2255,6 +2453,7 @@
           // ── Roof colour ──────────────────────────────────────────
           const roofColor = houseConfig ? houseConfig.roofColor
                           : isMansion ? "#2a3a80"
+                          : isPetShop ? "#7a5a36"
                           : isSchool  ? "#6b2a1a"
                           : COLORS.stone;
           ctx.fillStyle = roofColor;
@@ -2384,23 +2583,32 @@
                 ctx.textAlign = "left";
               }
             } else {
-              // ── School or generic stone ──────────────────────────
-              const wallColor = isSchool ? "#8b3a2a" : "#d2c49a";
-              const trimColor = isSchool ? "#e8d080" : "#d2c49a";
-              const frameColor = isSchool ? "rgba(90,40,20,0.75)" : "rgba(80,50,20,0.6)";
+              // ── Pet shop / school / generic stone ───────────────
+              const wallColor = isPetShop ? "#e8d2ae" : isSchool ? "#8b3a2a" : "#d2c49a";
+              const trimColor = isPetShop ? "#9b6c3d" : isSchool ? "#e8d080" : "#d2c49a";
+              const frameColor = isPetShop ? "rgba(100,70,35,0.7)" : isSchool ? "rgba(90,40,20,0.75)" : "rgba(80,50,20,0.6)";
               ctx.fillStyle = wallColor;
               ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 9);
-              ctx.fillStyle = isSchool ? "rgba(60,20,10,0.45)" : "rgba(0,0,0,0.35)";
+              ctx.fillStyle = isPetShop ? "rgba(70,45,18,0.4)" : isSchool ? "rgba(60,20,10,0.45)" : "rgba(0,0,0,0.35)";
               ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 2);
               ctx.fillStyle = trimColor;
               ctx.fillRect(x, y + TILE_SIZE - 9, TILE_SIZE, 2);
-              ctx.fillStyle = "#a8d8ff";
+              ctx.fillStyle = isPetShop ? "#fff4d8" : "#a8d8ff";
               ctx.fillRect(x + 5,             y + TILE_SIZE - 8, 5, 5);
               ctx.fillRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 5, 5);
               ctx.strokeStyle = frameColor;
               ctx.lineWidth = 1;
               ctx.strokeRect(x + 5,             y + TILE_SIZE - 8, 5, 5);
               ctx.strokeRect(x + TILE_SIZE - 10, y + TILE_SIZE - 8, 5, 5);
+              if (isPetShop && tileX === 46 && tileY === 62) {
+                ctx.fillStyle = "#fff0d8";
+                ctx.fillRect(x - 2, y + TILE_SIZE - 21, TILE_SIZE + 4, 8);
+                ctx.fillStyle = "#7a4a18";
+                ctx.font = "bold 7px Trebuchet MS, Arial, sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("🐾 Pawsome Pets", x + TILE_SIZE / 2, y + TILE_SIZE - 15);
+                ctx.textAlign = "left";
+              }
               if (isSchool && tileX === 35 && tileY === 48) {
                 ctx.fillStyle = "#e8d080";
                 ctx.font = "bold 7px Trebuchet MS, Arial, sans-serif";
@@ -2421,9 +2629,9 @@
               ctx.fillStyle = "rgba(0,0,0,0.25)";
               ctx.fillRect(x, y, 1, TILE_SIZE);
             } else {
-              ctx.fillStyle = isMansion ? "#162257" : isSchool ? "#7a3022" : "#b8a882";
+              ctx.fillStyle = isMansion ? "#162257" : isPetShop ? "#c29a6c" : isSchool ? "#7a3022" : "#b8a882";
               ctx.fillRect(x, y, 4, TILE_SIZE);
-              ctx.fillStyle = isMansion ? "rgba(255,255,255,0.2)" : isSchool ? "rgba(70,20,10,0.28)" : "rgba(0,0,0,0.2)";
+              ctx.fillStyle = isMansion ? "rgba(255,255,255,0.2)" : isPetShop ? "rgba(80,55,28,0.25)" : isSchool ? "rgba(70,20,10,0.28)" : "rgba(0,0,0,0.2)";
               ctx.fillRect(x, y, 1, TILE_SIZE);
             }
           }
@@ -2472,6 +2680,15 @@
             ctx.fillRect(doorFacing === "south" ? x + 18 : x + 12, doorY + 3, 2, 2);
             ctx.fillStyle = "rgba(255,236,180,0.18)";
             ctx.fillRect(x + 12, doorY + 1, 3, doorH - 2);
+          } else if (isPetShop) {
+            ctx.fillStyle = "#5a3216";
+            ctx.fillRect(x + 10, doorY, 12, doorH);
+            ctx.fillStyle = "#7a4a22";
+            ctx.fillRect(x + 11, doorY + 1, 10, doorH - 1);
+            ctx.fillStyle = "#f0d080";
+            ctx.fillRect(doorFacing === "south" ? x + 18 : x + 12, doorY + 3, 2, 2);
+            ctx.fillStyle = "rgba(255,245,220,0.18)";
+            ctx.fillRect(x + 12, doorY + 1, 3, doorH - 2);
           } else {
             // House-specific or generic door
             let hConf = null;
@@ -2492,7 +2709,7 @@
         }
 
         // Highlight top-left corner (light source hint)
-        ctx.fillStyle = isCandy ? "rgba(255,200,230,0.12)" : isSchool ? "rgba(255,230,180,0.12)" : isPrestige ? "rgba(255,235,170,0.12)" : isMansion ? "rgba(255,245,190,0.14)" : "rgba(255,255,220,0.08)";
+        ctx.fillStyle = isCandy ? "rgba(255,200,230,0.12)" : isPetShop ? "rgba(255,235,190,0.12)" : isSchool ? "rgba(255,230,180,0.12)" : isPrestige ? "rgba(255,235,170,0.12)" : isMansion ? "rgba(255,245,190,0.14)" : "rgba(255,255,220,0.08)";
         ctx.fillRect(x, y, TILE_SIZE, 3);
       }
 
@@ -3528,6 +3745,23 @@
         const dayWidth = ctx.measureText(dayText).width;
         ctx.fillText(dayText, canvas.width - 26 - dayWidth, 37);
 
+        // Clock display
+        if (save) {
+          const _ch = save.time.currentHour, _cm = Math.floor(save.time.currentMinute);
+          const _ampm = _ch >= 12 ? "PM" : "AM";
+          const _h12  = _ch % 12 || 12;
+          const _clockStr = `${_h12}:${String(_cm).padStart(2,"0")} ${_ampm}`;
+          const _isNight = _ch >= 20 || _ch < 8;
+          ctx.fillStyle = "rgba(0,0,0,0.28)";
+          const _cw = ctx.measureText(_clockStr).width + 16;
+          ctx.fillRect(canvas.width - _cw - 4, 52, _cw + 4, 20);
+          ctx.fillStyle = _isNight ? "#aac8ff" : "#ffe8a0";
+          ctx.font = "bold 12px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "right";
+          ctx.fillText((_isNight ? "🌙 " : "☀️ ") + _clockStr, canvas.width - 10, 66);
+          ctx.textAlign = "left";
+        }
+
         // Inventory + gold badge
         const inv = save && save.inventory ? save.inventory : [];
         const invText = `🎒 ${inv.length}  ⬡ ${getCarriedGold()}`;
@@ -3538,13 +3772,25 @@
         ctx.font = "12px Trebuchet MS, Arial, sans-serif";
         ctx.textAlign = "left";
         ctx.fillText(invText, 24, 70);
+        const seasonText = game.save ? getSeason(game.save.time.currentDay) : "";
+        const weatherIcon = weather.type === "rain" ? " 🌧️" : weather.type === "snow" ? " ❄️" : "";
+        const seasonShown = !!seasonText;
+        if (seasonShown) {
+          ctx.fillStyle = "rgba(0,0,0,0.28)";
+          const seasonW = ctx.measureText(seasonText + weatherIcon).width + 20;
+          ctx.fillRect(14, 78, seasonW, 20);
+          ctx.fillStyle = "#e8f8e8";
+          ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText(seasonText + weatherIcon, 24, 92);
+        }
         // Speed boost indicator on HUD
         if (player.speedBoost > 0) {
           ctx.fillStyle = "rgba(0,0,0,0.28)";
-          ctx.fillRect(14, 82, 120, 20);
+          const boostY = seasonShown ? 102 : 82;
+          ctx.fillRect(14, boostY, 120, 20);
           ctx.fillStyle = "#80ffff";
           ctx.font = "11px Trebuchet MS, Arial, sans-serif";
-          ctx.fillText(`⚡ Speed boost: ${Math.ceil(player.speedBoost)}s`, 20, 96);
+          ctx.fillText(`⚡ Speed boost: ${Math.ceil(player.speedBoost)}s`, 20, boostY + 14);
         }
 
         ctx.restore();
@@ -3560,6 +3806,67 @@
         ctx.textAlign = "center";
         ctx.fillText(game.noticeText, canvas.width / 2, 37);
         ctx.textAlign = "left";
+      }
+
+      function updateWeather(dt, day) {
+        weather.changeTimer -= dt;
+        if (weather.changeTimer <= 0) {
+          weather.changeTimer = 60 + Math.random() * 120;
+          const si = getSeasonIdx(day);
+          const r = Math.random();
+          if (si === 3) weather.type = r < 0.6 ? "snow" : "clear";
+          else if (si === 2) weather.type = r < 0.35 ? "rain" : "clear";
+          else if (si === 0) weather.type = r < 0.2 ? "rain" : "clear";
+          else weather.type = "clear";
+          if (weather.type === "clear") weather.particles.length = 0;
+        }
+        if (weather.type !== "clear") {
+          const maxP = weather.type === "rain" ? 180 : 100;
+          while (weather.particles.length < maxP) {
+            weather.particles.push({
+              x: Math.random() * canvas.width, y: -10,
+              vx: weather.type === "rain" ? -0.8 : (Math.random() - 0.5) * 0.4,
+              vy: weather.type === "rain" ? 9 + Math.random() * 4 : 1 + Math.random() * 1.5,
+              size: weather.type === "snow" ? 1.5 + Math.random() * 2 : 1,
+              alpha: 0.35 + Math.random() * 0.45
+            });
+          }
+          for (const p of weather.particles) {
+            p.x += p.vx * dt * 60;
+            p.y += p.vy * dt * 60;
+            if (p.y > canvas.height + 10) { p.y = -10; p.x = Math.random() * canvas.width; }
+            if (p.x < -10) p.x = canvas.width + 10;
+          }
+        }
+      }
+
+      function drawWeather() {
+        if (weather.type === "clear") return;
+        if (weather.type === "rain") {
+          ctx.save();
+          ctx.strokeStyle = "rgba(160,200,255,0.45)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (const p of weather.particles) {
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p.x + p.vx * 4, p.y + p.vy * 4);
+          }
+          ctx.stroke();
+          ctx.fillStyle = "rgba(10,20,50,0.15)";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        } else {
+          ctx.save();
+          for (const p of weather.particles) {
+            ctx.fillStyle = `rgba(240,248,255,${p.alpha})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.fillStyle = "rgba(200,215,240,0.07)";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        }
       }
 
       function drawDungeon(time) {
@@ -3896,10 +4203,15 @@
           if (titleState.selected === 0) {
             // New game — wipe save and go to character creation
             game.save = createNewSave();
+            player = createPlayer(game.save);
+            initNpcs();
+            initDogs();
             switchScene(SCENE.CHARACTER_CREATION);
           } else if (hasSave) {
             game.save = loadSave();
             player = createPlayer(game.save);
+            initNpcs();
+            initDogs();
             switchScene(SCENE.CITY);
           }
         }
@@ -4051,6 +4363,8 @@
           game.save.gold.carried = 500; // starter gold to buy first house
           writeSave(game.save);
           player = createPlayer(game.save);
+          initNpcs();
+          initDogs();
           switchScene(SCENE.CITY);
         }
       }
@@ -4163,6 +4477,7 @@
       function updateCity(dt) {
         // ── World map open — freeze world ───────────────────────────────────
         if (worldMapOpen || inventory.open) return;
+        if (game.save) updateWeather(dt, game.save.time.currentDay);
         // ── Dialogue mode — freeze world, handle input ──────────────────────
         if (dialogue.active) {
           if (justPressedKeys.interact || justPressedKeys.attack || justPressedKeys.confirm || justPressedKeys.pause) {
@@ -4181,12 +4496,13 @@
           if (justPressedKeys.interact || justPressedKeys.confirm) {
             if (proposal.selected === 0) { // Yes!
               game.save.married = proposal.npc.id;
+              game.save.marriageDay = game.save.time.currentDay;
               game.save.hasRing = false;
               game.save.houseUpgrades = (game.save.houseUpgrades || []).filter(id => id !== "engagement_ring");
               const m = npcs.find(n => n.id === proposal.npc.id);
               if (m) m.married = true;
               writeSave(game.save);
-              showNotice(`💍 ${proposal.npc.name} said YES! You're engaged! 💕`, 5);
+              showNotice(`💍 ${proposal.npc.name} said YES! You're married! 💕`, 5);
             } else {
               showNotice(`${proposal.npc.name} isn't ready yet... Give it more time. 💔`, 3);
             }
@@ -4200,9 +4516,52 @@
         }
 
         if (justPressedKeys.pause) { /* pause not yet implemented */ }
+        if (workState.active) {
+          workState.timer += dt;
+          if (workState.timer >= workState.dur) {
+            workState.active = false;
+            const spot = JOB_SPOTS.find(j => j.id === workState.jobId);
+            if (spot) {
+              addCarriedGold(spot.gold);
+              jobCooldowns[spot.id] = 90;
+              showNotice(`${spot.emoji} Earned ${spot.gold}⬡ as ${spot.label}!`, 2.5);
+            }
+          }
+          const _wv = getView();
+          camera.x += (clamp(player.x - _wv.worldW / 2, 0, Math.max(0, WORLD_W - _wv.worldW)) - camera.x) * Math.min(1, dt * 6);
+          camera.y += (clamp(player.y - _wv.worldH / 2, 0, Math.max(0, WORLD_H - _wv.worldH)) - camera.y) * Math.min(1, dt * 6);
+          return;
+        }
+        if (fishState.active) {
+          fishState.timer += dt;
+          if (fishState.phase === "casting") {
+            if (fishState.timer >= fishState.biteAt) {
+              fishState.phase = "biting";
+              fishState.timer = 0;
+              showNotice("🎣 Something's biting! Press E!", 1.5);
+            }
+          } else if (fishState.phase === "biting") {
+            if (justPressedKeys.interact) {
+              const gold = 5 + Math.floor(Math.random() * 16);
+              addCarriedGold(gold);
+              showNotice(`🐟 Caught a fish! +${gold}⬡`, 2.5);
+              fishState.active = false;
+            } else if (fishState.timer > 1.8) {
+              showNotice("🎣 It got away!", 1.5);
+              fishState.active = false;
+            }
+          }
+          const _fv = getView();
+          camera.x += (clamp(player.x - _fv.worldW / 2, 0, Math.max(0, WORLD_W - _fv.worldW)) - camera.x) * Math.min(1, dt * 6);
+          camera.y += (clamp(player.y - _fv.worldH / 2, 0, Math.max(0, WORLD_H - _fv.worldH)) - camera.y) * Math.min(1, dt * 6);
+          return;
+        }
         movePlayer(dt);
         updateNpcs(dt);
         updateDogs(dt);
+        for (const _jid of Object.keys(jobCooldowns)) {
+          jobCooldowns[_jid] = Math.max(0, jobCooldowns[_jid] - dt);
+        }
 
         const view = getView();
         const targetX = clamp(player.x - view.worldW / 2, 0, Math.max(0, WORLD_W - view.worldW));
@@ -4212,15 +4571,46 @@
         camera.x = clamp(camera.x, 0, Math.max(0, WORLD_W - view.worldW));
         camera.y = clamp(camera.y, 0, Math.max(0, WORLD_H - view.worldH));
 
-        // Tick city time (1 real second = 1 in-game minute, 24 min = 1 full day)
+        // Tick city time — hours pass freely, day only advances via sleep/pass-out
         if (game.save) {
           game.save.time.currentMinute += dt * (60 / 24);
           if (game.save.time.currentMinute >= 60) {
             game.save.time.currentMinute -= 60;
             game.save.time.currentHour   += 1;
             if (game.save.time.currentHour >= 24) {
-              game.save.time.currentHour = 0;
-              game.save.time.currentDay += 1;
+              game.save.time.currentHour = 0; // midnight — no day advance
+            }
+            // 3 AM: pass out from exhaustion
+            if (game.save.time.currentHour === 3) {
+              game.save.time.currentHour   = 8;
+              game.save.time.currentMinute = 0;
+              game.save.time.currentDay   += 1;
+              player.hp = Math.max(1, Math.floor(player.maxHp * 0.5));
+              game.save.player.hp = player.hp;
+              writeSave(game.save);
+              showNotice("You passed out at 3 AM! 😴  Woke up next morning — HP halved.", 6);
+              triggerShake(3);
+            }
+          }
+        }
+
+        if (game.save && game.save.married && !game.save.hasBaby) {
+          const daysMarried = game.save.time.currentDay - (game.save.marriageDay || 1);
+          if (daysMarried >= 15) {
+            game.save.hasBaby = true;
+            writeSave(game.save);
+            showNotice("👶 Your family has grown! A baby has arrived! 💕", 6);
+            const spouse = npcs.find(n => n.id === game.save.married);
+            if (spouse && !npcs.find(n => n.id === "__baby__")) {
+              npcs.push({
+                id: "__baby__", name: "Baby",
+                x: spouse.x + 10, y: spouse.y + 10,
+                vx: 0, vy: 0, dir: "down", walkTime: 0,
+                wanderTimer: 3, targetX: spouse.x, targetY: spouse.y,
+                skin: spouse.skin, hair: spouse.hair, torso: "#f8d8b0", legs: "#a8d8f0",
+                hairStyle: 0, ageType: "toddler", married: false, homeX: spouse.x, homeY: spouse.y,
+                isFollowingSpouse: true, spouseId: game.save.married
+              });
             }
           }
         }
@@ -4263,6 +4653,12 @@
           return;
         }
 
+        const _petDoorX = 46 * 32 + 16, _petDoorY = 63 * 32 + 16;
+        if (Math.hypot(player.x - _petDoorX, player.y - _petDoorY) < 52 && justPressedKeys.interact) {
+          enterPetShop();
+          return;
+        }
+
         // Check player's own house door + house purchasing for all 6 houses
         for (const _hl of HOUSE_LISTINGS) {
           const _hd = HOUSE_DOORS[_hl.num];
@@ -4288,7 +4684,7 @@
               if (!game.save.ownedHouses) game.save.ownedHouses = [];
               game.save.ownedHouses.push(_hl.num);
               if (game.save.player.houseNum === 0) game.save.player.houseNum = _hl.num;
-              saveGame();
+              writeSave(game.save);
               showNotice(`Bought ${_hl.name} for ${price}g! 🏡`, 4);
             } else {
               showNotice(`Need ${price}g to buy ${_hl.name}. You have ${game.save.gold.carried || 0}g.`, 3);
@@ -4297,14 +4693,49 @@
           break;
         }
 
-        // Check NPC interaction (talk or propose)
         if (justPressedKeys.interact) {
           let nearest = null, nearestDist = Infinity;
           for (const npc of npcs) {
             const d = Math.hypot(player.x - npc.x, player.y - npc.y);
             if (d < 52 && d < nearestDist) { nearest = npc; nearestDist = d; }
           }
+          let nearestJob = null;
+          let nearestJobDist = Infinity;
+          for (const spot of JOB_SPOTS) {
+            const d = Math.hypot(player.x - spot.x, player.y - spot.y);
+            if (d < 48 && d < nearestJobDist) { nearestJob = spot; nearestJobDist = d; }
+          }
+          const fishingDist = Math.hypot(player.x - FISHING_SPOT.x, player.y - FISHING_SPOT.y);
+          const fishingWins = fishingDist < 52 && (!nearest || fishingDist < nearestDist);
+          const jobWins = nearestJob && (!nearest || nearestJobDist < nearestDist);
+
+          if (fishingWins) {
+            fishState = { active: true, phase: "casting", timer: 0, biteAt: 2 + Math.random() * 4 };
+            showNotice("🎣 Line cast! Wait for a bite...", 2);
+            return;
+          }
+          if (jobWins) {
+            if ((jobCooldowns[nearestJob.id] || 0) > 0) {
+              showNotice(`Come back in ${Math.ceil(jobCooldowns[nearestJob.id])}s!`, 1.5);
+            } else {
+              workState = { active: true, jobId: nearestJob.id, timer: 0, dur: nearestJob.dur };
+              showNotice(`${nearestJob.emoji} Working as ${nearestJob.label}...`, nearestJob.dur);
+            }
+            return;
+          }
           if (nearest) {
+            if (nearest.id === "doc" && player.hp < player.maxHp) {
+              if (getCarriedGold() >= 50) {
+                setCarriedGold(getCarriedGold() - 50);
+                player.hp = player.maxHp;
+                if (game.save) game.save.player.hp = player.maxHp;
+                writeSave(game.save);
+                showNotice("💊 Doc healed you to full HP! (-50⬡)", 2.5);
+              } else {
+                showNotice("💊 Doc says: That'll be 50⬡. You're short on gold.", 2.5);
+              }
+              return;
+            }
             const friendship = (game.save.friendship || {})[nearest.id] || 0;
             const canPropose = game.save.hasRing && friendship >= 6 && !game.save.married
                             && nearest.ageType !== "child" && nearest.id !== "pipper" && nearest.id !== "sam";
@@ -4322,11 +4753,27 @@
 
       function drawCity(time) {
         const view = getView();
+        const petDoorX = 46 * 32 + 16, petDoorY = 63 * 32 + 16;
+        const nearestJobSpot = JOB_SPOTS.reduce((best, spot) => {
+          const dist = Math.hypot(player.x - spot.x, player.y - spot.y);
+          return dist < 48 && (!best || dist < best.dist) ? { spot, dist } : best;
+        }, null);
+        const fishingDist = Math.hypot(player.x - FISHING_SPOT.x, player.y - FISHING_SPOT.y);
         ctx.save();
         ctx.scale(view.zoom, view.zoom);
         ctx.translate(-camera.x + shake.x, -camera.y + shake.y);
         drawWorld(time, view);
         ctx.restore();
+        drawWeather();
+        // Night-time blue tint (8 PM → midnight → 3 AM, fades back at 6 AM)
+        if (game.save) {
+          const _nh = game.save.time.currentHour;
+          let _na = 0;
+          if (_nh >= 20)      _na = (_nh - 20) / 4 * 0.45;
+          else if (_nh <= 3)  _na = 0.45;
+          else if (_nh <= 8)  _na = Math.max(0, (8 - _nh) / 5 * 0.45);
+          if (_na > 0) { ctx.fillStyle = `rgba(8,12,48,${_na})`; ctx.fillRect(0,0,canvas.width,canvas.height); }
+        }
         drawCityHUD(game.save);
         if (!dialogue.active && Math.hypot(player.x - SEWER_ENTRANCE.x, player.y - SEWER_ENTRANCE.y) < 60) {
           ctx.fillStyle = "rgba(0,0,0,0.55)";
@@ -4339,24 +4786,30 @@
         }
 
         // NPC talk / propose prompt
+        let nearestNpc = null, nearestNpcDist = Infinity;
         if (!dialogue.active && !proposal.active) {
           for (const npc of npcs) {
             const dist = Math.hypot(player.x - npc.x, player.y - npc.y);
-            if (dist < 52) {
-              const friendship = (game.save.friendship || {})[npc.id] || 0;
-              const canPropose = game.save.hasRing && friendship >= 6 && !game.save.married
-                              && npc.ageType !== "child" && npc.id !== "pipper" && npc.id !== "sam";
-              const label = canPropose ? `Press E to propose to ${npc.name} 💍` : `Press E to talk to ${npc.name}`;
-              const lColor = canPropose ? "#ffd0e0" : npcNameColour(npc.id);
-              ctx.fillStyle = "rgba(0,0,0,0.55)";
-              ctx.fillRect(canvas.width / 2 - 130, canvas.height - 42, 260, 24);
-              ctx.fillStyle = lColor;
-              ctx.font = "bold 12px Trebuchet MS, Arial, sans-serif";
-              ctx.textAlign = "center";
-              ctx.fillText(label, canvas.width / 2, canvas.height - 25);
-              ctx.textAlign = "left";
-              break;
+            if (dist < 52 && dist < nearestNpcDist) { nearestNpc = npc; nearestNpcDist = dist; }
+          }
+          const npcPromptBlocked = (nearestJobSpot && nearestJobSpot.dist < nearestNpcDist) || fishingDist < nearestNpcDist;
+          if (nearestNpc && !npcPromptBlocked) {
+            const friendship = (game.save.friendship || {})[nearestNpc.id] || 0;
+            const canPropose = game.save.hasRing && friendship >= 6 && !game.save.married
+                            && nearestNpc.ageType !== "child" && nearestNpc.id !== "pipper" && nearestNpc.id !== "sam";
+            let label = canPropose ? `Press E to propose to ${nearestNpc.name} 💍` : `Press E to talk to ${nearestNpc.name}`;
+            let lColor = canPropose ? "#ffd0e0" : npcNameColour(nearestNpc.id);
+            if (nearestNpc.id === "doc" && player.hp < player.maxHp) {
+              label = "Press E for Doc's healing (50⬡)";
+              lColor = "#d8f0ff";
             }
+            ctx.fillStyle = "rgba(0,0,0,0.55)";
+            ctx.fillRect(canvas.width / 2 - 130, canvas.height - 42, 260, 24);
+            ctx.fillStyle = lColor;
+            ctx.font = "bold 12px Trebuchet MS, Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(label, canvas.width / 2, canvas.height - 25);
+            ctx.textAlign = "left";
           }
         }
 
@@ -4402,6 +4855,71 @@
           }
         }
         drawNotice();
+        if (workState.active) {
+          const spot = JOB_SPOTS.find(j => j.id === workState.jobId);
+          if (spot) {
+            const pct = workState.timer / workState.dur;
+            const bw = 240, bx = canvas.width / 2 - bw / 2, by = canvas.height - 70;
+            ctx.fillStyle = "rgba(0,0,0,0.6)";
+            roundRect(ctx, bx - 4, by - 4, bw + 8, 36, 8);
+            ctx.fill();
+            ctx.fillStyle = "#333";
+            ctx.fillRect(bx, by + 4, bw, 14);
+            ctx.fillStyle = "#60e060";
+            ctx.fillRect(bx, by + 4, bw * pct, 14);
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 13px Trebuchet MS, Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(`${spot.emoji} ${spot.label}...`, canvas.width / 2, by + 2);
+            ctx.textAlign = "left";
+          }
+        }
+        if (!dialogue.active && !proposal.active && !workState.active && nearestJobSpot && (!nearestNpc || nearestJobSpot.dist < nearestNpcDist)) {
+          const spot = nearestJobSpot.spot;
+          const cd = jobCooldowns[spot.id] || 0;
+          const hint = cd > 0 ? `${spot.emoji} Come back in ${Math.ceil(cd)}s` : `Press E to work: ${spot.emoji} ${spot.label} (+${spot.gold}⬡)`;
+          ctx.fillStyle = "rgba(0,0,0,0.55)";
+          ctx.fillRect(canvas.width / 2 - 140, canvas.height - 42, 280, 24);
+          ctx.fillStyle = "#d0f8c0";
+          ctx.font = "bold 12px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(hint, canvas.width / 2, canvas.height - 25);
+          ctx.textAlign = "left";
+        }
+        if (!fishState.active && !workState.active && !dialogue.active && fishingDist < 52 && (!nearestNpc || fishingDist < nearestNpcDist)) {
+          ctx.fillStyle = "rgba(0,0,0,0.55)";
+          ctx.fillRect(canvas.width / 2 - 110, canvas.height - 42, 220, 24);
+          ctx.fillStyle = "#a0e8ff";
+          ctx.font = "bold 12px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Press E to fish 🎣", canvas.width / 2, canvas.height - 25);
+          ctx.textAlign = "left";
+        }
+        if (fishState.active && fishState.phase === "casting") {
+          const bw = 200, pct = fishState.timer / fishState.biteAt;
+          const bx = canvas.width / 2 - bw / 2, by = canvas.height - 68;
+          ctx.fillStyle = "rgba(0,0,0,0.6)";
+          roundRect(ctx, bx - 4, by - 4, bw + 8, 36, 8);
+          ctx.fill();
+          ctx.fillStyle = "#224";
+          ctx.fillRect(bx, by + 4, bw, 14);
+          ctx.fillStyle = "#40a0ff";
+          ctx.fillRect(bx, by + 4, bw * pct, 14);
+          ctx.fillStyle = "#fff";
+          ctx.font = "bold 13px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("🎣 Waiting for a bite...", canvas.width / 2, by + 2);
+          ctx.textAlign = "left";
+        }
+        if (Math.hypot(player.x - petDoorX, player.y - petDoorY) < 52 && !dialogue.active && !proposal.active && !workState.active && !fishState.active) {
+          ctx.fillStyle = "rgba(0,0,0,0.55)";
+          ctx.fillRect(canvas.width / 2 - 118, canvas.height - 70, 236, 24);
+          ctx.fillStyle = "#ffe8c8";
+          ctx.font = "bold 12px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Press E to enter Pawsome Pets 🐾", canvas.width / 2, canvas.height - 53);
+          ctx.textAlign = "left";
+        }
         if (dialogue.active) drawDialogueBox(time);
         if (proposal.active) drawProposalBox(time);
       }
@@ -4576,9 +5094,10 @@
             player.dir = dy > 0 ? "down" : "up";
         }
 
-        if (justPressedKeys.pause && !(game.inPrestigeStore && prestigeShop.open)) {
+        if (justPressedKeys.pause && !(game.inPrestigeStore && prestigeShop.open) && !(game.inPetShop && petShopState.open)) {
           candyShop.open = false;
           prestigeShop.open = false;
+          petShopState.open = false;
           exitHouse();
           return;
         }
@@ -4618,6 +5137,36 @@
 
         if (game.inSchool) {
           if (justPressedKeys.interact) { exitHouse(); return; }
+          return;
+        }
+
+        if (game.inPetShop) {
+          if (petShopState.open) {
+            if (justPressedKeys.up)   petShopState.selected = (petShopState.selected - 1 + PETS_FOR_SALE.length) % PETS_FOR_SALE.length;
+            if (justPressedKeys.down) petShopState.selected = (petShopState.selected + 1) % PETS_FOR_SALE.length;
+            if (justPressedKeys.pause || justPressedKeys.back) { petShopState.open = false; return; }
+            if (justPressedKeys.interact || justPressedKeys.confirm) {
+              const pet = PETS_FOR_SALE[petShopState.selected];
+              if ((game.save.ownedPets || []).includes(pet.id)) {
+                showNotice(`You already have a ${pet.name}!`, 1.5);
+              } else if (getCarriedGold() < pet.price) {
+                showNotice(`Need ${pet.price}⬡ for ${pet.name}!`, 1.5);
+              } else {
+                setCarriedGold(getCarriedGold() - pet.price);
+                if (!game.save.ownedPets) game.save.ownedPets = [];
+                game.save.ownedPets.push(pet.id);
+                const petEntity = createOwnedPetEntity(pet.id, game.save.ownedPets.length - 1, 46 * 32 + 16, 63 * 32 + 16);
+                if (petEntity) dogs.push(petEntity);
+                writeSave(game.save);
+                showNotice(`${pet.emoji} Adopted ${pet.name}! They'll meet you outside! 🐾`, 3);
+              }
+              return;
+            }
+            return;
+          }
+          const nearCounter = Math.hypot(player.x - (4 * 36 + 18), player.y - (3 * 36 + 18)) < 90;
+          if (justPressedKeys.interact && nearCounter) { petShopState.open = true; petShopState.selected = 0; return; }
+          if (justPressedKeys.interact || justPressedKeys.back) { exitHouse(); return; }
           return;
         }
 
@@ -4691,13 +5240,17 @@
           const chestX = ts * 8 + ts, chestY = ts * 5 + ts / 2;   // ≈ 324, 198
 
           if (Math.hypot(player.x - bedX, player.y - bedY) < 55) {
-            // Sleep in bed — restore HP, show notice
+            // Sleep — full HP, advance to next morning
             player.hp = player.maxHp;
             if (game.save) {
               game.save.player.hp = player.maxHp;
+              game.save.time.currentHour   = 8;
+              game.save.time.currentMinute = 0;
+              game.save.time.currentDay   += 1;
               writeSave(game.save);
             }
-            showNotice("You sleep soundly. HP fully restored! 💤", 2.5);
+            const nextDay = game.save ? game.save.time.currentDay : "?";
+            showNotice(`Good night! 💤  Day ${nextDay} begins fresh!`, 3);
           } else if (Math.hypot(player.x - chestX, player.y - chestY) < 50) {
             showNotice("Storage chest — coming in a future update! 📦", 2);
           } else {
@@ -5744,12 +6297,137 @@
         ctx.textAlign = "left";
       }
 
+      function drawPetShopInterior(time) {
+        const w = canvas.width, h = canvas.height;
+        const ts = 36, roomW = 11, roomH = 8;
+        const ox = Math.floor((w - roomW * ts) / 2);
+        const oy = Math.floor((h - roomH * ts) / 2);
+
+        ctx.fillStyle = "#120d0b";
+        ctx.fillRect(0, 0, w, h);
+
+        for (let ty = 1; ty < roomH - 1; ty++) {
+          for (let tx = 1; tx < roomW - 1; tx++) {
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? "#c49462" : "#b88555";
+            ctx.fillRect(ox + tx * ts, oy + ty * ts, ts, ts);
+          }
+        }
+
+        ctx.fillStyle = "#d8c2a0";
+        ctx.fillRect(ox + ts, oy, (roomW - 2) * ts, ts * 2);
+        ctx.fillStyle = "#5a3c20";
+        for (let ty = 0; ty < roomH; ty++) {
+          ctx.fillRect(ox, oy + ty * ts, ts, ts);
+          ctx.fillRect(ox + (roomW - 1) * ts, oy + ty * ts, ts, ts);
+        }
+        ctx.fillRect(ox + ts, oy + (roomH - 1) * ts, (roomW - 2) * ts, ts);
+        ctx.fillStyle = "#8a6438";
+        ctx.fillRect(ox + ts, oy + (roomH - 2) * ts + ts - 6, (roomW - 2) * ts, 6);
+
+        ctx.fillStyle = "#7a4f2a";
+        ctx.fillRect(ox + ts * 3, oy + ts * 2, ts * 4, ts);
+        ctx.fillStyle = "#5a361b";
+        ctx.fillRect(ox + ts * 3, oy + ts * 2 + ts - 8, ts * 4, 8);
+        ctx.fillStyle = "#f5ead6";
+        ctx.font = "bold 13px Trebuchet MS, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("🐾 Pawsome Pets", w / 2, oy + 22);
+        ctx.textAlign = "left";
+
+        const pens = [
+          { x: ox + ts * 1.25, y: oy + ts * 3.1, pet: PETS_FOR_SALE[0] },
+          { x: ox + ts * 2.65, y: oy + ts * 3.1, pet: PETS_FOR_SALE[1] },
+          { x: ox + ts * 6.1,  y: oy + ts * 3.1, pet: PETS_FOR_SALE[2] },
+          { x: ox + ts * 7.5,  y: oy + ts * 3.1, pet: PETS_FOR_SALE[3] },
+          { x: ox + ts * 4.4,  y: oy + ts * 5.15, pet: PETS_FOR_SALE[4] }
+        ];
+        for (const pen of pens) {
+          ctx.strokeStyle = "#6a4524";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(pen.x, pen.y, ts * 1.2, ts * 1.1);
+          ctx.fillStyle = "#ead8b8";
+          ctx.fillRect(pen.x + 2, pen.y + 2, ts * 1.2 - 4, ts * 1.1 - 4);
+          ctx.fillStyle = pen.pet.color;
+          ctx.font = "22px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(pen.pet.emoji, pen.x + ts * 0.6, pen.y + 24 + Math.sin(time * 3 + pen.x * 0.01) * 2);
+          ctx.textAlign = "left";
+        }
+
+        const counterX = 4 * 36 + 18, counterY = 3 * 36 + 18;
+        const nearCounter = Math.hypot(player.x - counterX, player.y - counterY) < 90;
+        drawPlayerSprite(time, { ...player, x: ox + player.x, y: oy + player.y });
+
+        if (!petShopState.open && nearCounter) {
+          ctx.fillStyle = "rgba(0,0,0,0.7)";
+          roundRect(ctx, w / 2 - 110, h - 50, 220, 28, 8);
+          ctx.fill();
+          ctx.fillStyle = "#f5ead6";
+          ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Press E to browse pets", w / 2, h - 31);
+          ctx.textAlign = "left";
+        }
+
+        if (petShopState.open) {
+          ctx.fillStyle = "rgba(10,6,4,0.82)";
+          ctx.fillRect(0, 0, w, h);
+          const mw = 360, mh = 56 + PETS_FOR_SALE.length * 46 + 54;
+          const mx = Math.round((w - mw) / 2), my = Math.round((h - mh) / 2);
+          ctx.fillStyle = "#2f1b12";
+          roundRect(ctx, mx, my, mw, mh, 14);
+          ctx.fill();
+          ctx.strokeStyle = "#c89a62";
+          ctx.lineWidth = 2;
+          roundRect(ctx, mx, my, mw, mh, 14);
+          ctx.stroke();
+          ctx.font = "bold 16px Trebuchet MS, Arial, sans-serif";
+          ctx.fillStyle = "#f9e6d0";
+          ctx.textAlign = "center";
+          ctx.fillText("🐾 Adopt a Companion", mx + mw / 2, my + 28);
+          ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+          ctx.fillStyle = "#ffd680";
+          ctx.fillText(`⬡ ${getCarriedGold()} gold`, mx + mw / 2, my + 46);
+          ctx.textAlign = "left";
+          for (let i = 0; i < PETS_FOR_SALE.length; i++) {
+            const pet = PETS_FOR_SALE[i];
+            const iy = my + 58 + i * 46;
+            const selected = i === petShopState.selected;
+            const owned = (game.save.ownedPets || []).includes(pet.id);
+            const canAfford = getCarriedGold() >= pet.price;
+            ctx.fillStyle = selected ? "rgba(240,180,120,0.25)" : "rgba(255,255,255,0.05)";
+            roundRect(ctx, mx + 12, iy, mw - 24, 40, 8);
+            ctx.fill();
+            ctx.font = "20px Arial";
+            ctx.fillStyle = owned ? "#9ec89e" : "#ffffff";
+            ctx.fillText(pet.emoji, mx + 22, iy + 26);
+            ctx.font = "bold 13px Trebuchet MS, Arial, sans-serif";
+            ctx.fillStyle = owned ? "#9ec89e" : canAfford ? "#f9e6d0" : "#8b7262";
+            ctx.fillText(pet.name, mx + 54, iy + 16);
+            ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+            ctx.fillStyle = owned ? "#82b782" : "#c4b0a2";
+            ctx.fillText(owned ? "Already adopted" : `${pet.kind === "cat" ? "Cat" : "Dog"} companion`, mx + 54, iy + 31);
+            ctx.textAlign = "right";
+            ctx.font = "bold 13px Trebuchet MS, Arial, sans-serif";
+            ctx.fillStyle = owned ? "#9ec89e" : canAfford ? "#ffd680" : "#8b7262";
+            ctx.fillText(owned ? "Owned" : `⬡ ${pet.price}`, mx + mw - 22, iy + 24);
+            ctx.textAlign = "left";
+          }
+          ctx.textAlign = "center";
+          ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+          ctx.fillStyle = "#c9b39e";
+          ctx.fillText("↑↓ choose  •  E to adopt  •  Esc to close", mx + mw / 2, my + mh - 14);
+          ctx.textAlign = "left";
+        }
+      }
+
       function drawHouseInterior(time) {
         if (game.inPrestigeStore) { drawPrestigeStoreInterior(time); return; }
         if (game.inMansion) { drawMansionInterior(time); return; }
         if (game.inCandyStore) { drawCandyStoreInterior(time); return; }
         if (game.inSchool) { drawSchoolInterior(time); return; }
         if (game.inTheater) { drawTheaterInterior(time); return; }
+        if (game.inPetShop) { drawPetShopInterior(time); return; }
         const w = canvas.width, h = canvas.height;
         const ts = 36; // interior tile size (slightly larger for cozy feel)
         const roomW = 11, roomH = 8;
@@ -6190,10 +6868,10 @@
 
       (function startup() {
         buildMap();
+        game.save = loadSave();
+        player = createPlayer(game.save);
         initNpcs();
         initDogs();
-        const saved = loadSave();
-        game.save = saved;
         // If a save exists, go straight to title (Continue is lit)
         // New game always starts at TITLE
         game.scene = SCENE.TITLE;
