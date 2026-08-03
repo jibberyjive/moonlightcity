@@ -2865,468 +2865,309 @@
       // drawPlayer uses the live player object — called by city scene
       function drawPlayer(time) { drawPlayerSprite(time, player); }
 
+      // ── Stardew Valley-style chibi sprite functions ──────────────────────────
+      // Cell anchor: py = y - (cell height/2), px = x - (cell width/2)
+      // Shadow drawn first so it clips under body.
+
       function drawToddlerSprite(time, npc) {
-        const skin  = npc.skin, hair = npc.hair;
-        const skinS = shade(skin, -12);
-        const skinD = shade(skin, -22);
-        const blush = shade(skin, 18);
-        const T = npc.torso, L = npc.legs;
-        const SH = "#2a1808";
-
-        const moving = Math.hypot(npc.vx, npc.vy) > 4;
-        const bob   = moving ? Math.sin(npc.walkTime * Math.PI * 2) * 0.4 : Math.sin(time * 1.6 + (npc.homeX||0)*0.01) * 0.25;
-        const frame = moving ? Math.floor(npc.walkTime * 2) % 4 : 0;
-        // Toddler waddle — legs alternate, arms barely swing
-        const ls = [0, 1.5, 0, -1.5][frame];
-        const as = [0, -1, 0, 1][frame];
-        const x = npc.x, y = npc.y + bob, d = npc.dir;
-
-        // Shadow
-        ctx.fillStyle = "rgba(0,0,0,0.14)";
-        ctx.beginPath();
-        ctx.ellipse(x, y + 11, 7, 2.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Cell origin: 16 wide, 24 tall — huge head takes rows 0-13
-        const px = x - 8, py = y - 17;
-        function r(rx, ry, rw, rh, c) {
-          ctx.fillStyle = c;
-          ctx.fillRect(Math.round(px + rx), Math.round(py + ry), rw, rh);
-        }
-
-        if (d === "down") {
-          // ── Shoes ──────────────────────────────────────────────
-          r(1-ls, 20, 6, 3, SH);  r(9+ls, 20, 6, 3, SH);
-          // ── Stubby legs ────────────────────────────────────────
-          r(2-ls, 16, 5, 5, L);   r(9+ls, 16, 5, 5, L);
-          // ── Tiny round torso ───────────────────────────────────
-          r(3, 13, 10, 4, T);
-          // ── Arm stubs (barely there) ───────────────────────────
-          r(0+as, 13, 3, 4, skin); r(13-as, 13, 3, 4, skin);
-          // ── Big round head (dominant feature) ──────────────────
-          r(1, 0, 14, 14, skin);
-          // rounded corners
-          r(0, 2, 1, 10, skin); r(15, 2, 1, 10, skin);
-          r(2, 13, 12, 1, skin);
-          // side shading
-          r(0, 3, 2, 8, skinD);  r(14, 3, 2, 8, skinD);
-          // ── Chubby cheeks ──────────────────────────────────────
-          r(2, 9, 4, 3, blush);  r(10, 9, 4, 3, blush);
-          // ── Big Stardew-style eyes ─────────────────────────────
-          // white sclera
-          r(3, 3, 4, 5, "#fff"); r(9, 3, 4, 5, "#fff");
-          // iris + pupil
-          r(4, 4, 3, 4, "#1a1a2e"); r(10, 4, 3, 4, "#1a1a2e");
-          // eye shine
-          r(4, 4, 1, 1, "#ffffff"); r(10, 4, 1, 1, "#ffffff");
-          // ── Tiny nose dot ──────────────────────────────────────
-          r(7, 9, 2, 1, skinS);
-          // ── Smile ──────────────────────────────────────────────
-          r(5, 11, 6, 1, skinS);
-          r(5, 11, 1, 2, skinS); r(10, 11, 1, 2, skinS);
-          // ── Ear nubs ───────────────────────────────────────────
-          r(0, 5, 1, 4, skin); r(15, 5, 1, 4, skin);
-
-        } else if (d === "up") {
-          r(1-ls, 20, 6, 3, SH);  r(9+ls, 20, 6, 3, SH);
-          r(2-ls, 16, 5, 5, shade(L,-12)); r(9+ls, 16, 5, 5, shade(L,-12));
-          r(3, 13, 10, 4, shade(T,-15));
-          r(0-as, 13, 3, 4, skinD); r(13+as, 13, 3, 4, skinD);
-          r(1, 0, 14, 14, skinD);
-          r(0, 2, 1, 10, skinD); r(15, 2, 1, 10, skinD);
-          r(0, 3, 2, 8, shade(skin,-30)); r(14, 3, 2, 8, shade(skin,-30));
-
-        } else if (d === "left") {
-          r(2, 20, 6, 3, SH);
-          r(2-ls*0.5, 16, 5, 5, L); r(7+ls*0.5, 16, 5, 5, shade(L,-10));
-          r(2, 13, 10, 4, T); r(11, 13, 2, 4, shade(T,-12));
-          r(0, 13+as*0.4, 3, 4, skin); r(13, 13, 2, 4, skinD);
-          // head
-          r(1, 0, 13, 14, skin); r(13, 1, 2, 12, skinD);
-          r(0, 2, 1, 10, skin); r(14, 2, 2, 10, skinD);
-          r(1, 13, 12, 1, skin);
-          r(0, 4, 2, 6, skinD);
-          // blush left side
-          r(2, 9, 3, 3, blush);
-          // single eye
-          r(3, 3, 4, 5, "#fff"); r(4, 4, 3, 4, "#1a1a2e"); r(4, 4, 1, 1, "#fff");
-          r(6, 9, 2, 1, skinS);
-          r(4, 11, 5, 1, skinS); r(4, 11, 1, 2, skinS); r(8, 11, 1, 2, skinS);
-
-        } else { // right
-          r(8, 20, 6, 3, SH);
-          r(4-ls*0.5, 16, 5, 5, shade(L,-10)); r(9+ls*0.5, 16, 5, 5, L);
-          r(4, 13, 10, 4, T); r(4, 13, 2, 4, shade(T,-12));
-          r(13, 13+as*0.4, 3, 4, skin); r(1, 13, 2, 4, skinD);
-          // head
-          r(2, 0, 13, 14, skin); r(1, 1, 2, 12, skinD);
-          r(15, 2, 1, 10, skin); r(0, 2, 2, 10, skinD);
-          r(3, 13, 12, 1, skin);
-          r(14, 4, 2, 6, skinD);
-          // blush right side
-          r(11, 9, 3, 3, blush);
-          // single eye
-          r(9, 3, 4, 5, "#fff"); r(9, 4, 3, 4, "#1a1a2e"); r(11, 4, 1, 1, "#fff");
-          r(8, 9, 2, 1, skinS);
-          r(7, 11, 5, 1, skinS); r(7, 11, 1, 2, skinS); r(11, 11, 1, 2, skinS);
-        }
-
-        // ── Hair ───────────────────────────────────────────────────
-        // Stardew toddler hair: simple short cap covering top of head
-        const h = hair, hd = shade(hair, -20);
-        if (d === "down" || d === "left" || d === "right") {
-          if (npc.hairStyle <= 1) {
-            // Short crop
-            r(2, 0, 12, 4, h); r(1, 1, 2, 3, h); r(13, 1, 2, 3, h);
-            r(2, 0, 12, 1, hd);
-          } else if (npc.hairStyle === 2) {
-            // Pigtails
-            r(1, 0, 14, 4, h); r(0, 1, 1, 4, h); r(15, 1, 1, 4, h);
-            r(0, 4, 2, 3, h); r(14, 4, 2, 3, h); // little bunches
-          } else if (npc.hairStyle === 3) {
-            // Bowl cut
-            r(1, 0, 14, 5, h); r(0, 2, 1, 5, h); r(15, 2, 1, 5, h);
-            r(1, 0, 14, 1, hd);
-          } else {
-            // Curly mop
-            r(1, 0, 14, 5, h); r(0, 1, 2, 4, h); r(14, 1, 2, 4, h);
-            r(4, 0, 3, 2, hd); r(9, 0, 3, 2, hd);
-          }
+        const skin = npc.skin, hair = npc.hair, T = npc.torso, L = npc.legs;
+        const skinS = shade(skin,-16), skinD = shade(skin,-28), blush = shade(skin,22);
+        const hd = shade(hair,-26), hl = shade(hair,20), SH = "#2a1808";
+        const moving = Math.hypot(npc.vx||0,npc.vy||0) > 4;
+        const bob = moving ? Math.sin((npc.walkTime||0)*Math.PI*2)*0.3
+                           : Math.sin(time*1.5+(npc.homeX||0)*0.01)*0.2;
+        const frame = moving ? Math.floor((npc.walkTime||0)*2)%4 : 0;
+        const ls = [0,1.5,0,-1.5][frame];
+        const x = npc.x, y = npc.y+bob, d = npc.dir||"down";
+        // shadow
+        ctx.fillStyle="rgba(0,0,0,0.14)";
+        ctx.beginPath(); ctx.ellipse(x,y+12,6,2,0,0,Math.PI*2); ctx.fill();
+        const px=x-6, py=y-12;
+        const r=(rx,ry,rw,rh,c)=>{ ctx.fillStyle=c; ctx.fillRect(Math.round(px+rx),Math.round(py+ry),rw,rh); };
+        if(d==="down"){
+          r(1-ls,20,4,4,SH); r(7+ls,20,4,4,SH);
+          r(2-ls,15,3,6,L); r(7+ls,15,3,6,L);
+          r(2,11,8,5,T); r(2,11,8,1,shade(T,14));
+          r(0,12,2,5,skin); r(10,12,2,5,skin);
+          r(0,0,12,12,skin); r(0,1,1,10,skinD); r(11,1,1,10,skinD); r(1,12,10,1,skinS);
+          r(1,8,3,2,blush); r(8,8,3,2,blush);
+          r(1,3,4,5,"#fff"); r(7,3,4,5,"#fff");
+          r(2,4,2,4,"#1a1028"); r(8,4,2,4,"#1a1028");
+          r(2,4,1,1,"#fff"); r(8,4,1,1,"#fff");
+          r(1,3,4,1,"#1a1028"); r(7,3,4,1,"#1a1028");
+          r(5,8,2,1,skinS); r(4,10,4,1,skinS);
+          r(-1,4,1,3,skin); r(12,4,1,3,skin);
+        } else if(d==="up"){
+          r(1-ls,20,4,4,SH); r(7+ls,20,4,4,SH);
+          r(2-ls,15,3,6,shade(L,-14)); r(7+ls,15,3,6,shade(L,-14));
+          r(2,11,8,5,shade(T,-18));
+          r(0,12,2,5,skinD); r(10,12,2,5,skinD);
+          r(0,0,12,12,skinD); r(0,1,1,10,shade(skin,-36)); r(11,1,1,10,shade(skin,-36));
+        } else if(d==="left"){
+          r(2,20,4,4,SH);
+          r(3-ls,15,3,6,L); r(6+ls,15,3,6,shade(L,-12));
+          r(2,11,8,5,T); r(9,11,2,5,shade(T,-18));
+          r(0,12,2,5,skin); r(10,12,1,4,skinD);
+          r(0,0,11,12,skin); r(10,0,2,12,skinD); r(0,4,1,5,skinD);
+          r(1,8,3,2,blush);
+          r(2,3,4,5,"#fff"); r(3,4,2,4,"#1a1028"); r(3,4,1,1,"#fff"); r(2,3,4,1,"#1a1028");
+          r(4,8,2,1,skinS); r(3,10,4,1,skinS);
         } else {
-          r(1, 0, 14, 4, shade(h,-15));
+          r(6,20,4,4,SH);
+          r(3-ls,15,3,6,shade(L,-12)); r(6+ls,15,3,6,L);
+          r(2,11,8,5,T); r(1,11,2,5,shade(T,-18));
+          r(10,12,2,5,skin); r(1,12,1,4,skinD);
+          r(1,0,11,12,skin); r(0,0,2,12,skinD); r(11,4,1,5,skinD);
+          r(8,8,3,2,blush);
+          r(6,3,4,5,"#fff"); r(7,4,2,4,"#1a1028"); r(8,4,1,1,"#fff"); r(6,3,4,1,"#1a1028");
+          r(6,8,2,1,skinS); r(5,10,4,1,skinS);
         }
-
-        // ── Name tag ───────────────────────────────────────────────
-        if (npc.name) {
-          const dist = Math.hypot(npc.x - player.x, npc.y - player.y);
-          if (dist < 80) {
-            ctx.fillStyle = "rgba(0,0,0,0.6)";
-            ctx.font = "9px Trebuchet MS, Arial, sans-serif";
-            ctx.textAlign = "center";
-            const tw = ctx.measureText(npc.name).width + 6;
-            ctx.fillRect(x - tw/2, y - 28, tw, 12);
-            ctx.fillStyle = "#ffe8c0";
-            ctx.fillText(npc.name, x, y - 19);
-            ctx.textAlign = "left";
-          }
-        }
+        // hair puff
+        if(d!=="up"){ r(-1,-3,14,5,hair); r(0,-3,12,3,hl); r(-1,0,2,4,hd); r(11,0,2,4,hd); }
+        else { r(-1,-3,14,6,hair); r(0,-3,12,3,hl); }
       }
 
       function drawChildSprite(time, npc) {
-        const skin = npc.skin, hair = npc.hair;
-        const skinS = shade(skin, -14), hairD = shade(hair, -22);
-        const blazer = "#1e3a8a", blazerS = "#172c68";
-        const bottoms = "#4a4a5a", bottomsS = "#373744";
-        const tie = "#b42028", shoes = "#1a1a1a", bag = "#4a2e1d";
-
-        const moving = Math.hypot(npc.vx, npc.vy) > 4;
-        const bob = moving ? Math.sin(npc.walkTime * Math.PI) * 0.55 : Math.sin(time * 1.7 + (npc.homeX || 0) * 0.01) * 0.35;
-        const frame = moving ? Math.floor(npc.walkTime) % 4 : 0;
-        const ls = [0, 1.5, 0, -1.5][frame];
-        const as = [0, -1.2, 0, 1.2][frame];
-        const x = npc.x, y = npc.y + bob, d = npc.dir;
-
-        ctx.fillStyle = "rgba(0,0,0,0.17)";
-        ctx.beginPath();
-        ctx.ellipse(x, y + 12, 7, 3, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        const px = x - 9, py = y - 18;
-        function r(rx, ry, rw, rh, c) {
-          ctx.fillStyle = c;
-          ctx.fillRect(Math.round(px + rx), Math.round(py + ry), rw, rh);
-        }
-
-        if (d === "down") {
-          r(3-ls, 24, 5, 4, shoes); r(10+ls, 24, 5, 4, shoes);
-          r(4-ls, 18, 4, 7, bottoms); r(10+ls, 18, 4, 7, bottoms);
-          r(1-as*0.5, 13, 3, 8, skin); r(15+as*0.5, 13, 3, 8, skin);
-          r(3, 11, 12, 8, blazer); r(3, 11, 2, 8, blazerS); r(13, 11, 2, 8, blazerS);
-          r(7, 11, 4, 2, "#ffffff"); r(8, 13, 2, 4, tie);
-          r(6, 8, 6, 3, skin);
-          r(3, 0, 12, 11, skin); r(3, 0, 2, 11, skinS); r(13, 0, 2, 11, skinS);
-          r(0, 3, 2, 4, skin); r(16, 3, 2, 4, skin);
-          r(6, 3, 3, 4, "#fff"); r(10, 3, 3, 4, "#fff");
-          r(7, 4, 2, 3, "#1a1a2e"); r(10, 4, 2, 3, "#1a1a2e");
-          r(7, 4, 1, 1, "#fff"); r(10, 4, 1, 1, "#fff");
-          r(7, 8, 4, 1, skinS);
-        } else if (d === "up") {
-          r(3-ls, 24, 5, 4, shoes); r(10+ls, 24, 5, 4, shoes);
-          r(4-ls, 18, 4, 7, bottomsS); r(10+ls, 18, 4, 7, bottomsS);
-          r(1+as*0.5, 13, 3, 8, shade(skin, -10)); r(15-as*0.5, 13, 3, 8, shade(skin, -10));
-          r(2, 10, 14, 10, blazerS);
-          r(6, 11, 6, 6, bag);
-          r(6, 8, 6, 3, shade(skin, -12));
-          r(3, 0, 12, 11, shade(skin, -12)); r(3, 0, 2, 11, shade(skin, -22)); r(13, 0, 2, 11, shade(skin, -22));
-        } else if (d === "left") {
-          r(4-ls*0.5, 24, 5, 4, shoes); r(9+ls*0.5, 24, 5, 4, shoes);
-          r(4-ls*0.5, 18, 4, 7, bottoms); r(9+ls*0.5, 18, 4, 7, bottomsS);
-          r(0, 13+as*0.4, 3, 7, skin); r(14, 12-as*0.4, 3, 6, skinS);
-          r(3, 11, 11, 8, blazer); r(12, 11, 2, 8, blazerS);
-          r(7, 11, 3, 2, "#ffffff"); r(7, 13, 2, 4, tie);
-          r(6, 8, 5, 3, skin); r(10, 8, 2, 3, skinS);
-          r(3, 0, 12, 11, skin); r(13, 0, 2, 11, skinS);
-          r(2, 4, 1, 4, skinS); r(6, 3, 3, 4, "#fff"); r(7, 4, 2, 3, "#1a1a2e"); r(7, 4, 1, 1, "#fff");
+        const skin=npc.skin, hair=npc.hair, T=npc.torso, L=npc.legs;
+        const skinS=shade(skin,-16), skinD=shade(skin,-26), blush=shade(skin,18);
+        const hd=shade(hair,-26), hl=shade(hair,18), SH="#2a1808";
+        const moving=Math.hypot(npc.vx||0,npc.vy||0)>4;
+        const bob=moving?Math.sin((npc.walkTime||0)*Math.PI)*0.5:Math.sin(time*1.6+(npc.homeX||0)*0.01)*0.3;
+        const frame=moving?Math.floor((npc.walkTime||0))%4:0;
+        const ls=[0,2,0,-2][frame], as=[0,-1,0,1][frame];
+        const x=npc.x, y=npc.y+bob, d=npc.dir||"down";
+        ctx.fillStyle="rgba(0,0,0,0.15)";
+        ctx.beginPath(); ctx.ellipse(x,y+14,7,2.5,0,0,Math.PI*2); ctx.fill();
+        const px=x-7, py=y-14;
+        const r=(rx,ry,rw,rh,c)=>{ ctx.fillStyle=c; ctx.fillRect(Math.round(px+rx),Math.round(py+ry),rw,rh); };
+        const TS=shade(T,-20), TL=shade(T,18);
+        if(d==="down"){
+          r(2-ls,25,5,4,SH); r(8+ls,25,5,4,SH); r(2-ls,25,2,2,"#4a2a10"); r(8+ls,25,2,2,"#4a2a10");
+          r(3-ls,20,4,6,L); r(8+ls,20,4,6,L); r(3-ls,25,4,1,shade(L,-16)); r(8+ls,25,4,1,shade(L,-16));
+          r(3,13,9,8,T); r(3,13,9,1,TL); r(3,21,9,1,TS);
+          r(1+as,13,2,8,skin); r(12-as,13,2,8,skin);
+          r(6,12,3,2,skin);
+          r(1,0,13,13,skin); r(1,0,1,11,skinD); r(13,0,1,11,skinD); r(2,13,11,1,skinS);
+          r(2,9,3,2,blush); r(10,9,3,2,blush);
+          r(3,4,4,5,"#fff"); r(8,4,4,5,"#fff");
+          r(4,5,2,4,"#1a1028"); r(9,5,2,4,"#1a1028");
+          r(4,5,1,1,"#fff"); r(9,5,1,1,"#fff");
+          r(3,4,4,1,"#1a1028"); r(8,4,4,1,"#1a1028");
+          r(7,9,1,1,skinS); r(5,11,5,1,skinS);
+          r(0,5,1,3,skin); r(15,5,1,3,skin);
+        } else if(d==="up"){
+          r(2-ls,25,5,4,SH); r(8+ls,25,5,4,SH);
+          r(3-ls,20,4,6,shade(L,-16)); r(8+ls,20,4,6,shade(L,-16));
+          r(3,13,9,8,TS); r(1-as,13,2,8,skinD); r(12+as,13,2,8,skinD);
+          r(6,12,3,2,skinD);
+          r(1,0,13,14,skinD); r(1,0,1,12,shade(skin,-36)); r(13,0,1,12,shade(skin,-36));
+        } else if(d==="left"){
+          r(3,25,5,4,SH);
+          r(3-ls,20,4,6,L); r(7+ls,20,4,6,shade(L,-12));
+          r(3,13,9,8,T); r(11,13,2,8,TS); r(1+as,13,2,8,skin); r(13-as,13,1,7,skinD);
+          r(6,12,3,2,skin); r(9,12,1,2,skinD);
+          r(1,0,13,13,skin); r(13,0,3,13,skinD); r(1,0,1,11,skinD);
+          r(2,9,3,2,blush);
+          r(3,4,4,5,"#fff"); r(4,5,2,4,"#1a1028"); r(4,5,1,1,"#fff"); r(3,4,4,1,"#1a1028");
+          r(6,9,1,1,skinS); r(4,11,4,1,skinS);
+          r(0,5,1,3,skin);
         } else {
-          r(4-ls*0.5, 24, 5, 4, shoes); r(9+ls*0.5, 24, 5, 4, shoes);
-          r(4-ls*0.5, 18, 4, 7, bottomsS); r(9+ls*0.5, 18, 4, 7, bottoms);
-          r(15, 13-as*0.4, 3, 7, skin); r(1, 12+as*0.4, 3, 6, skinS);
-          r(4, 11, 11, 8, blazer); r(4, 11, 2, 8, blazerS);
-          r(8, 11, 3, 2, "#ffffff"); r(9, 13, 2, 4, tie);
-          r(7, 8, 5, 3, skin); r(7, 8, 2, 3, skinS);
-          r(3, 0, 12, 11, skin); r(3, 0, 2, 11, skinS);
-          r(15, 4, 1, 4, skinS); r(9, 3, 3, 4, "#fff"); r(9, 4, 2, 3, "#1a1a2e"); r(10, 4, 1, 1, "#fff");
+          r(7,25,5,4,SH);
+          r(5-ls,20,4,6,shade(L,-12)); r(8+ls,20,4,6,L);
+          r(2,13,9,8,T); r(2,13,2,8,TS); r(10-as,13,2,8,skin); r(2+as,13,1,7,skinD);
+          r(6,12,3,2,skin); r(6,12,1,2,skinD);
+          r(1,0,13,13,skin); r(-1,0,3,13,skinD); r(14,0,1,11,skinD);
+          r(10,9,3,2,blush);
+          r(8,4,4,5,"#fff"); r(9,5,2,4,"#1a1028"); r(10,5,1,1,"#fff"); r(8,4,4,1,"#1a1028");
+          r(8,9,1,1,skinS); r(7,11,4,1,skinS);
+          r(15,5,1,3,skin);
         }
-
-        if (d !== "up") {
-          r(3, 0, 12, npc.hairStyle >= 2 ? 4 : 3, hair);
-          r(3, 0, 2, 4, hairD); r(13, 0, 2, 4, hairD);
-          if (npc.hairStyle >= 3) r(7, 0, 4, 2, hairD);
+        // hair by style
+        const hs = npc.hairStyle||0;
+        if(hs===0){
+          if(d!=="up"){ r(1,-3,13,5,hair); r(2,-3,11,3,hl); r(0,1,2,4,hd); r(12,1,2,4,hd); }
+          else { r(1,-3,13,6,hair); r(2,-3,11,3,hl); }
+        } else if(hs===1){
+          if(d!=="up"){ r(1,-3,13,6,hair); r(2,-3,11,3,hl); r(0,2,3,5,hd); r(12,2,3,5,hd); }
+          else { r(1,-3,13,7,hair); r(2,-3,11,3,hl); }
+        } else if(hs===2){
+          if(d==="down"){ r(0,-4,15,7,hair); r(1,-4,13,4,hl); r(0,3,3,8,hd); r(12,3,3,8,hd); r(1,13,3,9,hd); r(11,13,3,9,hd); }
+          else if(d==="up"){ r(0,-4,15,7,hair); r(1,-4,13,4,hl); r(0,7,3,9,hair); r(12,7,3,9,hair); }
+          else if(d==="left"){ r(0,-4,14,7,hair); r(1,-4,12,4,hl); r(13,-3,4,16,hair); r(15,0,3,13,hd); }
+          else { r(1,-4,14,7,hair); r(2,-4,12,4,hl); r(-2,-3,4,16,hair); r(0,0,3,13,hd); }
         } else {
-          r(3, 0, 12, 4, shade(hair, -12));
-          r(5, 0, 8, 2, hairD);
+          if(d!=="up"){ r(0,-4,15,7,hair); r(1,-4,13,4,hl); r(0,1,3,8,hd); r(12,1,3,8,hd); }
+          else { r(0,-4,15,8,hair); r(1,-4,13,4,hl); }
         }
-
-        if (npc.name) {
-          const dist = Math.hypot(npc.x - player.x, npc.y - player.y);
-          if (dist < 80) {
-            ctx.fillStyle = "rgba(0,0,0,0.6)";
-            ctx.font = "9px Trebuchet MS, Arial, sans-serif";
-            ctx.textAlign = "center";
-            const tw = ctx.measureText(npc.name).width + 6;
-            ctx.fillRect(x - tw/2, y - 30, tw, 12);
-            ctx.fillStyle = "#ffe8c0";
-            ctx.fillText(npc.name, x, y - 21);
-            ctx.textAlign = "left";
-          }
-        }
+        if(npc.ageType==="child" && d!=="up"){ r(5,15,4,2,"#c8d8f0"); r(6,16,2,1,"#f0e060"); }
       }
 
-      // ── Sims-style adult sprite (20 wide × 36 tall pixel cell) ──────────────
-      // Layout (from top):  hair(-3..0), head(0..14), neck(14..17),
-      //   shoulders(17..19), torso(17..28), arms(17..28), belt(28..30),
-      //   legs(30..39), shoes(39..44)
       function drawNpcSprite(time, npc) {
-        if (npc.ageType === "toddler") { drawToddlerSprite(time, npc); return; }
-        if (npc.ageType === "child")   { drawChildSprite(time, npc);   return; }
+        if(npc.ageType==="toddler"){ drawToddlerSprite(time,npc); return; }
+        if(npc.ageType==="child")  { drawChildSprite(time,npc);   return; }
 
-        const skin  = npc.skin;
-        const hair  = npc.hair;
-        const skinS = shade(skin, -18);
-        const skinD = shade(skin, -30);
-        const blush = shade(skin, 20);
-        const hairD = shade(hair, -28);
-        const hairL = shade(hair, 18);
-        const T     = npc.torso;
-        const TL    = shade(T, 14);
-        const TS    = shade(T, -22);
-        const TM    = shade(T, -10);
-        const L     = npc.legs;
-        const LS    = shade(L, -20);
-        const SH    = "#2a1a0e";           // shoe dark
-        const SHL   = shade(SH, 18);       // shoe highlight
-        const BELT  = shade(L, -40);
-        const COLLAR = shade(T, 30);
+        const skin=npc.skin, hair=npc.hair, T=npc.torso, L=npc.legs;
+        const skinS=shade(skin,-16), skinD=shade(skin,-28), blush=shade(skin,18);
+        const hd=shade(hair,-28), hl=shade(hair,22), SH="#2a1808";
+        const TS=shade(T,-22), TL=shade(T,20), LS=shade(L,-20);
+        const moving=Math.hypot(npc.vx||0,npc.vy||0)>4;
+        const bob=moving?Math.sin((npc.walkTime||0)*Math.PI*2)*0.4
+                        :Math.sin(time*1.4+(npc.homeX||0)*0.01)*0.25;
+        const frame=moving?Math.floor((npc.walkTime||0)*2)%4:0;
+        const ls=[0,2.5,0,-2.5][frame], as=[0,-1.5,0,1.5][frame];
+        const x=npc.x, y=npc.y+bob, d=npc.dir||"down";
 
-        const moving = Math.hypot(npc.vx, npc.vy) > 4;
-        const bob    = moving ? Math.sin(npc.walkTime * Math.PI) * 0.7 : Math.sin(time * 1.8 + npc.homeX * 0.01) * 0.35;
-        const frame  = moving ? Math.floor(npc.walkTime) % 4 : 0;
-        // leg swing ±3, arm counter-swing ±2
-        const ls = [0, 3, 0, -3][frame];
-        const as = [0, -2, 0, 2][frame];
-        const x  = npc.x, y = npc.y + bob, d = npc.dir;
+        // shadow
+        ctx.fillStyle="rgba(0,0,0,0.15)";
+        ctx.beginPath(); ctx.ellipse(x,y+16,9,3,0,0,Math.PI*2); ctx.fill();
 
-        // Drop shadow
-        ctx.fillStyle = "rgba(0,0,0,0.20)";
-        ctx.beginPath();
-        ctx.ellipse(x, y + 16, 9, 3, 0, 0, Math.PI * 2);
-        ctx.fill();
+        const px=x-8, py=y-16;
+        const r=(rx,ry,rw,rh,c)=>{ ctx.fillStyle=c; ctx.fillRect(Math.round(px+rx),Math.round(py+ry),rw,rh); };
 
-        // Cell origin: sprite is 20 px wide, tall ~44 px; anchor at foot-centre
-        const px = x - 10, py = y - 30;
-        function r(rx, ry, rw, rh, c) {
-          ctx.fillStyle = c;
-          ctx.fillRect(Math.round(px + rx), Math.round(py + ry), rw, rh);
-        }
-        // rounded rect helper (1-px corner trim)
-        function rr(rx, ry, rw, rh, c) {
-          r(rx+1, ry, rw-2, rh, c);
-          r(rx, ry+1, rw, rh-2, c);
-        }
-
-        if (d === "down") {
-          // ── Shoes ─────────────────────────────────────
-          r(2-ls, 38, 7, 5, SH);   r(11+ls, 38, 7, 5, SH);
-          r(2-ls, 38, 3, 2, SHL);  r(11+ls, 38, 3, 2, SHL);
-          // ── Legs (tapered) ────────────────────────────
-          r(3-ls, 29, 6, 10, L);   r(11+ls, 29, 6, 10, L);
-          r(3-ls, 35, 6,  3, LS);  r(11+ls, 35, 6,  3, LS);
-          // ── Belt ──────────────────────────────────────
-          r(4, 28, 12, 2, BELT);  r(9, 28, 2, 2, shade(BELT, 20)); // buckle
-          // ── Torso (Sims trapezoid: wider shoulders) ───
-          r(3, 17, 14, 12, T);
-          r(3, 17,  2, 12, TL);  // left shoulder light
-          r(15,17,  2, 12, TS);  // right shadow
-          r(4, 25,  2,  3, TM);  r(14,25,  2,  3, TM); // side seam
-          // ── Collar V-notch ────────────────────────────
-          r(8, 17, 4, 3, COLLAR);
-          r(9, 17, 2, 5, COLLAR);
-          // ── Arms (round shoulders, taper to wrist) ────
-          r(0+as, 17, 4, 10, skin);  r(16-as, 17, 4, 10, skin);
-          r(0+as, 17, 2,  4, shade(skin,10)); // shoulder highlight L
-          r(18-as,17, 2,  4, skinS);          // shoulder shadow R
-          r(0+as, 24, 4,  3, skinS);          // forearm shadow L
-          r(16-as,24, 4,  3, skinS);
-          // ── Neck ──────────────────────────────────────
-          r(7, 13, 6, 5, skin);
-          // ── Head (large, Sims rounded square) ─────────
-          rr(2, 0, 16, 14, skin);
-          r(2, 0,  2,  9, shade(skin, 8));  // left cheek light
-          r(16,0,  2,  9, skinD);            // right shadow
-          // ── Cheeks ────────────────────────────────────
-          r(3, 8, 4, 3, blush);  r(13, 8, 4, 3, blush);
-          // ── Eyes (Sims style: large, spaced) ──────────
-          r(4,  3, 5, 5, "#fff");  r(11, 3, 5, 5, "#fff");
-          r(5,  4, 3, 4, "#1a1a2e"); r(12, 4, 3, 4, "#1a1a2e");
-          r(5,  4, 1, 1, "#e0e8ff"); r(12, 4, 1, 1, "#e0e8ff"); // catchlight
-          r(4,  3, 1, 1, "#888"); r(11, 3, 1, 1, "#888"); // upper lash corner
-          r(4,  8, 6, 1, "#1a1a2e"); r(11, 8, 6, 1, "#1a1a2e"); // lower lash
-          // ── Nose (subtle triangle) ─────────────────────
-          r(8, 8, 1, 2, skinS);  r(10, 8, 1, 2, skinS);  r(8,10, 4, 1, skinS);
-          // ── Smile ─────────────────────────────────────
-          r(6, 11, 8, 1, skinS);
-          r(6, 11, 1, 2, skinS);  r(13, 11, 1, 2, skinS);
-          // ── Ear lobes ─────────────────────────────────
-          r(1, 5, 2, 4, skin);  r(17, 5, 2, 4, skin);
-          r(1, 6, 1, 2, skinD); r(18, 6, 1, 2, skinS);
-
-        } else if (d === "up") {
-          r(2-ls, 38, 7, 5, SH);   r(11+ls, 38, 7, 5, SH);
-          r(3-ls, 29, 6, 10, LS);  r(11+ls, 29, 6, 10, LS);
-          r(4, 28, 12, 2, BELT);
-          r(3, 17, 14, 12, TS);
-          r(0-as, 17, 4, 10, skinD); r(16+as, 17, 4, 10, skinD);
-          r(7, 13, 6, 5, skinD);
-          rr(2, 0, 16, 14, shade(skin,-18));
-          r(2, 0,  2,  9, shade(skin,-12)); r(16,0,  2,  9, shade(skin,-26));
-
-        } else if (d === "left") {
-          r(3, 38, 7, 5, SH);   r(10-ls, 38, 7, 5, SH);
-          r(4, 29, 5, 10, LS);  r(9+ls, 29, 5, 10, L);
-          r(4, 28, 12, 2, BELT);
-          r(3, 17, 13, 12, T);  r(14, 17, 3, 12, TS);
-          r(16+as, 17, 4, 10, skin);   // near arm
-          r(1-as,  17, 3,  9, skinD);  // far arm
-          r(7, 13, 5, 5, skin); r(11, 13, 2, 5, skinS);
-          rr(2, 0, 14, 14, skin); r(14, 0, 4, 14, skinD);
-          r(2, 0, 2, 9, shade(skin, 8));
-          r(3, 8, 3, 3, blush);
-          r(4, 3, 5, 5, "#fff"); r(5, 4, 3, 4, "#1a1a2e"); r(5, 4, 1, 1, "#e0e8ff");
-          r(4, 8, 6, 1, "#1a1a2e");
-          r(7, 8, 2, 2, skinS); r(6, 11, 6, 1, skinS);
-          r(6, 11, 1, 2, skinS); r(11, 11, 1, 2, skinS);
-          r(1, 5, 2, 4, skin); r(1, 6, 1, 2, skinD);
-          // profile collar
-          r(13, 17, 2, 4, COLLAR);
-
-        } else { // right
-          r(10+ls, 38, 7, 5, SH); r(3, 38, 7, 5, SH);
-          r(11-ls, 29, 5, 10, L);  r(4, 29, 5, 10, LS);
-          r(4, 28, 12, 2, BELT);
-          r(4, 17, 13, 12, T);  r(3, 17, 3, 12, TS);
-          r(0-as, 17, 4, 10, skin);   // near arm (right side)
-          r(16+as, 17, 3,  9, skinD); // far arm
-          r(8, 13, 5, 5, skin); r(7, 13, 2, 5, skinS);
-          rr(4, 0, 14, 14, skin); r(2, 0, 4, 14, skinD);
-          r(16,0, 2, 9, shade(skin,8));
-          r(14, 8, 3, 3, blush);
-          r(11, 3, 5, 5, "#fff"); r(12, 4, 3, 4, "#1a1a2e"); r(14, 4, 1, 1, "#e0e8ff");
-          r(10, 8, 6, 1, "#1a1a2e");
-          r(11, 8, 2, 2, skinS); r(8, 11, 6, 1, skinS);
-          r(8, 11, 1, 2, skinS); r(13, 11, 1, 2, skinS);
-          r(17, 5, 2, 4, skin); r(18, 6, 1, 2, skinS);
-          r(5, 17, 2, 4, COLLAR);
+        if(d==="down"){
+          // shoes
+          r(1-ls,29,6,4,SH); r(9+ls,29,6,4,SH);
+          r(1-ls,29,3,2,"#4a2a10"); r(9+ls,29,3,2,"#4a2a10");
+          // legs
+          r(2-ls,22,5,8,L); r(9+ls,22,5,8,L); r(2-ls,29,5,1,LS); r(9+ls,29,5,1,LS);
+          // torso
+          r(3,13,11,10,T); r(3,13,11,1,TL); r(3,23,11,1,TS);
+          // arms
+          r(1+as,13,2,10,skin); r(14-as,13,2,10,skin);
+          r(1+as,22,2,2,shade(skin,-10)); r(14-as,22,2,2,shade(skin,-10));
+          // neck
+          r(7,12,3,2,skin);
+          // head (14w × 14h)
+          r(1,0,15,13,skin);
+          r(1,0,1,11,skinD); r(15,0,1,11,skinD); r(2,13,13,1,skinS);
+          // cheeks
+          r(2,9,3,2,blush); r(12,9,3,2,blush);
+          // eyes: white, iris, shine, lash
+          r(3,4,4,6,"#fff"); r(10,4,4,6,"#fff");
+          r(4,5,2,5,"#1a1028"); r(11,5,2,5,"#1a1028");
+          r(4,5,1,1,"#fff"); r(11,5,1,1,"#fff");
+          r(3,4,5,1,"#1a1028"); r(10,4,5,1,"#1a1028");
+          // nose + mouth
+          r(8,9,1,1,skinS);
+          r(6,11,5,1,skinS); r(6,11,1,1,skinS); r(10,11,1,1,skinS);
+          // ears
+          r(0,5,1,4,skin); r(16,5,1,4,skin);
+        } else if(d==="up"){
+          r(1-ls,29,6,4,SH); r(9+ls,29,6,4,SH);
+          r(2-ls,22,5,8,shade(L,-18)); r(9+ls,22,5,8,shade(L,-18));
+          r(3,13,11,10,TS); r(1-as,13,2,10,skinD); r(14+as,13,2,10,skinD);
+          r(7,12,3,2,skinD);
+          r(1,0,15,14,skinD); r(1,0,1,12,shade(skin,-38)); r(15,0,1,12,shade(skin,-38));
+        } else if(d==="left"){
+          r(3,29,6,4,SH);
+          r(3-ls,22,5,8,L); r(8+ls,22,5,8,shade(L,-14));
+          r(3,13,11,10,T); r(13,13,2,10,TS);
+          r(1+as,13,2,10,skin); r(14-as,13,1,9,skinD);
+          r(7,12,3,2,skin); r(10,12,1,2,skinD);
+          r(1,0,14,13,skin); r(14,0,3,13,skinD); r(1,0,1,11,skinD);
+          r(2,9,3,2,blush);
+          r(3,4,4,6,"#fff"); r(4,5,2,5,"#1a1028"); r(4,5,1,1,"#fff"); r(3,4,5,1,"#1a1028");
+          r(7,9,1,1,skinS); r(4,11,5,1,skinS);
+          r(0,5,1,4,skin);
+        } else {
+          r(8,29,6,4,SH);
+          r(5-ls,22,5,8,shade(L,-14)); r(9+ls,22,5,8,L);
+          r(3,13,11,10,T); r(2,13,2,10,TS);
+          r(10-as,13,2,10,skin); r(2+as,13,1,9,skinD);
+          r(7,12,3,2,skin); r(7,12,1,2,skinD);
+          r(2,0,14,13,skin); r(0,0,3,13,skinD); r(16,0,1,11,skinD);
+          r(12,9,3,2,blush);
+          r(10,4,4,6,"#fff"); r(11,5,2,5,"#1a1028"); r(12,5,1,1,"#fff"); r(10,4,5,1,"#1a1028");
+          r(9,9,1,1,skinS); r(8,11,5,1,skinS);
+          r(17,5,1,4,skin);
         }
 
-        // ── Hair ─────────────────────────────────────────────────
-        const h = hair, hd = hairD, hl = hairL;
-        if (npc.hairStyle === 0) { // short crop
-          if (d==="down")  { rr(2,-3,16,6,h); r(3,-3,12,3,hl); r(1,2,3,4,hd); r(16,2,3,4,hd); }
-          if (d==="up")    { rr(2,-3,16,7,h); r(3,-3,12,3,hl); }
-          if (d==="left")  { rr(2,-3,13,6,h); r(3,-3,10,3,hl); r(13,-1,3,5,hd); }
-          if (d==="right") { rr(5,-3,13,6,h); r(6,-3,10,3,hl); r(4,-1,3,5,hd); }
-        } else if (npc.hairStyle === 1) { // side fringe
-          if (d==="down")  { rr(2,-3,16,7,h); r(3,-3,12,3,hl); r(1,2,4,6,hd); r(15,2,4,6,hd); r(4,4,4,5,h); r(12,4,4,5,h); }
-          if (d==="up")    { rr(2,-3,16,8,h); r(3,-3,12,3,hl); r(3,5,14,3,hd); }
-          if (d==="left")  { rr(2,-3,14,7,h); r(3,-3,10,3,hl); r(2,3,5,6,hd); r(13,-1,4,6,h); }
-          if (d==="right") { rr(4,-3,14,7,h); r(5,-3,10,3,hl); r(13,3,5,6,hd); r(3,-1,4,6,h); }
-        } else if (npc.hairStyle === 2) { // long flowing
-          if (d==="down")  { rr(2,-3,16,7,h); r(3,-3,12,3,hl); r(1,3,4,6,hd); r(15,3,4,6,hd); r(2,13,4,10,hd); r(14,13,4,10,hd); r(4,13,12,8,h); }
-          if (d==="up")    { rr(2,-3,16,8,h); r(3,-3,12,3,hl); r(2,8,4,10,h); r(14,8,4,10,h); }
-          if (d==="left")  { rr(2,-3,13,7,h); r(3,-3,10,3,hl); r(2,3,4,6,hd); r(13,-3,5,18,h); r(15,0,3,14,hd); }
-          if (d==="right") { rr(5,-3,13,7,h); r(6,-3,10,3,hl); r(14,3,4,6,hd); r(2,-3,5,18,h); r(2,0,3,14,hd); }
-        } else if (npc.hairStyle === 3) { // curly/afro
-          if (d==="down")  { rr(0,-5,20,8,h); r(2,-5,16,4,hl); r(0,1,4,9,hd); r(16,1,4,9,hd); r(1,9,4,4,hd); r(15,9,4,4,hd); }
-          if (d==="up")    { rr(0,-5,20,9,h); r(2,-5,16,4,hl); r(0,1,4,8,hd); r(16,1,4,8,hd); }
-          if (d==="left")  { rr(0,-5,18,8,h); r(2,-5,14,4,hl); r(0,1,4,9,hd); r(1,9,4,4,hd); }
-          if (d==="right") { rr(2,-5,18,8,h); r(4,-5,14,4,hl); r(16,1,4,9,hd); r(15,9,4,4,hd); }
-        } else if (npc.hairStyle === 4) { // bun
-          if (d==="down"||d==="up") { rr(2,-2,16,4,h); r(3,-2,12,2,hl); rr(6,-9,8,8,h); r(7,-9,6,3,hl); r(11,-5,3,3,hd); }
-          if (d==="left")  { rr(2,-2,14,4,h); r(3,-2,10,2,hl); rr(4,-9,8,8,h); r(5,-9,6,3,hl); }
-          if (d==="right") { rr(4,-2,14,4,h); r(5,-2,10,2,hl); rr(8,-9,8,8,h); r(9,-9,6,3,hl); }
-        } else { // shaved (5) — stubble shadow
-          if (d==="down"||d==="up") { rr(2,-1,16,3,hd); }
-          else { rr(2,-1,13,3,hd); }
+        // ── Hair by style ─────────────────────────────────────────────────────
+        const hs = npc.hairStyle||0;
+        if(hs===0){
+          // crop / bowl
+          if(d==="down"){ r(1,-3,15,5,hair); r(2,-3,13,3,hl); r(0,1,2,4,hd); r(14,1,2,4,hd); }
+          else if(d==="up"){ r(1,-3,15,6,hair); r(2,-3,13,3,hl); }
+          else if(d==="left"){ r(1,-3,14,5,hair); r(2,-3,12,3,hl); r(13,0,3,4,hd); }
+          else { r(2,-3,14,5,hair); r(3,-3,12,3,hl); r(1,0,3,4,hd); }
+        } else if(hs===1){
+          // side fringe
+          if(d==="down"){ r(1,-4,15,7,hair); r(2,-4,13,4,hl); r(0,2,3,5,hd); r(14,2,3,5,hd); r(12,-4,5,6,hair); }
+          else if(d==="up"){ r(1,-4,15,8,hair); r(2,-4,13,4,hl); }
+          else if(d==="left"){ r(1,-4,14,7,hair); r(2,-4,12,4,hl); r(0,2,3,5,hd); r(13,-4,5,7,hair); }
+          else { r(2,-4,14,7,hair); r(3,-4,12,4,hl); r(14,2,3,5,hd); r(-1,-4,5,7,hair); }
+        } else if(hs===2){
+          // long flowing
+          if(d==="down"){ r(0,-5,17,8,hair); r(1,-5,15,4,hl); r(0,3,3,10,hd); r(14,3,3,10,hd); r(0,13,4,12,hd); r(13,13,4,12,hd); }
+          else if(d==="up"){ r(0,-5,17,8,hair); r(1,-5,15,4,hl); r(0,8,4,12,hair); r(13,8,4,12,hair); }
+          else if(d==="left"){ r(0,-5,15,8,hair); r(1,-5,13,4,hl); r(14,-4,6,22,hair); r(16,0,4,19,hd); }
+          else { r(2,-5,15,8,hair); r(3,-5,13,4,hl); r(-3,-4,6,22,hair); r(-1,0,4,19,hd); }
+        } else if(hs===3){
+          // curly
+          if(d==="down"){ r(-1,-5,19,9,hair); r(0,-5,17,5,hl); r(-1,3,4,7,hd); r(14,3,4,7,hd); r(-1,-5,3,5,hd); r(15,-5,3,5,hd); }
+          else if(d==="up"){ r(-1,-5,19,9,hair); r(0,-5,17,5,hl); }
+          else if(d==="left"){ r(-1,-5,18,9,hair); r(0,-5,16,5,hl); r(-1,3,4,7,hd); r(15,-3,3,6,hd); }
+          else { r(0,-5,18,9,hair); r(1,-5,16,5,hl); r(14,3,4,7,hd); r(-1,-3,3,6,hd); }
+        } else if(hs===4){
+          // bun/updo
+          if(d==="down"){ r(1,-4,15,6,hair); r(2,-4,13,3,hl); r(0,1,2,5,hd); r(14,1,2,5,hd); r(6,-8,5,6,hair); r(7,-8,3,4,hl); }
+          else if(d==="up"){ r(1,-4,15,6,hair); r(2,-4,13,3,hl); r(6,-8,5,6,hair); r(7,-8,3,4,hl); }
+          else if(d==="left"){ r(1,-4,14,6,hair); r(2,-4,12,3,hl); r(0,1,2,5,hd); r(10,-8,5,6,hair); }
+          else { r(2,-4,14,6,hair); r(3,-4,12,3,hl); r(14,1,2,5,hd); r(2,-8,5,6,hair); }
+        } else {
+          // short spiky
+          if(d==="down"){ r(0,-5,17,7,hair); r(1,-5,15,3,hl); r(-1,-2,3,5,hd); r(15,-2,3,5,hd); r(3,-7,3,5,hd); r(11,-7,3,5,hd); r(7,-8,3,5,hd); }
+          else if(d==="up"){ r(0,-5,17,7,hair); r(1,-5,15,3,hl); r(3,-7,3,5,hd); r(11,-7,3,5,hd); r(7,-8,3,5,hd); }
+          else if(d==="left"){ r(0,-5,16,7,hair); r(1,-5,14,3,hl); r(-1,-2,3,5,hd); r(2,-8,3,5,hd); r(8,-7,3,5,hd); }
+          else { r(1,-5,16,7,hair); r(2,-5,14,3,hl); r(15,-2,3,5,hd); r(12,-8,3,5,hd); r(6,-7,3,5,hd); }
         }
 
-        // ── Per-character accessories ─────────────────────────────
-        if (npc.id === "ella") {
-          // Apron bib + strings
-          if (d !== "up") { r(7,18,6,10,"rgba(255,255,255,0.55)"); r(5,17,2,2,"rgba(255,255,255,0.4)"); r(13,17,2,2,"rgba(255,255,255,0.4)"); }
-        } else if (npc.id === "will") {
-          // Tool belt with pocket
-          if (d !== "up") { r(3,28,14,2,shade(T,-38)); r(13,25,3,5,"#8b6914"); }
-        } else if (npc.id === "rose") {
-          // Mage hood + robe trim
-          rr(1,-4,18,9,"rgba(18,4,28,0.82)");
-          r(0,3,20,5,"rgba(18,4,28,0.55)");
-          r(3,17,14,12,"rgba(28,8,48,0.35)"); // robe overlay
-        } else if (npc.id === "lumi") {
-          // Paint palette smudges
-          if (d !== "up") { r(9,19,3,2,"#4ec9b0"); r(8,22,2,2,"#e07040"); r(11,21,2,2,"#9060d0"); }
-        } else if (npc.id === "rex") {
-          // Beard (stubble patch)
-          if (d==="down") { r(4,9,12,4,"rgba(80,60,40,0.6)"); r(6,12,8,2,"rgba(80,60,40,0.5)"); }
-          if (d==="left") { r(4,9,7,4,"rgba(80,60,40,0.6)"); }
-          if (d==="right") { r(9,9,7,4,"rgba(80,60,40,0.6)"); }
-        }
-
-        // ── Wedding ring (gold band on left hand) ─────────────────
-        if (npc.married) {
-          const ringC = "#ffd700";
-          if (d === "down")  r(0+as, 25, 2, 2, ringC);
-          if (d === "up")    r(0-as, 25, 2, 2, ringC);
-          if (d === "left")  r(17+as, 25, 2, 2, ringC);
-          if (d === "right") r(1-as,  25, 2, 2, ringC);
-        }
-
-        // ── Name tag ─────────────────────────────────────────────
-        if (npc.name && Math.hypot(player.x - npc.x, player.y - npc.y) < 80) {
-          const hearts = game.save ? ((game.save.friendship || {})[npc.id] || 0) : 0;
-          const heartStr = hearts > 0 ? " " + "♥".repeat(Math.min(hearts, 5)) : "";
-          ctx.save();
-          ctx.fillStyle = "rgba(0,0,0,0.65)";
-          ctx.fillRect(Math.round(x - 26), Math.round(y - 38), 52, 14);
-          ctx.fillStyle = npc.married ? "#ffd700" : "#f0e8c0";
-          ctx.font = "bold 9px Trebuchet MS, Arial, sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText(npc.name, Math.round(x), Math.round(y - 27));
-          if (hearts > 0) {
-            ctx.fillStyle = npc.married ? "#ffd700" : "#ff6888";
-            ctx.font = "8px Arial";
-            ctx.fillText(heartStr, Math.round(x), Math.round(y - 17));
+        // ── Per-NPC accessories ────────────────────────────────────────────────
+        if(d!=="up"){
+          const id = npc.id||"";
+          if(id==="ella")  { r(3,15,11,2,"#fff"); r(3,17,2,4,"#fff"); r(12,17,2,4,"#fff"); } // apron
+          if(id==="will")  { r(12,14,4,2,"#8B5E3C"); r(3,22,3,2,"#4a3020"); }                // tool belt+hammer
+          if(id==="rose")  {                                                                   // hood
+            r(-1,-5,3,10,shade(hair,-20)); r(14,-5,3,10,shade(hair,-20));
+            r(0,-6,17,3,shade(hair,-20));
           }
-          ctx.textAlign = "left";
+          if(id==="lumi")  { r(12,13,4,3,"#f5c518"); r(2,23,4,2,"#3a7bd5"); }               // paintbrush+palette
+          if(id==="rex")   { r(5,10,7,3,"#2a1808"); r(4,12,9,1,"#4a2a10"); }                // beard
+          if(id==="mabel") { r(3,14,11,3,"#fff"); r(3,17,2,5,"#fff"); r(12,17,2,5,"#fff"); } // baker apron
+          if(id==="finn")  { r(11,13,5,3,"#4a6a3a"); r(2,14,4,2,"#c8b060"); }               // fishing vest + hat
+          if(id==="doc")   { r(3,13,11,10,"#e8eef8"); r(6,16,5,1,"#c00"); }                 // white coat+cross
+          if(id==="nora")  { r(3,14,11,9,"#1a0a2a"); r(0,-5,4,12,shade(hair,-30)); r(13,-5,4,12,shade(hair,-30)); } // dark robe
+          if(id==="cleo")  { r(12,14,4,4,"#d4a060"); }                                       // popcorn box
+        }
+
+        // ── Wedding ring ───────────────────────────────────────────────────────
+        if(npc.isMarried && d!=="up"){
+          const rx = (d==="left")?1:(d==="right")?15:14-as;
+          r(rx,22,2,1,"#FFD700"); r(rx,22,1,1,"#FFE87C");
+        }
+
+        // ── Name tag + hearts ─────────────────────────────────────────────────
+        const dist=Math.hypot((typeof player!=="undefined"?player.x:0)-npc.x,
+                              (typeof player!=="undefined"?player.y:0)-npc.y);
+        if(npc.name && dist<90){
+          ctx.save();
+          ctx.font="bold 9px monospace";
+          const nm=npc.name;
+          const hearts=Math.min(10, (game.save&&game.save.friendship&&game.save.friendship[npc.id])||0);
+          const hRow=hearts>0 ? "♥".repeat(hearts) : "";
+          const tw=ctx.measureText(nm).width, hw=ctx.measureText(hRow).width;
+          const bw=Math.max(tw,hw)+6, bh=hearts>0?24:14, bx=x-bw/2, by=py-6-bh;
+          const isMarried=npc.isMarried||false;
+          ctx.fillStyle=isMarried?"rgba(80,30,0,0.72)":"rgba(0,0,0,0.55)";
+          ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,3); ctx.fill();
+          ctx.fillStyle=isMarried?"#FFD700":"#fff";
+          ctx.textAlign="center";
+          ctx.fillText(nm,x,by+10);
+          if(hearts>0){
+            ctx.fillStyle="#e84c88"; ctx.font="7px monospace";
+            ctx.fillText(hRow,x,by+21);
+          }
+          ctx.textAlign="left";
           ctx.restore();
         }
       }
