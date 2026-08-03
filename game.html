@@ -112,6 +112,18 @@
       // 6 hair style indices (0–5); style shapes are handled in drawPlayerSprite
       const HAIR_STYLE_COUNT = 6;
       const HAIR_STYLE_NAMES = ["Crop", "Fringe", "Long", "Curly", "Bun", "Shaved"];
+
+      // 6 player houses in the Residential District (houseNum 1–6)
+      // Door pixel positions: tile just in front of each house entrance
+      const HOUSE_DOORS = [
+        null,                                                   // 0 = unassigned
+        { px: 47*32+16, py: 21*32+16 }, // 1 — Row 1 left
+        { px: 57*32+16, py: 21*32+16 }, // 2 — Row 1 right
+        { px: 47*32+16, py: 24*32+16 }, // 3 — Row 2 left
+        { px: 57*32+16, py: 24*32+16 }, // 4 — Row 2 right
+        { px: 47*32+16, py: 38*32+16 }, // 5 — Row 3 left
+        { px: 57*32+16, py: 38*32+16 }, // 6 — Row 3 right
+      ];
       const CLASS_OPTIONS = [{ id: "adventurer", label: "Adventurer" }];
       const DTILE_SIZE = 32;
       const SEWER_ENTRANCE = { x: 19 * TILE_SIZE + TILE_SIZE / 2, y: 58 * TILE_SIZE + TILE_SIZE / 2 };
@@ -219,6 +231,7 @@
             hairColour: 0,
             outfit: 0,
             classId: "adventurer",
+            houseNum: 0,
             level: 1,
             xp: 0,
             stats: { STR: 5, AGI: 5, INT: 5, DEF: 5 },
@@ -833,6 +846,22 @@
           dungeon.playerHpAtEntry = player.hp;
           camera.x = 0;
           camera.y = 0;
+        });
+      }
+
+      function enterHouse() {
+        const hn = game.save && game.save.player ? (game.save.player.houseNum || 1) : 1;
+        const door = HOUSE_DOORS[hn];
+        game.houseExitX = door ? door.px : 47 * 32 + 16;
+        game.houseExitY = door ? door.py : 24 * 32 + 16;
+        switchScene(SCENE.HOUSE_INTERIOR);
+      }
+
+      function exitHouse() {
+        switchScene(SCENE.CITY, () => {
+          player.x = game.houseExitX || 47 * 32 + 16;
+          player.y = game.houseExitY || 24 * 32 + 16;
+          player.vx = 0; player.vy = 0;
         });
       }
 
@@ -1768,6 +1797,9 @@
           game.save.player.hairColour = cc.hairColour;
           game.save.player.outfit     = cc.outfit;
           game.save.player.classId    = cc.classId;
+          // Assign a house based on character name — same name always gets same house
+          const _ns = cc.name.split('').reduce((s, c) => s + c.charCodeAt(0), 0);
+          game.save.player.houseNum = (_ns % 6) + 1;
           writeSave(game.save);
           player = createPlayer(game.save);
           switchScene(SCENE.CITY);
@@ -1906,6 +1938,15 @@
         if (Math.hypot(player.x - SEWER_ENTRANCE.x, player.y - SEWER_ENTRANCE.y) < 40 && (justPressedKeys.interact || justPressedKeys.attack)) {
           enterDungeon(1);
         }
+
+        // Check player's own house door
+        const _hn = game.save && game.save.player ? (game.save.player.houseNum || 0) : 0;
+        if (_hn > 0) {
+          const _door = HOUSE_DOORS[_hn];
+          if (_door && Math.hypot(player.x - _door.px, player.y - _door.py) < 44 && justPressedKeys.interact) {
+            enterHouse();
+          }
+        }
       }
 
       function drawCity(time) {
@@ -1925,6 +1966,37 @@
           ctx.fillText("Press E or Space to enter sewer", canvas.width / 2, canvas.height - 25);
           ctx.textAlign = "left";
         }
+
+        // Player's house door — name label above it + enter prompt when nearby
+        const _hNum = game.save && game.save.player ? (game.save.player.houseNum || 0) : 0;
+        if (_hNum > 0) {
+          const _hDoor = HOUSE_DOORS[_hNum];
+          if (_hDoor) {
+            const view2 = getView();
+            const doorSX = (_hDoor.px - camera.x) * view2.zoom;
+            const doorSY = (_hDoor.py - camera.y) * view2.zoom;
+            // Always show name above house (within a generous range so it's findable)
+            const distToDoor = Math.hypot(player.x - _hDoor.px, player.y - _hDoor.py);
+            if (distToDoor < 200) {
+              ctx.fillStyle = "rgba(0,0,0,0.7)";
+              ctx.fillRect(doorSX - 68, doorSY - 54, 136, 20);
+              ctx.fillStyle = "#f0e0a0";
+              ctx.font = "bold 12px Trebuchet MS, Arial, sans-serif";
+              ctx.textAlign = "center";
+              ctx.fillText(`🏠 ${game.save.player.name}'s Home`, doorSX, doorSY - 39);
+              ctx.textAlign = "left";
+            }
+            if (distToDoor < 60) {
+              ctx.fillStyle = "rgba(0,0,0,0.55)";
+              ctx.fillRect(canvas.width / 2 - 100, canvas.height - 42, 200, 24);
+              ctx.fillStyle = "#d8ddd0";
+              ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+              ctx.textAlign = "center";
+              ctx.fillText("Press E to enter your home", canvas.width / 2, canvas.height - 25);
+              ctx.textAlign = "left";
+            }
+          }
+        }
         drawNotice();
       }
 
@@ -1934,6 +2006,175 @@
 
       function drawDungeonScene(time) {
         drawDungeon(time);
+      }
+
+      function updateHouseInterior(dt) {
+        if (justPressedKeys.pause) exitHouse();
+      }
+
+      function drawHouseInterior(time) {
+        const w = canvas.width, h = canvas.height;
+        const ts = 36; // interior tile size (slightly larger for cozy feel)
+        const roomW = 11, roomH = 8;
+        const ox = Math.floor((w - roomW * ts) / 2);
+        const oy = Math.floor((h - roomH * ts) / 2);
+        const outfit = OUTFIT_COLORS[player.outfit] || OUTFIT_COLORS[0];
+
+        // Dark outer background
+        ctx.fillStyle = "#0d0a14";
+        ctx.fillRect(0, 0, w, h);
+
+        // Floor tiles — warm wood planks
+        for (let ty = 1; ty < roomH - 1; ty++) {
+          for (let tx = 1; tx < roomW - 1; tx++) {
+            ctx.fillStyle = ty % 2 === 0 ? "#6b4020" : "#7a4e28";
+            ctx.fillRect(ox + tx * ts, oy + ty * ts, ts, ts);
+            // Plank lines
+            if (tx % 3 === 1) {
+              ctx.fillStyle = "rgba(0,0,0,0.2)";
+              ctx.fillRect(ox + tx * ts, oy + ty * ts, 2, ts);
+            }
+          }
+        }
+
+        // Walls — plaster
+        ctx.fillStyle = "#c0a87a";
+        // Top wall
+        ctx.fillRect(ox + ts, oy, (roomW - 2) * ts, ts * 2);
+        // Side walls
+        ctx.fillStyle = "#2a1e10";
+        for (let ty = 0; ty < roomH; ty++) {
+          ctx.fillRect(ox,                  oy + ty * ts, ts, ts);
+          ctx.fillRect(ox + (roomW-1) * ts, oy + ty * ts, ts, ts);
+        }
+        // Floor border
+        ctx.fillRect(ox + ts, oy + (roomH-1) * ts, (roomW - 2) * ts, ts);
+        // Skirting board
+        ctx.fillStyle = "#5a3818";
+        ctx.fillRect(ox + ts, oy + (roomH-2) * ts + ts - 6, (roomW-2) * ts, 6);
+
+        // Window (back wall centre) — moonlit
+        const winX = ox + ts * 4, winY = oy + ts;
+        ctx.fillStyle = "#0d1a2e";
+        ctx.fillRect(winX, winY, ts * 3, ts * 2 - 4);
+        // Stars
+        ctx.fillStyle = "#ffffff";
+        [[winX+12,winY+8],[winX+ts*2,winY+12],[winX+ts+6,winY+22],[winX+ts*2+10,winY+28]].forEach(([sx,sy]) => {
+          ctx.fillRect(sx, sy, 2, 2);
+        });
+        // Moon
+        ctx.fillStyle = "#f0f0c0";
+        ctx.beginPath();
+        ctx.arc(winX + ts * 1.5, winY + ts * 0.7, 12, 0, Math.PI * 2);
+        ctx.fill();
+        // Moonlight spill on floor
+        const glow = ctx.createRadialGradient(winX + ts*1.5, winY+ts, 8, winX+ts*1.5, winY+ts, ts*4);
+        glow.addColorStop(0, "rgba(180,200,255,0.18)");
+        glow.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = glow;
+        ctx.fillRect(ox, oy, roomW*ts, roomH*ts);
+        // Window frame
+        ctx.strokeStyle = "#8a6030";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(winX+1, winY+1, ts*3-2, ts*2-6);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(winX + ts*1.5, winY+2); ctx.lineTo(winX + ts*1.5, winY + ts*2-6);
+        ctx.moveTo(winX+2, winY + ts - 2); ctx.lineTo(winX + ts*3 - 2, winY + ts - 2);
+        ctx.stroke();
+
+        // ── Bed (left, y rows 2-5) ──────────────────────
+        const bx = ox + ts, by = oy + ts * 2;
+        ctx.fillStyle = shade(outfit.legs, -15);
+        ctx.fillRect(bx + 2, by, ts * 2 - 4, ts * 4); // frame
+        ctx.fillStyle = shade(outfit.torso, 10);
+        ctx.fillRect(bx + 6, by + 4, ts * 2 - 12, ts * 3); // mattress
+        ctx.fillStyle = "#f5f0e0";
+        ctx.fillRect(bx + 6, by + 4, ts * 2 - 12, ts); // pillow
+        ctx.fillStyle = outfit.torso;
+        ctx.fillRect(bx + 6, by + ts * 3 - 6, ts * 2 - 12, 10); // blanket fold
+        // Bed headboard
+        ctx.fillStyle = shade(outfit.legs, -30);
+        ctx.fillRect(bx + 2, by - 6, ts * 2 - 4, 10);
+
+        // ── Bookshelf (back-left wall) ───────────────────
+        const shX = ox + ts, shY = oy + ts;
+        ctx.fillStyle = "#5a3010";
+        ctx.fillRect(shX, shY, ts * 3, ts);
+        // Books
+        const bkColors = ["#8b2020","#2060a0","#207030","#906010","#602080"];
+        for (let b = 0; b < 7; b++) {
+          ctx.fillStyle = bkColors[b % bkColors.length];
+          ctx.fillRect(shX + 4 + b * (ts*3/7), shY + 6, ts*3/7 - 2, ts - 8);
+        }
+
+        // ── Table + candle (right side, rows 2-3) ────────
+        const taX = ox + ts * 8, taY = oy + ts * 2;
+        ctx.fillStyle = "#7a5828";
+        ctx.fillRect(taX, taY, ts * 2, ts * 2);
+        ctx.fillStyle = "#5a3820";
+        ctx.fillRect(taX + 4, taY + ts * 2, 5, ts);
+        ctx.fillRect(taX + ts * 2 - 9, taY + ts * 2, 5, ts);
+        // Candle
+        const cndX = taX + ts, cndY = taY - 14;
+        ctx.fillStyle = "#f0e0a0";
+        ctx.fillRect(cndX - 5, cndY, 10, 20);
+        const flicker = Math.sin(time * 9 + 1) * 2.5;
+        const flicker2 = Math.cos(time * 6) * 1.5;
+        ctx.fillStyle = "#ff9020";
+        ctx.beginPath();
+        ctx.ellipse(cndX + flicker2 * 0.3, cndY - 6 + flicker, 5, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,180,60,0.12)";
+        ctx.beginPath();
+        ctx.arc(cndX, cndY, ts * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // ── Chest (bottom right, row 5) ───────────────────
+        const chX = ox + ts * 8, chY = oy + ts * 5;
+        ctx.fillStyle = "#8a6020";
+        ctx.fillRect(chX, chY, ts * 2, ts);
+        ctx.fillStyle = "#5a3a10";
+        ctx.fillRect(chX, chY, ts * 2, 7);
+        ctx.fillStyle = "#ffd700";
+        ctx.fillRect(chX + ts - 5, chY + 1, 10, 8);
+        ctx.fillStyle = "#c8a000";
+        ctx.fillRect(chX + ts - 3, chY + 3, 6, 4);
+
+        // ── Door (bottom-centre wall) — exit ─────────────
+        const dX = ox + ts * 5, dY = oy + (roomH - 1) * ts;
+        ctx.fillStyle = "#8a5020";
+        ctx.fillRect(dX, dY - ts + 4, ts, ts);
+        ctx.fillStyle = "#6a3810";
+        ctx.fillRect(dX + 2, dY - ts + 4, ts - 4, 4);
+        ctx.fillStyle = "#ffd700";
+        ctx.fillRect(dX + ts - 12, dY - ts/2, 6, 6);
+
+        // ── Player preview in the room ───────────────────
+        const prevX = ox + ts * 5 + ts / 2;
+        const prevY = oy + (roomH - 2) * ts;
+        const prevP = { ...player, x: prevX, y: prevY, dir: "down", walkTime: 0, vx: 0, vy: 0 };
+        drawPlayerSprite(time, prevP);
+
+        // ── Name sign on wall ────────────────────────────
+        const pName = game.save && game.save.player ? game.save.player.name : "Hero";
+        ctx.fillStyle = "rgba(0,0,0,0.65)";
+        ctx.fillRect(w / 2 - 90, oy + 6, 180, 22);
+        ctx.fillStyle = "#f0e0a0";
+        ctx.font = "bold 13px Trebuchet MS, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(`🏠  ${pName}'s Home`, w / 2, oy + 22);
+
+        // ── Interaction hints ─────────────────────────────
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(w / 2 - 120, h - 40, 240, 24);
+        ctx.fillStyle = "#aaa";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("Esc — Leave home", w / 2, h - 22);
+
+        ctx.textAlign = "left";
+        drawFade();
       }
 
       // ==================================================
@@ -1975,6 +2216,7 @@
           case SCENE.CHARACTER_CREATION: updateCharacterCreation(); break;
           case SCENE.CITY:               updateCity(dt);          break;
           case SCENE.DUNGEON:            updateDungeonScene(dt);  break;
+          case SCENE.HOUSE_INTERIOR:     updateHouseInterior(dt); break;
         }
 
         // Clear
@@ -1988,6 +2230,7 @@
           case SCENE.CHARACTER_CREATION: drawCharacterCreation(game.elapsed); break;
           case SCENE.CITY:               drawCity(game.elapsed);             break;
           case SCENE.DUNGEON:            drawDungeonScene(game.elapsed);     break;
+          case SCENE.HOUSE_INTERIOR:     drawHouseInterior(game.elapsed);    break;
         }
 
         drawFade();
