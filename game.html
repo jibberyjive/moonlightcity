@@ -63,8 +63,8 @@
 
       // City tile types
       const TILE_SIZE = 32;
-      const MAP_W = 40;
-      const MAP_H = 40;
+      const MAP_W = 64;
+      const MAP_H = 64;
       const WORLD_W = MAP_W * TILE_SIZE;
       const WORLD_H = MAP_H * TILE_SIZE;
 
@@ -75,18 +75,26 @@
         WATER: 3,
         PATH: 4,
         ROCK: 5,
-        FLOWERS: 6
+        FLOWERS: 6,
+        STONE: 7,      // building rooftops / walls — blocking
+        DARK_PATH: 8   // slums cracked cobblestone — walkable
       };
 
-      const BLOCKING = new Set([TILE.TREE, TILE.WATER, TILE.ROCK]);
+      const BLOCKING = new Set([TILE.TREE, TILE.WATER, TILE.ROCK, TILE.STONE]);
 
       // Palette — city
       const COLORS = {
         grass: "#5a8a3c",
         darkGrass: "#4b7432",
+        slumGrass: "#3b5c2e",
         water: "#3a7bd5",
         waterShimmer: "#8dc9ff",
         path: "#c4a35a",
+        stone: "#7a7a82",
+        stoneMortar: "rgba(40,38,50,0.32)",
+        stoneShadow: "rgba(0,0,0,0.18)",
+        darkPath: "#5c4a38",
+        darkPathCrack: "rgba(28,18,10,0.45)",
         rock: "#8d9196",
         trunk: "#6d4a2d",
         leaves: "#285a2d",
@@ -152,7 +160,7 @@
             hpMax: 30,
             mp: 10,
             mpMax: 10,
-            spawn: { scene: SCENE.CITY, x: 20 * TILE_SIZE + TILE_SIZE / 2, y: 23 * TILE_SIZE + TILE_SIZE / 2 }
+            spawn: { scene: SCENE.CITY, x: 20 * TILE_SIZE + TILE_SIZE / 2, y: 13 * TILE_SIZE + TILE_SIZE / 2 }
           },
           gold: { carried: 0, banked: 0 },
           inventory: [],
@@ -345,112 +353,155 @@
       }
 
       function buildMap() {
+        // ── Base fill ──────────────────────────────────────────────
+        fillRectTiles(0, 0, MAP_W, MAP_H, TILE.GRASS);
+
+        // ── Tree border ────────────────────────────────────────────
         fillRectTiles(0, 0, MAP_W, 1, TILE.TREE);
         fillRectTiles(0, MAP_H - 1, MAP_W, 1, TILE.TREE);
         fillRectTiles(0, 0, 1, MAP_H, TILE.TREE);
         fillRectTiles(MAP_W - 1, 0, 1, MAP_H, TILE.TREE);
 
-        fillRectTiles(2, 2, 8, 6, TILE.DARK_GRASS);
-        fillRectTiles(30, 3, 7, 5, TILE.DARK_GRASS);
-        fillRectTiles(3, 31, 7, 5, TILE.DARK_GRASS);
-        fillRectTiles(29, 30, 8, 6, TILE.DARK_GRASS);
-        fillRectTiles(13, 5, 5, 3, TILE.DARK_GRASS);
-        fillRectTiles(23, 26, 5, 4, TILE.DARK_GRASS);
-        fillRectTiles(7, 17, 5, 3, TILE.DARK_GRASS);
-        fillRectTiles(28, 14, 4, 3, TILE.DARK_GRASS);
+        // ══════════════════════════════════════════════════════════
+        // DOWNTOWN  (x:2-56, y:1-23)
+        // Grid of stone-paved streets with building blocks between
+        // ══════════════════════════════════════════════════════════
+        fillRectTiles(2, 1, 55, 23, TILE.PATH);  // pave the whole district
 
-        paintLine(
-          [
-            [2, 29],
-            [6, 28],
-            [10, 28],
-            [14, 25],
-            [19, 24],
-            [23, 20],
-            [27, 18],
-            [31, 18],
-            [35, 15],
-            [37, 14]
-          ],
-          1,
-          TILE.PATH
-        );
+        // -- Building blocks (carved out of PATH base) --
+        fillRectTiles(2,  1, 10, 10, TILE.STONE); // Town Hall (NW corner)
+        fillRectTiles(15, 1, 11,  4, TILE.STONE); // Market Row North
+        fillRectTiles(29, 1, 13, 10, TILE.STONE); // Shops East block
+        fillRectTiles(44, 1, 12, 10, TILE.STONE); // Guild Hall
 
-        paintLine(
-          [
-            [19, 24],
-            [19, 28],
-            [21, 32],
-            [24, 35]
-          ],
-          1,
-          TILE.PATH
-        );
+        // South-of-Main-Street buildings
+        fillRectTiles(2,  15, 10, 8, TILE.STONE); // SW residential block
+        fillRectTiles(15, 15, 11, 7, TILE.STONE); // Mara's / south shops
 
-        fillRectTiles(25, 8, 6, 4, TILE.WATER);
-        stampTiles(
-          [
-            [24, 9], [24, 10], [25, 7], [26, 7], [27, 7], [28, 7], [29, 7], [30, 7],
-            [31, 9], [31, 10], [25, 12], [26, 12], [27, 12], [28, 12], [29, 12], [30, 12],
-            [24, 11], [30, 8], [31, 11]
-          ],
-          TILE.WATER
-        );
+        // -- Market Square (open air, keep as PATH + decoration) --
+        fillRectTiles(16, 5, 9, 6, TILE.PATH);    // open square
+        fillRectTiles(19, 7, 4, 3, TILE.WATER);   // decorative fountain
 
-        stampTiles(
-          [
-            [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1],
-            [2, 2], [3, 2], [4, 2], [5, 2], [6, 2], [7, 2], [8, 2],
-            [1, 3], [2, 3], [3, 3], [4, 3], [5, 3], [6, 3], [7, 3], [8, 3],
-            [1, 4], [2, 4], [3, 4], [4, 4], [5, 4], [6, 4], [7, 4],
-            [1, 5], [2, 5], [3, 5], [4, 5], [6, 5], [7, 5],
-            [31, 2], [32, 2], [33, 2], [34, 2], [35, 2], [36, 2], [37, 2],
-            [30, 3], [31, 3], [32, 3], [33, 3], [34, 3], [35, 3], [36, 3], [37, 3], [38, 3],
-            [31, 4], [32, 4], [33, 4], [34, 4], [35, 4], [36, 4], [37, 4],
-            [32, 5], [33, 5], [34, 5], [35, 5], [36, 5], [37, 5],
-            [2, 32], [3, 32], [4, 32], [5, 32], [6, 32], [7, 32],
-            [2, 33], [3, 33], [4, 33], [5, 33], [6, 33], [7, 33], [8, 33],
-            [1, 34], [2, 34], [3, 34], [4, 34], [5, 34], [6, 34], [7, 34], [8, 34],
-            [1, 35], [2, 35], [3, 35], [4, 35], [5, 35], [6, 35], [7, 35],
-            [32, 31], [33, 31], [34, 31], [35, 31], [36, 31], [37, 31],
-            [31, 32], [32, 32], [33, 32], [34, 32], [35, 32], [36, 32], [37, 32],
-            [31, 33], [32, 33], [33, 33], [34, 33], [35, 33], [36, 33], [37, 33], [38, 33],
-            [32, 34], [33, 34], [34, 34], [35, 34], [36, 34], [37, 34]
-          ],
-          TILE.TREE
-        );
+        // -- Main roads (carve back to PATH over stone blocks) --
+        fillRectTiles(2,  12, 55, 3, TILE.PATH);  // Main Street (E-W, y=12-14)
+        fillRectTiles(13, 1,  2,  23, TILE.PATH); // North Ave   (N-S, x=13-14)
+        fillRectTiles(27, 1,  2,  23, TILE.PATH); // Market St   (N-S, x=27-28)
+        fillRectTiles(43, 1,  2,  23, TILE.PATH); // Guild Ave   (N-S, x=43-44)
 
-        stampTiles(
-          [
-            [13, 4], [14, 4], [16, 4], [18, 5], [19, 5], [21, 4], [23, 4], [24, 5], [26, 4],
-            [10, 10], [11, 10], [10, 11], [14, 12], [15, 12], [15, 13],
-            [7, 15], [8, 15], [7, 16], [31, 15], [32, 15], [31, 16],
-            [5, 20], [6, 20], [5, 21], [33, 21], [34, 21], [34, 22],
-            [9, 26], [10, 26], [9, 27], [28, 25], [29, 25], [29, 26],
-            [13, 31], [14, 31], [15, 31], [25, 31], [26, 31], [27, 31]
-          ],
-          TILE.TREE
-        );
+        // -- Downtown decoration --
+        stampTiles([[6,11],[20,11],[36,11],[50,11],
+                    [6,4],[11,7],[20,6],[36,6],[50,6]], TILE.FLOWERS);
+        stampTiles([[11,1],[11,2],[11,10],[56,6],[56,7]], TILE.TREE);
 
-        stampTiles(
-          [
-            [11, 7], [12, 7], [17, 8], [18, 8], [20, 10], [22, 9],
-            [8, 18], [9, 18], [26, 18], [27, 18], [12, 22], [13, 22],
-            [30, 24], [16, 29], [17, 29], [22, 30], [24, 30], [11, 33], [28, 34]
-          ],
-          TILE.ROCK
-        );
+        // ══════════════════════════════════════════════════════════
+        // CITY PARK  (x:27-43, y:23-39)
+        // Green space linking Downtown ↔ Residential ↔ Slums
+        // ══════════════════════════════════════════════════════════
+        fillRectTiles(27, 23, 17, 17, TILE.GRASS);
 
-        stampTiles(
-          [
-            [11, 9], [12, 9], [13, 9], [23, 6], [24, 6], [7, 12], [8, 12], [9, 12],
-            [18, 15], [19, 15], [20, 15], [22, 16], [23, 16], [24, 16],
-            [15, 19], [16, 19], [17, 19], [25, 20], [26, 20], [27, 20],
-            [7, 24], [8, 24], [12, 26], [13, 26], [14, 26], [31, 27], [32, 27],
-            [18, 33], [19, 33], [20, 33], [27, 35], [28, 35]
-          ],
-          TILE.FLOWERS
-        );
+        fillRectTiles(31, 27, 8, 5, TILE.WATER);  // park pond
+        stampTiles([[30,26],[33,26],[37,26],[39,26],
+                    [30,32],[33,32],[37,32],[39,32],
+                    [29,29],[40,29]], TILE.FLOWERS);
+
+        // Path through park (E-W and N-S crossing)
+        paintLine([[27,31],[31,31],[35,31],[40,31],[43,31]], 1, TILE.PATH);
+        paintLine([[35,23],[35,27],[35,33],[35,39]], 1, TILE.PATH);
+
+        // Park trees
+        stampTiles([[28,24],[42,24],[28,37],[42,37],
+                    [29,28],[41,28],[29,34],[41,34]], TILE.TREE);
+
+        // ══════════════════════════════════════════════════════════
+        // RESIDENTIAL DISTRICT  (x:44-62, y:15-52)
+        // Cottage plots, gardens, player's house
+        // ══════════════════════════════════════════════════════════
+        fillRectTiles(44, 15, 19, 38, TILE.DARK_GRASS);
+
+        // Residential streets
+        fillRectTiles(44, 22, 19, 2, TILE.PATH); // Elm Road (E-W)
+        fillRectTiles(44, 36, 19, 2, TILE.PATH); // Blossom Lane (E-W)
+        fillRectTiles(51, 15, 2, 38, TILE.PATH); // Fig Street (N-S)
+
+        // Row 1 houses  (y:16-21)
+        fillRectTiles(45, 16, 5, 5, TILE.STONE); // House 1
+        fillRectTiles(54, 16, 7, 5, TILE.STONE); // House 2
+
+        // Row 2 houses  (y:25-34)  — player's house is 45-50, y:25-33
+        fillRectTiles(45, 25, 5, 8, TILE.STONE); // ★ PLAYER'S HOUSE ★
+        fillRectTiles(54, 25, 7, 8, TILE.STONE); // Neighbour
+
+        // Row 3 houses  (y:39-50)
+        fillRectTiles(45, 39, 5, 6, TILE.STONE); // House 5
+        fillRectTiles(54, 39, 7, 6, TILE.STONE); // House 6
+
+        // Garden flowers & yard trees
+        stampTiles([[47,15],[56,15],[47,24],[57,24],
+                    [47,38],[56,38],[44,46],[62,46]], TILE.FLOWERS);
+        stampTiles([[53,18],[62,18],[53,28],[62,28],
+                    [53,42],[62,42]], TILE.TREE);
+
+        // ══════════════════════════════════════════════════════════
+        // THE SLUMS  (x:1-28, y:36-62)
+        // Dark, cramped, cracked cobbles — sewer entrance here
+        // ══════════════════════════════════════════════════════════
+        fillRectTiles(1, 36, 28, 27, TILE.DARK_GRASS);
+
+        // Slum roads (cracked cobblestone)
+        fillRectTiles(1,  41, 28, 2, TILE.DARK_PATH); // Drain Street (E-W)
+        fillRectTiles(1,  53, 28, 2, TILE.DARK_PATH); // Gulley Row   (E-W)
+        fillRectTiles(7,  36, 2,  27, TILE.DARK_PATH); // Sump Lane   (N-S)
+        fillRectTiles(18, 36, 2,  27, TILE.DARK_PATH); // Mire Alley  (N-S)
+
+        // Buildings: Rex's Tavern (recognisable larger footprint)
+        fillRectTiles(1,  36, 5, 4, TILE.STONE); // Rex's Tavern
+        // Auntie Fen's Clinic
+        fillRectTiles(10, 36, 7, 4, TILE.STONE);
+        // Misc slum buildings
+        fillRectTiles(1,  44, 5, 4, TILE.STONE);
+        fillRectTiles(10, 44, 5, 4, TILE.STONE);
+        fillRectTiles(20, 44, 7, 4, TILE.STONE);
+        fillRectTiles(1,  55, 5, 4, TILE.STONE);
+        fillRectTiles(10, 55, 4, 4, TILE.STONE);
+        fillRectTiles(20, 55, 6, 4, TILE.STONE);
+
+        // ★ SEWER ENTRANCE — open cobble plaza at (17-21, 57-61) ★
+        fillRectTiles(17, 57, 6, 4, TILE.DARK_PATH);
+
+        // Slums rocks (rubble feel)
+        stampTiles([[3,50],[6,48],[15,54],[22,50],[25,44],[24,56],[4,58],[12,58]], TILE.ROCK);
+
+        // ══════════════════════════════════════════════════════════
+        // THE DOCKS  (x:44-62, y:52-62)
+        // Water + dock platform — hint of Zone 2
+        // ══════════════════════════════════════════════════════════
+        fillRectTiles(44, 55, 19, 8, TILE.WATER);   // harbour water
+        fillRectTiles(44, 52, 19, 4, TILE.PATH);    // dock platform
+        // Pier jutties into water
+        fillRectTiles(47, 55, 2, 5, TILE.PATH);
+        fillRectTiles(53, 55, 2, 5, TILE.PATH);
+        fillRectTiles(59, 55, 2, 4, TILE.PATH);
+
+        // ══════════════════════════════════════════════════════════
+        // DISTRICT CONNECTOR PATHS
+        // ══════════════════════════════════════════════════════════
+        // Downtown Main St → Park (South exit at x=35)
+        paintLine([[35,23],[35,24]], 0, TILE.PATH);
+        // Park east edge → Residential Elm Road
+        paintLine([[43,31],[44,31],[45,31]], 0, TILE.PATH);
+        // Downtown → Slums corridor (North Ave continues south)
+        fillRectTiles(13, 23, 2, 14, TILE.PATH);    // city side
+        fillRectTiles(13, 37, 2, 5, TILE.DARK_PATH); // slums side
+        // Park south → Slums north (Mire Alley connects)
+        fillRectTiles(27, 36, 2, 5, TILE.PATH);
+        // Slums east → Docks (Gulley Row continues)
+        fillRectTiles(28, 53, 17, 2, TILE.PATH);    // bridge to docks
+
+        // ══════════════════════════════════════════════════════════
+        // SCATTER DETAILS
+        // ══════════════════════════════════════════════════════════
+        stampTiles([[26,12],[56,12],[4,12]], TILE.TREE); // street trees on Main St
+        stampTiles([[22,22],[40,22],[22,38]], TILE.ROCK); // park edge rocks
       }
 
       // ==================================================
@@ -461,7 +512,7 @@
         const s = save ? save.player : {};
         return {
           x: s.spawn ? s.spawn.x : 20 * TILE_SIZE + TILE_SIZE / 2,
-          y: s.spawn ? s.spawn.y : 23 * TILE_SIZE + TILE_SIZE / 2,
+          y: s.spawn ? s.spawn.y : 13 * TILE_SIZE + TILE_SIZE / 2,
           vx: 0, vy: 0,
           radius: 9, speed: 96, accel: 700,
           dir: "down", walkTime: 0,
@@ -620,6 +671,52 @@
         }
       }
 
+      function drawStone(x, y, tileX, tileY) {
+        // Rooftop / building tile — grey stone with mortar lines
+        const base = noise(tileX, tileY, 99) < 0.4 ? "#717178" : "#7e7e86";
+        ctx.fillStyle = base;
+        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+        // Horizontal mortar lines
+        ctx.fillStyle = COLORS.stoneMortar;
+        ctx.fillRect(x, y + 10, TILE_SIZE, 1);
+        ctx.fillRect(x, y + 21, TILE_SIZE, 1);
+        // Vertical mortar (offset per row)
+        const off1 = Math.floor(noise(tileX, tileY, 91) * 14) + 2;
+        const off2 = Math.floor(noise(tileX, tileY, 92) * 14) + 2;
+        ctx.fillRect(x + off1, y,      1, 10);
+        ctx.fillRect(x + off1 + 14, y, 1, 10);
+        ctx.fillRect(x + off2 + 7, y + 11, 1, 10);
+        ctx.fillRect(x + off2 + 21, y + 11, 1, 10);
+        // Subtle shadow at bottom edge (depth hint)
+        ctx.fillStyle = COLORS.stoneShadow;
+        ctx.fillRect(x, y + 28, TILE_SIZE, 4);
+      }
+
+      function drawDarkPath(x, y, tileX, tileY) {
+        // Slums cracked cobblestone
+        ctx.fillStyle = COLORS.darkPath;
+        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+        // Cobble grain
+        ctx.fillStyle = "rgba(80,60,40,0.22)";
+        for (let i = 0; i < 4; i++) {
+          const px = x + 2 + Math.floor(noise(tileX + i, tileY, i + 60) * 26);
+          const py = y + 2 + Math.floor(noise(tileY + i, tileX, i + 70) * 26);
+          ctx.fillRect(px, py, 3, 2);
+        }
+        // Crack line
+        if (noise(tileX, tileY, 80) > 0.55) {
+          ctx.strokeStyle = COLORS.darkPathCrack;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          const cx1 = x + 4 + Math.floor(noise(tileX, tileY, 81) * 18);
+          const cx2 = x + 6 + Math.floor(noise(tileX, tileY, 82) * 18);
+          ctx.moveTo(cx1, y + 3);
+          ctx.lineTo(cx2, y + 16);
+          ctx.lineTo(cx1 + 4, y + 28);
+          ctx.stroke();
+        }
+      }
+
       function drawGroundTile(tile, tileX, tileY, time) {
         const x = tileX * TILE_SIZE;
         const y = tileY * TILE_SIZE;
@@ -636,6 +733,12 @@
             break;
           case TILE.FLOWERS:
             drawFlowers(x, y, tileX, tileY);
+            break;
+          case TILE.STONE:
+            drawStone(x, y, tileX, tileY);
+            break;
+          case TILE.DARK_PATH:
+            drawDarkPath(x, y, tileX, tileY);
             break;
           default:
             drawGrass(x, y, tileX, tileY, COLORS.grass);
