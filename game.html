@@ -130,9 +130,9 @@
         "47,20": "south", "57,20": "south",  // Row 1 — door faces Elm Road from above
         "47,25": "north", "57,25": "north",  // Row 2 — door faces Elm Road from below
         "47,39": "north", "57,39": "north",  // Row 3 — door faces Blossom Lane
-        "32,19": "south",                    // Sweet Dreams candy store — south door
+        "58,53": "south",                    // Sweet Dreams candy store — south door
       };
-      const CANDY_STORE = { x1: 30, y1: 15, x2: 34, y2: 19 };
+      const CANDY_STORE = { x1: 56, y1: 49, x2: 60, y2: 53 };
       // Named NPC definitions — position is their home wander centre
       const NPC_DATA = [
         { id: "ella",   name: "Ella",   homeX: 20*32+16, homeY: 22*32+16, skin: "#e8c49a", hair: "#b85c2a", torso: "#f5e6c8", legs: "#8b5e3c", hairStyle: 1,
@@ -598,9 +598,9 @@
         fillRectTiles(16, 5, 9, 6, TILE.PATH);    // open square
         fillRectTiles(19, 7, 4, 3, TILE.WATER);   // decorative fountain
 
-        // -- Sweet Dreams Candy Store -- (x:30-34, y:15-19, south of Main Street)
-        fillRectTiles(30, 15, 5, 5, TILE.STONE);
-        stampTiles([[29,15],[29,19],[35,15],[35,19],[31,20],[32,20],[33,20]], TILE.FLOWERS);
+        // -- Sweet Dreams Candy Store -- (x:56-60, y:49-53, at the docks)
+        fillRectTiles(56, 49, 5, 5, TILE.STONE);
+        stampTiles([[55,49],[55,53],[61,49],[61,53],[57,54],[58,54],[59,54]], TILE.FLOWERS);
 
         // -- Main roads (carve back to PATH over stone blocks) --
         fillRectTiles(2,  12, 55, 3, TILE.PATH);  // Main Street (E-W, y=12-14)
@@ -1227,8 +1227,8 @@
       }
 
       function enterCandyStore() {
-        game.houseExitX = 32 * 32 + 16;  // tile 32,20 — just south of door
-        game.houseExitY = 20 * 32 + 16;
+        game.houseExitX = 58 * 32 + 16;  // tile 58,54 — just south of door
+        game.houseExitY = 54 * 32 + 16;
         game.inCandyStore = true;
         switchScene(SCENE.HOUSE_INTERIOR, () => {
           player.x = 5 * 36 + 18;
@@ -1256,8 +1256,8 @@
         const wasCandyStore = game.inCandyStore;
         game.inCandyStore = false;
         switchScene(SCENE.CITY, () => {
-          player.x = wasCandyStore ? 32 * 32 + 16 : (game.houseExitX || 47 * 32 + 16);
-          player.y = wasCandyStore ? 20 * 32 + 16 : (game.houseExitY || 24 * 32 + 16);
+          player.x = wasCandyStore ? 58 * 32 + 16 : (game.houseExitX || 47 * 32 + 16);
+          player.y = wasCandyStore ? 54 * 32 + 16 : (game.houseExitY || 24 * 32 + 16);
           player.vx = 0; player.vy = 0;
         });
       }
@@ -2042,7 +2042,7 @@
           { text: "Residential",    tx: 50, ty: 20 },
           { text: "Slums",          tx:  5, ty: 38 },
           { text: "Docks",          tx: 48, ty: 55 },
-          { text: "Sweet Dreams 🍬",tx: 28, ty: 18 },
+          { text: "Sweet Dreams 🍬",tx: 58, ty: 51 },
         ];
         ctx.font = `bold ${Math.max(7, ts + 2)}px Trebuchet MS, Arial, sans-serif`;
         ctx.textAlign = "center";
@@ -2695,8 +2695,8 @@
           enterDungeon(1);
         }
 
-        // Check candy store door (tile 32,19 → world 1040,608; player stands one tile south)
-        const _candyDoorX = 32 * 32 + 16, _candyDoorY = 20 * 32 + 16;
+        // Check candy store door (tile 58,53 → player stands one tile south)
+        const _candyDoorX = 58 * 32 + 16, _candyDoorY = 54 * 32 + 16;
         if (Math.hypot(player.x - _candyDoorX, player.y - _candyDoorY) < 52 && justPressedKeys.interact) {
           enterCandyStore();
           return;
