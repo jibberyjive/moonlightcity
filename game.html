@@ -813,7 +813,7 @@
           x: s.spawn ? s.spawn.x : 20 * TILE_SIZE + TILE_SIZE / 2,
           y: s.spawn ? s.spawn.y : 13 * TILE_SIZE + TILE_SIZE / 2,
           vx: 0, vy: 0,
-          radius: 9, speed: 96, accel: 700,
+          radius: 9, speed: 96, accel: 700, speedBoost: 0,
           dir: "down", walkTime: 0,
           hp: clamp(s.hp == null ? maxHp : s.hp, 0, maxHp),
           maxHp,
@@ -831,6 +831,7 @@
       let worldMapOpen = false;
       let dialogue = { active: false, npc: null, lineIndex: 0 };
       let candyShop = { open: false, selected: 0 };
+      let inventory = { open: false, selected: 0 };
       let dungeon = {
         floor: 1,
         data: null,
@@ -1157,8 +1158,14 @@
         const len = Math.hypot(inputX, inputY) || 1;
         inputX /= len; inputY /= len;
 
-        const targetVX = inputX * player.speed;
-        const targetVY = inputY * player.speed;
+        // Tick speed boost
+        if (player.speedBoost > 0) {
+          player.speedBoost = Math.max(0, player.speedBoost - dt);
+        }
+        const effectiveSpeed = player.speed * (player.speedBoost > 0 ? 1.7 : 1);
+
+        const targetVX = inputX * effectiveSpeed;
+        const targetVY = inputY * effectiveSpeed;
         const step = player.accel * dt;
 
         player.vx += clamp(targetVX - player.vx, -step, step);
@@ -2109,6 +2116,136 @@
         ctx.textAlign = "left";
       }
 
+        ctx.textAlign = "left";
+      }
+
+      function useInventoryItem(idx) {
+        const items = game.save && game.save.inventory ? game.save.inventory : [];
+        const item = items[idx];
+        if (!item) return;
+        if (item.hp && item.hp > 0) {
+          const healed = Math.min(item.hp === 999 ? player.maxHp : item.hp, player.maxHp - player.hp);
+          player.hp = Math.min(player.maxHp, player.hp + (item.hp === 999 ? player.maxHp : item.hp));
+          if (game.save) game.save.player.hp = player.hp;
+          showNotice(`Used ${item.emoji} ${item.name}! +${healed} HP 💗`, 2);
+        }
+        if (item.speed && item.speed > 0) {
+          player.speedBoost = item.speed;
+          showNotice(`Used ${item.emoji} ${item.name}! Speed boost for ${item.speed}s ⚡`, 2);
+        }
+        items.splice(idx, 1);
+        inventory.selected = Math.min(inventory.selected, Math.max(0, items.length - 1));
+        if (game.save) { game.save.inventory = items; writeSave(game.save); }
+      }
+
+      function drawInventory() {
+        const W = canvas.width, H = canvas.height;
+        const items = game.save && game.save.inventory ? game.save.inventory : [];
+
+        // Handle navigation input
+        if (justPressedKeys.up)   inventory.selected = (inventory.selected - 1 + Math.max(1, items.length)) % Math.max(1, items.length);
+        if (justPressedKeys.down) inventory.selected = (inventory.selected + 1) % Math.max(1, items.length);
+        if ((justPressedKeys.interact || justPressedKeys.confirm) && items.length > 0) useInventoryItem(inventory.selected);
+        if (justPressedKeys.pause || justPressedKeys.inventory) inventory.open = false;
+
+        // Overlay
+        ctx.fillStyle = "rgba(4, 8, 20, 0.88)";
+        ctx.fillRect(0, 0, W, H);
+
+        const mw = 360, mh = Math.max(240, 80 + items.length * 52 + 60);
+        const mx = Math.round((W - mw) / 2), my = Math.round((H - Math.min(mh, H - 40)) / 2);
+        const mhClamped = Math.min(mh, H - 40);
+
+        // Panel
+        ctx.fillStyle = "#0e1a2e";
+        roundRect(ctx, mx, my, mw, mhClamped, 14);
+        ctx.fill();
+        ctx.strokeStyle = "#3a7aaa";
+        ctx.lineWidth = 2;
+        roundRect(ctx, mx, my, mw, mhClamped, 14);
+        ctx.stroke();
+
+        // Title
+        ctx.textAlign = "center";
+        ctx.font = "bold 16px Trebuchet MS, Arial, sans-serif";
+        ctx.fillStyle = "#e8f4ff";
+        ctx.fillText("🎒  Inventory", mx + mw / 2, my + 28);
+
+        // Gold
+        ctx.font = "13px Trebuchet MS, Arial, sans-serif";
+        ctx.fillStyle = "#ffd700";
+        ctx.fillText(`⬡ ${getCarriedGold()} gold`, mx + mw / 2, my + 48);
+
+        // Speed boost indicator
+        if (player.speedBoost > 0) {
+          ctx.fillStyle = "#80ffff";
+          ctx.fillText(`⚡ Speed boost: ${Math.ceil(player.speedBoost)}s`, mx + mw / 2, my + 64);
+        }
+
+        const listTop = player.speedBoost > 0 ? my + 74 : my + 60;
+
+        if (items.length === 0) {
+          ctx.fillStyle = "rgba(140,160,180,0.6)";
+          ctx.font = "14px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText("Your bag is empty.", mx + mw / 2, listTop + 40);
+          ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+          ctx.fillStyle = "rgba(100,120,140,0.6)";
+          ctx.fillText("Buy items at 🍬 Sweet Dreams in the docks!", mx + mw / 2, listTop + 62);
+        } else {
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const iy = listTop + i * 52;
+            if (iy + 52 > my + mhClamped - 40) break;
+            const sel = i === inventory.selected;
+
+            ctx.fillStyle = sel ? "rgba(58,122,200,0.35)" : "rgba(255,255,255,0.04)";
+            roundRect(ctx, mx + 12, iy, mw - 24, 46, 8);
+            ctx.fill();
+            if (sel) {
+              ctx.strokeStyle = "#4a9aee";
+              ctx.lineWidth = 1.5;
+              roundRect(ctx, mx + 12, iy, mw - 24, 46, 8);
+              ctx.stroke();
+            }
+
+            // Emoji
+            ctx.font = "22px serif";
+            ctx.textAlign = "left";
+            ctx.fillStyle = "#fff";
+            ctx.fillText(item.emoji, mx + 22, iy + 31);
+
+            // Name
+            ctx.font = "bold 13px Trebuchet MS, Arial, sans-serif";
+            ctx.fillStyle = "#e8f4ff";
+            ctx.fillText(item.name, mx + 54, iy + 19);
+
+            // Effect desc
+            ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+            ctx.fillStyle = "#8ab8d8";
+            const desc = item.hp === 999 ? "Fully restores HP"
+                       : item.hp > 0 ? `Restores ${item.hp} HP`
+                       : item.speed > 0 ? `Speed boost for ${item.speed}s`
+                       : "?";
+            ctx.fillText(desc, mx + 54, iy + 35);
+
+            // Use badge on selected
+            if (sel) {
+              ctx.textAlign = "right";
+              ctx.font = "bold 11px Trebuchet MS, Arial, sans-serif";
+              ctx.fillStyle = "#4aeeaa";
+              ctx.fillText("E — Use", mx + mw - 18, iy + 26);
+            }
+          }
+        }
+
+        // Hint
+        ctx.textAlign = "center";
+        ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+        ctx.fillStyle = "rgba(140,160,180,0.7)";
+        ctx.fillText("↑↓ navigate  •  E to use  •  I or Esc to close", mx + mw / 2, my + mhClamped - 14);
+        ctx.textAlign = "left";
+      }
+
       function drawFade() {
         if (game.fadeAlpha < 0) {
           ctx.fillStyle = `rgba(0,0,0,${Math.min(1, -game.fadeAlpha)})`;
@@ -2176,6 +2313,25 @@
         const dayText = name ? `${name}  ·  Day ${day}` : `Day ${day}`;
         const dayWidth = ctx.measureText(dayText).width;
         ctx.fillText(dayText, canvas.width - 26 - dayWidth, 37);
+
+        // Inventory + gold badge
+        const inv = save && save.inventory ? save.inventory : [];
+        const invText = `🎒 ${inv.length}  ⬡ ${getCarriedGold()}`;
+        ctx.fillStyle = "rgba(0,0,0,0.28)";
+        const badgeW = ctx.measureText(invText).width + 20;
+        ctx.fillRect(14, 54, badgeW, 24);
+        ctx.fillStyle = inv.length > 0 ? "#e8f4ff" : "#607080";
+        ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText(invText, 24, 70);
+        // Speed boost indicator on HUD
+        if (player.speedBoost > 0) {
+          ctx.fillStyle = "rgba(0,0,0,0.28)";
+          ctx.fillRect(14, 82, 120, 20);
+          ctx.fillStyle = "#80ffff";
+          ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText(`⚡ Speed boost: ${Math.ceil(player.speedBoost)}s`, 20, 96);
+        }
 
         ctx.restore();
       }
@@ -2663,7 +2819,7 @@
 
       function updateCity(dt) {
         // ── World map open — freeze world ───────────────────────────────────
-        if (worldMapOpen) return;
+        if (worldMapOpen || inventory.open) return;
         // ── Dialogue mode — freeze world, handle input ──────────────────────
         if (dialogue.active) {
           if (justPressedKeys.interact || justPressedKeys.attack || justPressedKeys.confirm || justPressedKeys.pause) {
@@ -3419,6 +3575,12 @@
         // World map toggle (works in any scene except title/char-create)
         if (justPressedKeys.map && game.scene !== SCENE.TITLE && game.scene !== SCENE.CHARACTER_CREATION) {
           worldMapOpen = !worldMapOpen;
+          inventory.open = false;
+        }
+        // Inventory toggle
+        if (justPressedKeys.inventory && game.scene !== SCENE.TITLE && game.scene !== SCENE.CHARACTER_CREATION) {
+          inventory.open = !inventory.open;
+          worldMapOpen = false;
         }
 
         // Scene update
@@ -3446,6 +3608,7 @@
 
         drawFade();
         if (worldMapOpen) drawWorldMap();
+        if (inventory.open) drawInventory();
 
         clearJustPressed();
         requestAnimationFrame(tick);
