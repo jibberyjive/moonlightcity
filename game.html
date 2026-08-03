@@ -133,6 +133,14 @@
         "58,53": "south",                    // Sweet Dreams candy store — south door
       };
       const CANDY_STORE = { x1: 56, y1: 49, x2: 60, y2: 53 };
+
+      const CANDY_ITEMS = [
+        { id: "gobstopper",   emoji: "🟠", name: "Gobstopper",    desc: "Restores 3 HP",          price:  3, hp: 3  },
+        { id: "lollipop",     emoji: "🍭", name: "Lollipop",      desc: "Restores 8 HP",          price:  6, hp: 8  },
+        { id: "choc_bar",     emoji: "🍫", name: "Chocolate Bar", desc: "Restores 15 HP",         price: 10, hp: 15 },
+        { id: "fairy_floss",  emoji: "🩷", name: "Fairy Floss",   desc: "Fully restores HP",      price: 20, hp: 999},
+        { id: "sugar_rush",   emoji: "⚡", name: "Sugar Rush",    desc: "Speed boost for 20s",    price: 12, hp: 0, speed: 20 },
+      ];
       // Named NPC definitions — position is their home wander centre
       const NPC_DATA = [
         { id: "ella",   name: "Ella",   homeX: 20*32+16, homeY: 22*32+16, skin: "#e8c49a", hair: "#b85c2a", torso: "#f5e6c8", legs: "#8b5e3c", hairStyle: 1,
@@ -822,6 +830,7 @@
       let dogs = [];
       let worldMapOpen = false;
       let dialogue = { active: false, npc: null, lineIndex: 0 };
+      let candyShop = { open: false, selected: 0 };
       let dungeon = {
         floor: 1,
         data: null,
@@ -2922,7 +2931,40 @@
             player.dir = dy > 0 ? "down" : "up";
         }
 
-        if (justPressedKeys.pause) { exitHouse(); return; }
+        if (justPressedKeys.pause) { candyShop.open = false; exitHouse(); return; }
+
+        // ── Candy shop mode ────────────────────────────────────────
+        if (game.inCandyStore) {
+          if (candyShop.open) {
+            if (justPressedKeys.up)   candyShop.selected = (candyShop.selected - 1 + CANDY_ITEMS.length) % CANDY_ITEMS.length;
+            if (justPressedKeys.down) candyShop.selected = (candyShop.selected + 1) % CANDY_ITEMS.length;
+            if (justPressedKeys.pause || justPressedKeys.back) { candyShop.open = false; return; }
+            if (justPressedKeys.interact || justPressedKeys.confirm) {
+              const item = CANDY_ITEMS[candyShop.selected];
+              const gold = getCarriedGold();
+              if (gold < item.price) {
+                showNotice(`Not enough gold! Need ${item.price} ⬡`, 1.5);
+              } else {
+                setCarriedGold(gold - item.price);
+                // Add to inventory
+                if (!game.save.inventory) game.save.inventory = [];
+                game.save.inventory.push({ id: item.id, emoji: item.emoji, name: item.name, hp: item.hp, speed: item.speed || 0 });
+                writeSave(game.save);
+                showNotice(`Bought ${item.emoji} ${item.name}! ⬡${item.price} spent.`, 2);
+              }
+            }
+            return;
+          }
+          // Counter centre in interior coords
+          const counterX = 7 * 36 + 54, counterY = 3 * 36 + 18;
+          if (justPressedKeys.interact && Math.hypot(player.x - counterX, player.y - counterY) < 80) {
+            candyShop.open = true;
+            candyShop.selected = 0;
+            return;
+          }
+          if (justPressedKeys.interact) { exitHouse(); return; }
+          return;
+        }
 
         if (justPressedKeys.interact) {
           // Bed centre in interior coords (left side, rows 2–5)
@@ -3065,9 +3107,23 @@
         // ── Player ─────────────────────────────────────────
         drawPlayerSprite(time, { ...player, x: ox + player.x, y: oy + player.y });
 
+        // ── Counter approach hint ────────────────────────────
+        const counterX = 7 * ts + 54, counterY = 3 * ts + 18;
+        const nearCounter = Math.hypot(player.x - counterX, player.y - counterY) < 80;
+        if (!candyShop.open && nearCounter) {
+          ctx.fillStyle = "rgba(0,0,0,0.7)";
+          roundRect(ctx, w/2-100, h-50, 200, 28, 8);
+          ctx.fill();
+          ctx.fillStyle = "#ffe0f0";
+          ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Press E to browse the shop", w / 2, h - 31);
+          ctx.textAlign = "left";
+        }
+
         // ── Exit hint ───────────────────────────────────────
         const nearDoor = Math.hypot(player.x - ts * 5 - ts/2, player.y - ts * (roomH-1)) < 52;
-        if (nearDoor) {
+        if (!candyShop.open && nearDoor) {
           ctx.fillStyle = "rgba(0,0,0,0.7)";
           roundRect(ctx, w/2-80, h-50, 160, 28, 8);
           ctx.fill();
@@ -3075,6 +3131,81 @@
           ctx.font = "12px Trebuchet MS, Arial, sans-serif";
           ctx.textAlign = "center";
           ctx.fillText("Press E to leave", w / 2, h - 31);
+          ctx.textAlign = "left";
+        }
+
+        // ── Shop menu overlay ───────────────────────────────
+        if (candyShop.open) {
+          // Dim background
+          ctx.fillStyle = "rgba(10,4,20,0.82)";
+          ctx.fillRect(0, 0, w, h);
+
+          const mw = 340, mh = 52 + CANDY_ITEMS.length * 48 + 60;
+          const mx = Math.round((w - mw) / 2), my = Math.round((h - mh) / 2);
+
+          // Panel
+          ctx.fillStyle = "#2a0a20";
+          roundRect(ctx, mx, my, mw, mh, 14);
+          ctx.fill();
+          ctx.strokeStyle = "#e060c0";
+          ctx.lineWidth = 2;
+          roundRect(ctx, mx, my, mw, mh, 14);
+          ctx.stroke();
+
+          // Title
+          ctx.textAlign = "center";
+          ctx.font = "bold 16px Trebuchet MS, Arial, sans-serif";
+          ctx.fillStyle = "#ffe0f0";
+          ctx.fillText("🍬  Sweet Dreams", mx + mw / 2, my + 28);
+
+          // Gold display
+          ctx.font = "13px Trebuchet MS, Arial, sans-serif";
+          ctx.fillStyle = "#ffd700";
+          ctx.fillText(`⬡ ${getCarriedGold()} gold`, mx + mw / 2, my + 46);
+
+          // Items
+          for (let i = 0; i < CANDY_ITEMS.length; i++) {
+            const item = CANDY_ITEMS[i];
+            const iy = my + 60 + i * 48;
+            const selected = i === candyShop.selected;
+            const canAfford = getCarriedGold() >= item.price;
+
+            // Row background
+            ctx.fillStyle = selected ? "rgba(220,80,160,0.35)" : "rgba(255,255,255,0.04)";
+            roundRect(ctx, mx + 12, iy, mw - 24, 42, 8);
+            ctx.fill();
+            if (selected) {
+              ctx.strokeStyle = "#e060c0";
+              ctx.lineWidth = 1.5;
+              roundRect(ctx, mx + 12, iy, mw - 24, 42, 8);
+              ctx.stroke();
+            }
+
+            // Emoji
+            ctx.font = "22px serif";
+            ctx.textAlign = "left";
+            ctx.fillText(item.emoji, mx + 22, iy + 28);
+
+            // Name + desc
+            ctx.font = `bold 13px Trebuchet MS, Arial, sans-serif`;
+            ctx.fillStyle = canAfford ? "#ffe0f0" : "#886070";
+            ctx.fillText(item.name, mx + 54, iy + 17);
+            ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+            ctx.fillStyle = canAfford ? "#c0a0b0" : "#664050";
+            ctx.fillText(item.desc, mx + 54, iy + 33);
+
+            // Price
+            ctx.textAlign = "right";
+            ctx.font = "bold 13px Trebuchet MS, Arial, sans-serif";
+            ctx.fillStyle = canAfford ? "#ffd700" : "#886040";
+            ctx.fillText(`⬡ ${item.price}`, mx + mw - 18, iy + 24);
+          }
+
+          // Hint
+          ctx.textAlign = "center";
+          ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+          ctx.fillStyle = "rgba(180,140,160,0.8)";
+          ctx.fillText("↑↓ navigate  •  E to buy  •  Esc to close", mx + mw / 2, my + mh - 14);
           ctx.textAlign = "left";
         }
       }
