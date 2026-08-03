@@ -233,7 +233,45 @@
         ]
       };
 
-      const FLOOR_DATA = [null, FLOOR_01, FLOOR_02];
+      const FLOOR_03 = {
+        w: 20, h: 15,
+        tiles: [
+          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+          1,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,1,
+          1,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,1,
+          1,0,0,1,1,1,1,1,1,1,0,0,1,1,1,1,0,0,0,1,
+          1,0,0,1,8,8,8,8,8,8,8,8,8,8,1,0,0,0,0,1,
+          1,0,0,1,8,8,8,0,0,0,0,8,8,8,1,0,0,0,0,1,
+          1,0,0,1,8,8,8,0,8,8,0,8,8,8,1,0,0,0,0,1,
+          1,0,0,1,8,8,8,0,0,0,0,8,8,8,1,0,0,4,0,1,
+          1,0,0,1,8,8,8,8,8,8,8,8,8,8,1,0,0,0,0,1,
+          1,0,0,1,1,1,1,0,0,1,1,1,1,1,1,0,0,0,0,1,
+          1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1,
+          1,0,0,7,0,0,1,0,0,1,0,0,0,0,6,0,0,0,0,1,
+          1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1,
+          1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+        ],
+        playerSpawn: { x: 1, y: 1 },
+        stairsPos:   { x: 17, y: 7 },
+        upStairsPos: { x: 1, y: 1 },
+        chests:  [{ x: 3, y: 11, opened: false }],
+        barrels: [{ x: 14, y: 11, broken: false }],
+        enemySpawns: [
+          { type: "small_slime", x: 7,  y: 5, ai: "stationary" },
+          { type: "small_slime", x: 8,  y: 5, ai: "stationary" },
+          { type: "sewer_rat",   x: 9,  y: 5, ai: "patrol", patrol: [{ x: 9, y: 5 }, { x: 10, y: 5 }] },
+          { type: "small_slime", x: 10, y: 5, ai: "stationary" },
+          { type: "small_slime", x: 7,  y: 6, ai: "stationary" },
+          { type: "sewer_rat",   x: 10, y: 6, ai: "patrol", patrol: [{ x: 9, y: 6 }, { x: 10, y: 6 }] },
+          { type: "small_slime", x: 7,  y: 7, ai: "stationary" },
+          { type: "small_slime", x: 8,  y: 7, ai: "stationary" },
+          { type: "small_slime", x: 9,  y: 7, ai: "stationary" },
+          { type: "sewer_rat",   x: 10, y: 7, ai: "patrol", patrol: [{ x: 9, y: 7 }, { x: 10, y: 7 }] }
+        ]
+      };
+
+      const FLOOR_DATA = [null, FLOOR_01, FLOOR_02, FLOOR_03];
 
       function clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
@@ -965,8 +1003,10 @@
         inputX /= len;
         inputY /= len;
 
-        const targetVX = inputX * player.speed;
-        const targetVY = inputY * player.speed;
+        const onSlime = dungeonTileAt(player.x, player.y) === DTILE.SLIME_PUDDLE;
+        const moveSpeed = player.speed * (onSlime ? 0.45 : 1);
+        const targetVX = inputX * moveSpeed;
+        const targetVY = inputY * moveSpeed;
         const step = player.accel * dt;
         player.vx += clamp(targetVX - player.vx, -step, step);
         player.vy += clamp(targetVY - player.vy, -step, step);
