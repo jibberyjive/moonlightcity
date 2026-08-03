@@ -197,9 +197,43 @@
         ]
       };
 
-      // ==================================================
-      // === UTILITY HELPERS ==============================
-      // ==================================================
+      const FLOOR_02 = {
+        w: 20, h: 15,
+        tiles: [
+          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+          1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,4,1,
+          1,0,1,1,0,0,1,0,0,8,8,0,0,1,0,0,1,1,0,1,
+          1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,1,
+          1,0,1,1,1,0,0,1,1,1,1,0,0,1,1,1,0,0,0,1,
+          1,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1,
+          1,0,1,1,1,0,1,1,0,1,1,0,1,1,0,1,1,1,0,1,
+          1,0,0,0,1,0,0,0,0,1,1,0,0,0,0,1,0,0,0,1,
+          1,0,1,0,1,0,1,1,0,1,1,0,1,1,0,1,0,1,0,1,
+          1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,
+          1,0,1,1,1,0,1,1,1,1,1,1,0,1,1,1,0,1,0,1,
+          1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,
+          1,0,0,0,1,0,0,8,8,0,0,1,0,0,0,0,0,0,0,1,
+          1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+        ],
+        playerSpawn: { x: 1, y: 1 },
+        stairsPos:   { x: 18, y: 1 },
+        upStairsPos: { x: 1,  y: 1 }, // standing here + E goes back to Floor 1
+        chests: [],
+        barrels: [],
+        enemySpawns: [
+          { type: "sewer_rat",   x: 4,  y: 5,  ai: "patrol",     patrol: [{ x: 3, y: 5 },  { x: 5, y: 5 }] },
+          { type: "small_slime", x: 14, y: 5,  ai: "stationary" },
+          { type: "sewer_rat",   x: 1,  y: 7,  ai: "patrol",     patrol: [{ x: 1, y: 7 },  { x: 3, y: 7 }] },
+          { type: "sewer_rat",   x: 17, y: 7,  ai: "patrol",     patrol: [{ x: 15, y: 7 }, { x: 17, y: 7 }] },
+          { type: "small_slime", x: 9,  y: 9,  ai: "stationary" },
+          { type: "sewer_rat",   x: 1,  y: 11, ai: "patrol",     patrol: [{ x: 1, y: 11 }, { x: 2, y: 11 }] },
+          { type: "small_slime", x: 17, y: 11, ai: "stationary" },
+          { type: "sewer_rat",   x: 14, y: 12, ai: "patrol",     patrol: [{ x: 13, y: 12 }, { x: 16, y: 12 }] }
+        ]
+      };
+
+      const FLOOR_DATA = [null, FLOOR_01, FLOOR_02];
 
       function clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
@@ -816,7 +850,7 @@
       function enterDungeon(floorNum) {
         switchScene(SCENE.DUNGEON, () => {
           dungeon.floor = floorNum;
-          const src = FLOOR_01;
+          const src = FLOOR_DATA[floorNum] || FLOOR_01;
           dungeon.data = src;
           dungeon.tiles = src.tiles.slice();
           dungeon.chests = src.chests.map(c => ({ ...c, opened: false }));
@@ -1045,15 +1079,30 @@
         const sp = dungeon.data.stairsPos;
         const sx = sp.x * DTILE_SIZE + DTILE_SIZE / 2;
         const sy = sp.y * DTILE_SIZE + DTILE_SIZE / 2;
+        // Descend stairs
         if (dungeon.stairsUnlocked && Math.hypot(player.x - sx, player.y - sy) < 32 && justPressedKeys.interact) {
-          showNotice("Floor 2 — Coming soon!", 2.5);
-          switchScene(SCENE.CITY, () => {
-            player.x = 17 * TILE_SIZE + TILE_SIZE / 2;
-            player.y = 56 * TILE_SIZE + TILE_SIZE / 2;
-            player.vx = 0;
-            player.vy = 0;
-            player.attackCooldown = 0;
-          });
+          const nextFloor = dungeon.floor + 1;
+          if (FLOOR_DATA[nextFloor]) {
+            enterDungeon(nextFloor);
+          } else {
+            showNotice(`Floor ${nextFloor} — Coming soon!`, 2.5);
+          }
+        }
+
+        // Ascend / go back up (E at up-stairs position or at spawn on floor 1)
+        const up = dungeon.data.upStairsPos;
+        const upX = up ? up.x * DTILE_SIZE + DTILE_SIZE / 2 : dungeon.data.playerSpawn.x * DTILE_SIZE + DTILE_SIZE / 2;
+        const upY = up ? up.y * DTILE_SIZE + DTILE_SIZE / 2 : dungeon.data.playerSpawn.y * DTILE_SIZE + DTILE_SIZE / 2;
+        if (Math.hypot(player.x - upX, player.y - upY) < 32 && justPressedKeys.back) {
+          if (dungeon.floor > 1) {
+            enterDungeon(dungeon.floor - 1);
+          } else {
+            switchScene(SCENE.CITY, () => {
+              player.x = 17 * TILE_SIZE + TILE_SIZE / 2;
+              player.y = 56 * TILE_SIZE + TILE_SIZE / 2;
+              player.vx = 0; player.vy = 0; player.attackCooldown = 0;
+            });
+          }
         }
 
         if (player.hp <= 0) {
@@ -1715,6 +1764,20 @@
             ctx.font = "11px Arial";
             ctx.textAlign = "center";
             ctx.fillText(`${remaining} enemy${remaining > 1 ? "s" : ""} remain`, canvas.width / 2, canvas.height / 2 - 60);
+          }
+        }
+
+        // Up-stairs hint (Backspace near spawn/up-stairs pos)
+        if (dungeon.data) {
+          const upP = dungeon.data.upStairsPos || dungeon.data.playerSpawn;
+          const upPx = upP.x * DTILE_SIZE + offX + DTILE_SIZE / 2;
+          const upPy = upP.y * DTILE_SIZE + offY;
+          const distUp = Math.hypot(player.x - (upP.x * DTILE_SIZE + DTILE_SIZE / 2), player.y - (upP.y * DTILE_SIZE + DTILE_SIZE / 2));
+          if (distUp < 48) {
+            ctx.fillStyle = "#88aacc";
+            ctx.font = "bold 11px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(dungeon.floor > 1 ? "Bksp — Go up" : "Bksp — Exit sewer", upPx, upPy - 8);
           }
         }
 
