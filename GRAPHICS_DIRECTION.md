@@ -1,5 +1,7 @@
 # Moonlight City - Graphics Direction Proposals
 
+> **Selected direction:** Deluxe Pixel Life
+
 ## Goal
 
 Give Moonlight City a major visual upgrade with the warmth, readability, expressive characters, and playful presentation associated with modern life-simulation games.
@@ -79,6 +81,10 @@ Keep the existing HTML canvas and JavaScript architecture. Add a reusable layere
 ---
 
 ## Direction 2 - Deluxe Pixel Life
+
+**Selected for implementation**
+
+**Character-direction revision:** Use the [City Fashion HD sprite system](./CHARACTER_SPRITE_DESIGN.md), with native 32 × 64 world sprites and high-detail character-creator previews.
 
 Preserve the current top-down pixel-art structure but rebuild its presentation at a much higher level of polish. This is the safest route and allows improvements to ship district by district.
 
@@ -218,3 +224,20 @@ Choose **Illustrated Storybook City** if the parent-and-child identity and narra
 7. Continue through city interiors and the dungeon only after review.
 
 This order creates an early playable art target without forcing a risky whole-game rewrite.
+
+## Implemented foundation
+
+The first Deluxe Pixel Life pass now includes:
+
+- A brighter unified environment palette
+- Textured grass, paved paths, animated water, detailed flowers, and layered pixel trees
+- Reusable cut-corner pixel panels
+- A redesigned city HUD with health, time, season, inventory, and gold
+- An original floating moon-crystal character marker
+- Enhanced daylight atmosphere and screen-edge depth
+- A richer pixel skyline and menu treatment
+- Pixel-panel world selection and Create Your Life screens
+- Fully illustrated household objects in Moonlight Life
+- A matching dungeon HUD
+
+These changes preserve game logic, controls, maps, save data, and collision.

@@ -1,5 +1,7 @@
 # Moonlight City - PC and NPC Sprite Redesign
 
+> **Revised selection:** City Fashion HD
+
 ## Purpose
 
 Redesign every playable character and NPC around the selected **Deluxe Pixel Life** direction. Characters should feel expressive, fashionable, and easy to identify while remaining readable in Moonlight City's top-down canvas world.
@@ -18,8 +20,6 @@ The concepts are original. They use broad life-simulation principles such as exp
 - Character creation shows options, but face and outfit differences are limited.
 
 ## Concept A - Moonlight Heroes
-
-**Recommended**
 
 Use a **24 × 40 source sprite**, displayed at 2× scale in the city and 3–4× in portraits and character creation.
 
@@ -51,16 +51,22 @@ Each named NPC receives:
 
 Examples: Ella adjusts her apron, Lumi checks a paintbrush, Rex folds his arms, Rose's coat moves in an unseen breeze, and Doc checks a clipboard.
 
-## Concept B - City Fashion
+## Concept B - City Fashion HD
 
-Use a **24 × 48 source sprite** with taller bodies, smaller heads, and more clothing space.
+**Selected and revised**
+
+Use a **32 × 64 native source sprite** with taller bodies, expressive faces, and substantially more clothing detail. It occupies approximately the same gameplay footprint as the current upscaled sprite, but every visible pixel can carry unique information instead of being doubled.
+
+![City Fashion HD detailed concept](./docs/city-fashion-hd-concept.svg)
 
 ### Proportions
 
-- Head: 18 × 18 pixels
-- Torso: 12 × 15 pixels
-- Legs: 5 × 12 pixels each
-- Narrower shoulders and longer silhouette
+- Head: 24 × 24 pixels
+- Torso: 18 × 20 pixels
+- Legs: 7 × 18 pixels each
+- Hands: 4 × 5 pixels with pose variants
+- Narrower shoulders, longer silhouette, and clear waist line
+- Rendered at native 32 × 64 in the world and 3× in character creation
 
 ### Strengths
 
@@ -68,12 +74,26 @@ Use a **24 × 48 source sprite** with taller bodies, smaller heads, and more clo
 - Strongest adult and teen differentiation
 - Elegant appearance in character creation and dialogue portraits
 - Supports coats, layered outfits, long dresses, and formal clothing
+- Higher-resolution eyes, brows, noses, mouths, and hair highlights
+- Same approximate on-screen size as the current adult sprite
 
 ### Tradeoffs
 
-- Faces are less readable during ordinary gameplay
-- Existing doors, furniture, and interaction offsets need adjustment
+- Requires more source pixels and animation drawing than Moonlight Heroes
+- Existing doors and furniture need a visual alignment pass, but collision can remain unchanged
 - Toddler and child variants require more separate animation work
+
+### HD iteration changes
+
+The original City Fashion proposal was too narrow and used too few pixels in the face. The revised design changes it by:
+
+1. Increasing source resolution from 24 × 48 to 32 × 64.
+2. Enlarging the head from 18 × 18 to 24 × 24 while keeping an adult silhouette.
+3. Rendering at native scale in the city for finer detail.
+4. Adding three-tone material shading plus a dark blue-purple outline.
+5. Separating jackets, undershirts, waist details, trousers, and shoes into readable layers.
+6. Reserving enough facial pixels for five eye shapes, four brow shapes, and six mouths.
+7. Adding unique profile silhouettes for side-facing animation.
 
 ## Concept C - Cozy Chibi
 
@@ -103,18 +123,18 @@ Use a **24 × 32 source sprite** with large heads, short limbs, and bold facial 
 
 | Feature | Moonlight Heroes | City Fashion | Cozy Chibi |
 |---|---:|---:|---:|
-| Emotion readability | Excellent | Good | Excellent |
+| Emotion readability | Excellent | Very good | Excellent |
 | Fashion detail | Very good | Excellent | Good |
-| Current map compatibility | Excellent | Fair | Excellent |
+| Current map compatibility | Excellent | Very good | Excellent |
 | Age differentiation | Very good | Excellent | Fair |
 | Animation workload | Medium | High | Low |
-| Deluxe Pixel Life fit | Excellent | Very good | Good |
+| Deluxe Pixel Life fit | Excellent | Excellent | Good |
 
 ## Recommended production design
 
-Choose **Moonlight Heroes**.
+Choose **City Fashion HD**.
 
-It preserves the friendly proportions of the current game while fixing the inconsistent style and providing enough pixels for expressive faces, fashion, and NPC-specific animation.
+The higher native resolution makes clothing, faces, hair, and accessories feel intentionally designed rather than enlarged from a small sprite. Its revised 32 × 64 frame keeps expressions readable while delivering the fashionable life-simulation identity requested for Moonlight City.
 
 ### Sprite layers
 
@@ -144,8 +164,8 @@ Render each character from reusable layers:
 
 | Animation | Frames | Directions |
 |---|---:|---:|
-| Idle | 2 | 4 |
-| Walk | 6 | 4 |
+| Idle | 4 | 4 |
+| Walk | 8 | 4 |
 | Talk | 4 | 4 |
 | Happy reaction | 4 | Front |
 | Sad reaction | 4 | Front |
@@ -162,15 +182,15 @@ Diagonal movement can continue using the nearest cardinal animation. Eight-direc
 
 ### Adult
 
-Uses the complete 24 × 40 frame and widest clothing selection.
+Uses the complete 32 × 64 frame and widest clothing selection.
 
 ### Child
 
-Uses a 22 × 34 frame, slightly larger head ratio, shorter torso, and energetic idle movement. Child characters use age-appropriate clothing and interactions.
+Uses a 28 × 52 frame, slightly larger head ratio, shorter torso, and energetic idle movement. Child characters use age-appropriate clothing and interactions.
 
 ### Toddler
 
-Uses a 20 × 27 frame, broad head, short limbs, slower walk cycle, and exaggerated reactions. Toddler sprites never reuse scaled adult bodies.
+Uses a 24 × 40 frame, broad head, short limbs, slower walk cycle, and exaggerated reactions. Toddler sprites never reuse scaled adult bodies.
 
 ## Character creator improvements
 
@@ -195,7 +215,7 @@ This keeps customization consistent without requiring separately painted portrai
 
 ## Implementation plan
 
-1. Build the Moonlight Heroes adult front-facing idle sprite.
+1. Build the City Fashion HD adult front-facing idle sprite at native 32 × 64.
 2. Add four-direction idle and walk animation.
 3. Convert the player and one NPC as a side-by-side test.
 4. Add the layered appearance data model.
