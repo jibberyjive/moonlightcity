@@ -193,7 +193,9 @@ A prioritised task list for building Moonlight City. Work through phases in orde
 ## 🔮 Future / Backlog
 
 - [ ] Families & Relationships expansion *(post-v1.0)*
-  - [ ] Create and manage multi-character households
+  - [x] Create and manage a two-character playable household
+  - [x] Choose Partners, Spouses, Siblings, or Best Friends in household creation
+  - [x] Let married characters build their bond and welcome a playable child
   - [ ] Add partner, marriage, child, sibling, parent, and guardian relationships
   - [ ] Track relationships independently between every household member
   - [ ] Add family trees and persistent household history

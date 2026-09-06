@@ -47,7 +47,7 @@
       // === CONSTANTS & ENUMS ============================
       // ==================================================
 
-      const SCHEMA_VERSION = 6;
+      const SCHEMA_VERSION = 7;
       const SAVE_KEY = "moonlight-city-save";
 
       // Scene IDs
@@ -200,17 +200,25 @@
         { id:"cook",   emoji:"🍳", label:"Cook a meal",      duration:2.0, hours:1, target:"kitchen", needs:{ hunger:38, energy:-5, hygiene:-3 }, skill:"cooking" },
         { id:"shower", emoji:"🚿", label:"Take a shower",    duration:1.6, hours:1, target:"bathroom", needs:{ hygiene:48, energy:3 } },
         { id:"sleep",  emoji:"💤", label:"Sleep",             duration:3.0, hours:8, target:"bed", needs:{ energy:70, hunger:-18 } },
-        { id:"chat",   emoji:"💬", label:"Chat with Nova",    duration:1.8, hours:1, target:"sofa", needs:{ social:38, fun:8 }, relationship:1, skill:"charisma" },
+        { id:"chat",   emoji:"💬", label:"Call a friend",      duration:1.8, hours:1, target:"sofa", needs:{ social:38, fun:8 }, skill:"charisma" },
+        { id:"bond",   emoji:"💞", label:"Spend time together",duration:1.8, hours:1, target:"sofa", needs:{ social:32, fun:14 }, householdBond:1, skill:"charisma" },
         { id:"play",   emoji:"🎮", label:"Play a game",       duration:1.8, hours:2, target:"tv", needs:{ fun:45, social:-4 } },
         { id:"study",  emoji:"📚", label:"Study skills",      duration:2.2, hours:2, target:"desk", needs:{ fun:-10, energy:-10 }, skill:"logic" },
         { id:"work",   emoji:"💼", label:"Work a shift",      duration:2.8, hours:6, target:"desk", needs:{ hunger:-18, energy:-22, fun:-12, social:-8 }, money:90 }
       ];
+      const LIFE_CHILD_ACTION = {
+        id:"child", emoji:"🍼", label:"Welcome a child", duration:2.5, hours:8,
+        target:"bed", needs:{ energy:-18 }, childAction:true
+      };
       const LIFE_WISHES = ["cook", "chat", "play", "study", "work", "shower", "sleep"];
       const LIFE_BODY_FRAMES = ["Slim", "Classic", "Strong"];
       const LIFE_ASPIRATIONS = ["Social Star", "Mastermind", "Joyful Life"];
       const LIFE_TRAITS = ["Cheerful", "Creative", "Ambitious", "Kind", "Goofball"];
+      const LIFE_RELATIONSHIPS = ["Partners", "Spouses", "Siblings", "Best Friends"];
 
       function createDefaultLifeSim() {
+        const defaultNeeds = { hunger:75, energy:75, fun:70, social:65, hygiene:80 };
+        const defaultSkills = { cooking:0, charisma:0, logic:0 };
         return {
           characterCreated: false,
           avatar: {
@@ -223,11 +231,40 @@
             aspiration: 0,
             trait: 0
           },
+          companion: {
+            name: "Nova",
+            skin: 1,
+            hairStyle: 2,
+            hairColour: 3,
+            outfit: 1,
+            bodyFrame: 1,
+            aspiration: 0,
+            trait: 3
+          },
+          child: {
+            name: "Luna",
+            skin: 1,
+            hairStyle: 1,
+            hairColour: 3,
+            outfit: 2,
+            bodyFrame: 1,
+            aspiration: 2,
+            trait: 0,
+            ageType: "child"
+          },
+          hasChild: false,
+          activeMember: 0,
+          householdRelationship: 0,
+          householdBond: 1,
           day: 1,
           hour: 8,
           minute: 0,
-          needs: { hunger:75, energy:75, fun:70, social:65, hygiene:80 },
-          skills: { cooking:0, charisma:0, logic:0 },
+          needs: { ...defaultNeeds },
+          companionNeeds: { ...defaultNeeds },
+          childNeeds: { ...defaultNeeds },
+          skills: { ...defaultSkills },
+          companionSkills: { ...defaultSkills },
+          childSkills: { ...defaultSkills },
           novaRelationship: 0,
           aspirationPoints: 0,
           completedWishes: 0
@@ -810,6 +847,10 @@
               save.lifeSim = Object.assign({}, createDefaultLifeSim(), save.lifeSim || {});
               save.version = 6;
               break;
+            case 6:
+              save.lifeSim = Object.assign({}, createDefaultLifeSim(), save.lifeSim || {});
+              save.version = 7;
+              break;
             default:
               return createNewSave();
           }
@@ -833,8 +874,14 @@
         if (!Array.isArray(save.buildItems)) save.buildItems = [];
         save.lifeSim = Object.assign({}, fresh.lifeSim, save.lifeSim || {});
         save.lifeSim.avatar = Object.assign({}, fresh.lifeSim.avatar, save.lifeSim.avatar || {});
+        save.lifeSim.companion = Object.assign({}, fresh.lifeSim.companion, save.lifeSim.companion || {});
+        save.lifeSim.child = Object.assign({}, fresh.lifeSim.child, save.lifeSim.child || {});
         save.lifeSim.needs = Object.assign({}, fresh.lifeSim.needs, save.lifeSim.needs || {});
+        save.lifeSim.companionNeeds = Object.assign({}, fresh.lifeSim.companionNeeds, save.lifeSim.companionNeeds || {});
+        save.lifeSim.childNeeds = Object.assign({}, fresh.lifeSim.childNeeds, save.lifeSim.childNeeds || {});
         save.lifeSim.skills = Object.assign({}, fresh.lifeSim.skills, save.lifeSim.skills || {});
+        save.lifeSim.companionSkills = Object.assign({}, fresh.lifeSim.companionSkills, save.lifeSim.companionSkills || {});
+        save.lifeSim.childSkills = Object.assign({}, fresh.lifeSim.childSkills, save.lifeSim.childSkills || {});
         return save;
       }
 
@@ -5057,7 +5104,7 @@
 
         const cards = [
           { title:"Moonlight City", icon:"🌙", colour:"#4f68a8", desc:"Explore the city, meet friends, decorate homes, and brave the dungeon." },
-          { title:"Moonlight Life Pack", icon:"🏡", colour:"#39a88e", desc: game.save.lifeSim.characterCreated ? "Continue your household story, needs, career, skills, and wishes." : "Create a household character, then begin a new life story." }
+          { title:"Moonlight Life Pack", icon:"🏡", colour:"#39a88e", desc: game.save.lifeSim.characterCreated ? "Continue your playable household, relationships, needs, skills, and wishes." : "Design two playable people, choose their relationship, and begin a household story." }
         ];
         const gap = 34, cardW = Math.min(420, (w - 110 - gap) / 2), cardH = Math.min(390, h - 235);
         const startX = w / 2 - cardW - gap / 2;
@@ -5086,33 +5133,46 @@
         });
         ctx.fillStyle = "#8595aa";
         ctx.font = "15px Trebuchet MS, Arial, sans-serif";
-        ctx.fillText("↑↓ choose  ·  Enter select  ·  C edit Life character  ·  Esc back", w / 2, h - 32);
+        ctx.fillText("↑↓ choose  ·  Enter select  ·  C edit Life household  ·  Esc back", w / 2, h - 32);
         ctx.textAlign = "left";
       }
 
       const lifeCreator = {
         field: 0,
-        draft: null
+        member: 0,
+        drafts: null,
+        draft: null,
+        relationship: 0
       };
-      const LIFE_CREATOR_FIELDS = ["name", "skin", "hairColour", "hairStyle", "outfit", "bodyFrame", "aspiration", "trait", "done"];
+      const LIFE_CREATOR_FIELDS = ["member", "name", "skin", "hairColour", "hairStyle", "outfit", "bodyFrame", "aspiration", "trait", "relationship", "done"];
+
+      function setLifeCreatorMember(index) {
+        lifeCreator.member = clamp(index, 0, 1);
+        lifeCreator.draft = lifeCreator.drafts[lifeCreator.member];
+      }
 
       function enterLifeCharacterCreation() {
         const life = game.save.lifeSim;
-        const base = life.avatar || createDefaultLifeSim().avatar;
-        lifeCreator.draft = {
-          ...base,
-          name: life.characterCreated ? base.name : game.save.player.name,
-          skin: life.characterCreated ? base.skin : game.save.player.skin,
-          hairStyle: life.characterCreated ? base.hairStyle : game.save.player.hairStyle,
-          hairColour: life.characterCreated ? base.hairColour : game.save.player.hairColour,
-          outfit: life.characterCreated ? base.outfit : game.save.player.outfit
-        };
+        const defaults = createDefaultLifeSim();
+        const first = Object.assign({}, defaults.avatar, life.avatar || {});
+        const second = Object.assign({}, defaults.companion, life.companion || {});
+        if (!life.characterCreated) {
+          first.name = game.save.player.name;
+          first.skin = game.save.player.skin;
+          first.hairStyle = game.save.player.hairStyle;
+          first.hairColour = game.save.player.hairColour;
+          first.outfit = game.save.player.outfit;
+        }
+        lifeCreator.drafts = [first, second];
+        lifeCreator.relationship = life.householdRelationship || 0;
+        setLifeCreatorMember(0);
         lifeCreator.field = 0;
         switchScene(SCENE.LIFE_CHARACTER_CREATION);
       }
 
       function cycleLifeCreatorValue(field, direction) {
         const draft = lifeCreator.draft;
+        if (field === "member") setLifeCreatorMember((lifeCreator.member + direction + 2) % 2);
         if (field === "skin") draft.skin = (draft.skin + direction + SKIN_TONES.length) % SKIN_TONES.length;
         if (field === "hairColour") draft.hairColour = (draft.hairColour + direction + HAIR_COLORS.length) % HAIR_COLORS.length;
         if (field === "hairStyle") draft.hairStyle = (draft.hairStyle + direction + HAIR_STYLE_COUNT) % HAIR_STYLE_COUNT;
@@ -5120,6 +5180,9 @@
         if (field === "bodyFrame") draft.bodyFrame = (draft.bodyFrame + direction + LIFE_BODY_FRAMES.length) % LIFE_BODY_FRAMES.length;
         if (field === "aspiration") draft.aspiration = (draft.aspiration + direction + LIFE_ASPIRATIONS.length) % LIFE_ASPIRATIONS.length;
         if (field === "trait") draft.trait = (draft.trait + direction + LIFE_TRAITS.length) % LIFE_TRAITS.length;
+        if (field === "relationship") {
+          lifeCreator.relationship = (lifeCreator.relationship + direction + LIFE_RELATIONSHIPS.length) % LIFE_RELATIONSHIPS.length;
+        }
       }
 
       function updateLifeCharacterCreation() {
@@ -5137,7 +5200,10 @@
           lifeCreator.draft.name = lifeCreator.draft.name.slice(0, -1) || "Hero";
         }
         if ((justPressedKeys.confirm || justPressedKeys.interact || mouse.clicked) && field === "done") {
-          game.save.lifeSim.avatar = { ...lifeCreator.draft };
+          game.save.lifeSim.avatar = { ...lifeCreator.drafts[0] };
+          game.save.lifeSim.companion = { ...lifeCreator.drafts[1] };
+          game.save.lifeSim.householdRelationship = lifeCreator.relationship;
+          game.save.lifeSim.activeMember = 0;
           game.save.lifeSim.characterCreated = true;
           writeSave(game.save);
           enterMoonlightLife();
@@ -5153,8 +5219,34 @@
         }
       });
 
-      function lifeAvatarData(x, y, time) {
-        const avatar = game.save.lifeSim.avatar;
+      function lifeHouseholdMembers(life = game.save.lifeSim) {
+        const members = [life.avatar, life.companion];
+        if (life.hasChild) members.push(life.child);
+        return members;
+      }
+
+      function activeLifeAvatar(life = game.save.lifeSim) {
+        return lifeHouseholdMembers(life)[life.activeMember] || life.avatar;
+      }
+
+      function activeLifeNeeds(life = game.save.lifeSim) {
+        if (life.activeMember === 2 && life.hasChild) return life.childNeeds;
+        return life.activeMember === 1 ? life.companionNeeds : life.needs;
+      }
+
+      function activeLifeSkills(life = game.save.lifeSim) {
+        if (life.activeMember === 2 && life.hasChild) return life.childSkills;
+        return life.activeMember === 1 ? life.companionSkills : life.skills;
+      }
+
+      function availableLifeActions(life = game.save.lifeSim) {
+        const actions = LIFE_ACTIONS.filter(action => life.activeMember !== 2 || action.id !== "work");
+        const spouses = LIFE_RELATIONSHIPS[life.householdRelationship] === "Spouses";
+        if (spouses && !life.hasChild && life.householdBond >= 3) actions.push(LIFE_CHILD_ACTION);
+        return actions;
+      }
+
+      function lifeAvatarData(x, y, time, avatar = activeLifeAvatar()) {
         return {
           ...player,
           x, y,
@@ -5162,22 +5254,22 @@
           hairStyle: avatar.hairStyle,
           hairColour: avatar.hairColour,
           outfit: avatar.outfit,
-          ageType: "adult",
+          ageType: avatar.ageType || "adult",
           walkTime: time
         };
       }
 
-      function drawLifeAvatar(time, x, y, walking = false, scale = 1) {
-        const frame = game.save.lifeSim.avatar.bodyFrame;
+      function drawLifeAvatar(time, x, y, walking = false, scale = 1, avatar = activeLifeAvatar(), direction = null) {
+        const frame = avatar.bodyFrame;
         const widthScale = frame === 0 ? 0.82 : frame === 2 ? 1.18 : 1;
         ctx.save();
         ctx.translate(x, y);
         ctx.scale(widthScale * scale, scale);
-        const avatar = lifeAvatarData(0, 0, walking ? time * 3 : 0);
-        avatar.vx = walking ? 1 : 0;
-        avatar.vy = 0;
-        avatar.dir = walking ? "right" : "down";
-        drawPlayerSprite(time, avatar);
+        const sprite = lifeAvatarData(0, 0, walking ? time * 3 : 0, avatar);
+        sprite.vx = walking ? 1 : 0;
+        sprite.vy = 0;
+        sprite.dir = direction || (walking ? "right" : "down");
+        drawPlayerSprite(time, sprite);
         ctx.restore();
       }
 
@@ -5198,27 +5290,34 @@
 
         ctx.fillStyle = "#14394a";
         ctx.font = "bold 34px Trebuchet MS, Arial, sans-serif";
-        ctx.fillText("Create Your Life", 38, 54);
+        ctx.fillText("Create Your Household", 38, 54);
         ctx.fillStyle = "#477080";
         ctx.font = "16px Trebuchet MS, Arial, sans-serif";
-        ctx.fillText("Make an original household character for the Moonlight Life Pack.", 40, 80);
+        ctx.fillText("Design two playable people and choose how they are related.", 40, 80);
 
-        const previewX = w * 0.29, previewY = h * 0.54;
-        const savedAvatar = game.save.lifeSim.avatar;
-        game.save.lifeSim.avatar = draft;
-        drawMoonMarker(previewX, previewY - 125, time, "#2bbd94");
-        drawLifeAvatar(time, previewX, previewY, false, 3.2);
-        game.save.lifeSim.avatar = savedAvatar;
+        const previewY = h * 0.52;
+        const previewXs = [w * 0.20, w * 0.38];
+        lifeCreator.drafts.forEach((member, index) => {
+          const previewX = previewXs[index];
+          if (lifeCreator.member === index) drawMoonMarker(previewX, previewY - 105, time, "#2bbd94");
+          drawLifeAvatar(time, previewX, previewY, false, 2.6, member);
+          ctx.textAlign = "center";
+          ctx.fillStyle = lifeCreator.member === index ? "#14394a" : "#477080";
+          ctx.font = lifeCreator.member === index ? "bold 20px Trebuchet MS, Arial, sans-serif" : "18px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText(member.name || `Member ${index + 1}`, previewX, h * 0.73);
+          ctx.font = "14px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText(index === 0 ? "Household Member 1" : "Household Member 2", previewX, h * 0.77);
+        });
 
         ctx.textAlign = "center";
         ctx.fillStyle = "#14394a";
-        ctx.font = "bold 25px Trebuchet MS, Arial, sans-serif";
-        ctx.fillText(draft.name || "Hero", previewX, h * 0.79);
+        ctx.font = "bold 22px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(LIFE_RELATIONSHIPS[lifeCreator.relationship], w * 0.29, h * 0.84);
         ctx.fillStyle = "#477080";
-        ctx.font = "16px Trebuchet MS, Arial, sans-serif";
-        ctx.fillText(`${LIFE_TRAITS[draft.trait]} · ${LIFE_ASPIRATIONS[draft.aspiration]}`, previewX, h * 0.83);
+        ctx.font = "14px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(`${LIFE_TRAITS[draft.trait]} · ${LIFE_ASPIRATIONS[draft.aspiration]}`, w * 0.29, h * 0.88);
 
-        const panelX = w * 0.53, panelY = 108, panelW = Math.min(500, w * 0.42), rowH = 51;
+        const panelX = w * 0.53, panelY = 92, panelW = Math.min(500, w * 0.42), rowH = 45;
         ctx.textAlign = "left";
         LIFE_CREATOR_FIELDS.forEach((field, index) => {
           const y = panelY + index * rowH;
@@ -5229,10 +5328,12 @@
             selected ? "#bdf9e8" : "#8bbcaf"
           );
           const labels = {
-            name:"Name", skin:"Skin Tone", hairColour:"Hair Colour", hairStyle:"Hair Style",
-            outfit:"Outfit", bodyFrame:"Body Frame", aspiration:"Aspiration", trait:"Personality", done:"Start Life"
+            member:"Editing", name:"Name", skin:"Skin Tone", hairColour:"Hair Colour", hairStyle:"Hair Style",
+            outfit:"Outfit", bodyFrame:"Body Frame", aspiration:"Aspiration", trait:"Personality",
+            relationship:"Relationship", done:"Start Household"
           };
           let value = "";
+          if (field === "member") value = `Member ${lifeCreator.member + 1}`;
           if (field === "name") value = draft.name;
           if (field === "skin") value = `${draft.skin + 1} / ${SKIN_TONES.length}`;
           if (field === "hairColour") value = `${draft.hairColour + 1} / ${HAIR_COLORS.length}`;
@@ -5241,7 +5342,8 @@
           if (field === "bodyFrame") value = LIFE_BODY_FRAMES[draft.bodyFrame];
           if (field === "aspiration") value = LIFE_ASPIRATIONS[draft.aspiration];
           if (field === "trait") value = LIFE_TRAITS[draft.trait];
-          if (field === "done") value = "▶ Play";
+          if (field === "relationship") value = LIFE_RELATIONSHIPS[lifeCreator.relationship];
+          if (field === "done") value = "▶ Play Together";
           ctx.fillStyle = selected ? "#ffffff" : "#25475a";
           ctx.font = "bold 14px Trebuchet MS, Arial, sans-serif";
           ctx.fillText(labels[field], panelX + 16, y + 17);
@@ -5252,7 +5354,7 @@
         });
         ctx.fillStyle = "#477080";
         ctx.font = "14px Trebuchet MS, Arial, sans-serif";
-        ctx.fillText("← → category  ·  ↑ ↓ change  ·  type a name  ·  Enter start  ·  Esc back", panelX, h - 28);
+        ctx.fillText("← → category  ·  ↑ ↓ change/member  ·  type names  ·  Enter start  ·  Esc back", panelX, h - 24);
       }
 
       function drawCharacterCreation(time) {
@@ -5347,8 +5449,11 @@
         queue: [],
         active: null,
         progress: 0,
-        avatarX: 0.5,
-        avatarY: 0.56,
+        memberPositions: [
+          { x:0.48, y:0.58 },
+          { x:0.62, y:0.54 },
+          { x:0.36, y:0.61 }
+        ],
         decayTimer: 0,
         saveTimer: 0,
         message: "Choose actions to shape the day."
@@ -5358,8 +5463,14 @@
         const fresh = createDefaultLifeSim();
         game.save.lifeSim = Object.assign({}, fresh, game.save.lifeSim || {});
         game.save.lifeSim.avatar = Object.assign({}, fresh.avatar, game.save.lifeSim.avatar || {});
+        game.save.lifeSim.companion = Object.assign({}, fresh.companion, game.save.lifeSim.companion || {});
+        game.save.lifeSim.child = Object.assign({}, fresh.child, game.save.lifeSim.child || {});
         game.save.lifeSim.needs = Object.assign({}, fresh.needs, game.save.lifeSim.needs || {});
+        game.save.lifeSim.companionNeeds = Object.assign({}, fresh.companionNeeds, game.save.lifeSim.companionNeeds || {});
+        game.save.lifeSim.childNeeds = Object.assign({}, fresh.childNeeds, game.save.lifeSim.childNeeds || {});
         game.save.lifeSim.skills = Object.assign({}, fresh.skills, game.save.lifeSim.skills || {});
+        game.save.lifeSim.companionSkills = Object.assign({}, fresh.companionSkills, game.save.lifeSim.companionSkills || {});
+        game.save.lifeSim.childSkills = Object.assign({}, fresh.childSkills, game.save.lifeSim.childSkills || {});
         if (!game.save.lifeSim.characterCreated) {
           enterLifeCharacterCreation();
           return;
@@ -5370,11 +5481,20 @@
         lifeRuntime.queue = [];
         lifeRuntime.active = null;
         lifeRuntime.progress = 0;
-        lifeRuntime.avatarX = 0.5;
-        lifeRuntime.avatarY = 0.56;
+        game.save.lifeSim.activeMember = clamp(game.save.lifeSim.activeMember || 0, 0, lifeHouseholdMembers(game.save.lifeSim).length - 1);
+        lifeRuntime.memberPositions = [
+          { x:0.48, y:0.58 },
+          { x:0.62, y:0.54 },
+          { x:0.36, y:0.61 }
+        ];
         lifeRuntime.decayTimer = 0;
         lifeRuntime.saveTimer = 0;
-        lifeRuntime.message = "Choose actions to shape the day.";
+        const canGrowFamily = LIFE_RELATIONSHIPS[game.save.lifeSim.householdRelationship] === "Spouses" && !game.save.lifeSim.hasChild;
+        lifeRuntime.message = canGrowFamily
+          ? game.save.lifeSim.householdBond >= 3
+            ? "Welcome a child is unlocked in the action list."
+            : "Spend time together to reach Bond 3 and unlock Welcome a child."
+          : "Choose actions to shape the household day.";
         switchScene(SCENE.MOONLIGHT_LIFE);
       }
 
@@ -5394,17 +5514,37 @@
 
       function completeLifeAction(action) {
         const life = game.save.lifeSim;
+        const needs = activeLifeNeeds(life);
+        const skills = activeLifeSkills(life);
         for (const [need, amount] of Object.entries(action.needs)) {
-          life.needs[need] = clamp(life.needs[need] + amount, 0, 100);
+          needs[need] = clamp(needs[need] + amount, 0, 100);
         }
         if (action.money) {
           setCarriedGold(getCarriedGold() + action.money);
         }
         if (action.skill) {
-          life.skills[action.skill] = (life.skills[action.skill] || 0) + 1;
+          skills[action.skill] = (skills[action.skill] || 0) + 1;
         }
-        if (action.relationship) {
-          life.novaRelationship = clamp(life.novaRelationship + action.relationship, 0, 10);
+        if (action.householdBond) {
+          life.householdBond = clamp(life.householdBond + action.householdBond, 0, 10);
+          const otherNeeds = [life.needs, life.companionNeeds, ...(life.hasChild ? [life.childNeeds] : [])]
+            .filter(memberNeeds => memberNeeds !== needs);
+          for (const memberNeeds of otherNeeds) {
+            memberNeeds.social = clamp(memberNeeds.social + 18, 0, 100);
+            memberNeeds.fun = clamp(memberNeeds.fun + 8, 0, 100);
+          }
+        }
+        if (action.childAction && !life.hasChild) {
+          life.hasChild = true;
+          life.child = {
+            ...life.child,
+            skin: Math.round((life.avatar.skin + life.companion.skin) / 2),
+            hairColour: life.householdBond % 2 ? life.avatar.hairColour : life.companion.hairColour,
+            hairStyle: (life.avatar.hairStyle + life.companion.hairStyle) % HAIR_STYLE_COUNT,
+            ageType: "child"
+          };
+          lifeRuntime.queue = lifeRuntime.queue.filter(queued => !queued.childAction);
+          lifeRuntime.message = `${life.child.name} joined the family! Press Tab to play as them.`;
         }
         advanceLifeClock(action.hours);
         let reward = "";
@@ -5413,12 +5553,19 @@
           life.aspirationPoints += 25;
           reward = " Wish complete! +25 aspiration.";
         }
-        lifeRuntime.message = `${action.label} finished.${action.money ? ` +${action.money} gold.` : ""}${reward}`;
+        if (!action.childAction) {
+          lifeRuntime.message = `${action.label} finished.${action.money ? ` +${action.money} gold.` : ""}${reward}`;
+          if (LIFE_RELATIONSHIPS[life.householdRelationship] === "Spouses" && !life.hasChild && life.householdBond >= 3) {
+            lifeRuntime.message += " Welcome a child is now available.";
+          }
+        }
         writeSave(game.save);
       }
 
       function updateMoonlightLife(dt) {
         const life = game.save.lifeSim;
+        const actions = availableLifeActions(life);
+        lifeRuntime.selected = clamp(lifeRuntime.selected, 0, actions.length - 1);
         if (justPressedKeys.pause) {
           writeSave(game.save);
           lifeRuntime.queue = [];
@@ -5427,17 +5574,32 @@
           return;
         }
 
-        if (justPressedKeys.up) lifeRuntime.selected = (lifeRuntime.selected - 1 + LIFE_ACTIONS.length) % LIFE_ACTIONS.length;
-        if (justPressedKeys.down) lifeRuntime.selected = (lifeRuntime.selected + 1) % LIFE_ACTIONS.length;
+        if (justPressedKeys.tab) {
+          if (lifeRuntime.active || lifeRuntime.queue.length) {
+            lifeRuntime.message = "Finish or clear the action queue before switching characters.";
+          } else {
+            life.activeMember = (life.activeMember + 1) % lifeHouseholdMembers(life).length;
+            lifeRuntime.message = `Now playing as ${activeLifeAvatar(life).name}.`;
+            writeSave(game.save);
+          }
+        }
+        if (justPressedKeys.up) lifeRuntime.selected = (lifeRuntime.selected - 1 + actions.length) % actions.length;
+        if (justPressedKeys.down) lifeRuntime.selected = (lifeRuntime.selected + 1) % actions.length;
         if (justPressedKeys.back && lifeRuntime.queue.length) {
           const removed = lifeRuntime.queue.pop();
           lifeRuntime.message = `${removed.label} removed from the queue.`;
         }
         if (justPressedKeys.interact || justPressedKeys.confirm) {
           if (lifeRuntime.queue.length < 4) {
-            const action = LIFE_ACTIONS[lifeRuntime.selected];
-            lifeRuntime.queue.push(action);
-            lifeRuntime.message = `${action.label} added to the queue.`;
+            const action = actions[lifeRuntime.selected];
+            const childActionQueued = action.childAction &&
+              (lifeRuntime.active?.childAction || lifeRuntime.queue.some(queued => queued.childAction));
+            if (childActionQueued) {
+              lifeRuntime.message = "Welcome a child is already queued.";
+            } else {
+              lifeRuntime.queue.push(action);
+              lifeRuntime.message = `${action.label} added to the queue.`;
+            }
           } else {
             lifeRuntime.message = "The action queue is full.";
           }
@@ -5448,11 +5610,15 @@
         if (lifeRuntime.decayTimer >= 1) {
           const ticks = Math.floor(lifeRuntime.decayTimer);
           lifeRuntime.decayTimer -= ticks;
-          life.needs.hunger = clamp(life.needs.hunger - 0.10 * ticks, 0, 100);
-          life.needs.energy = clamp(life.needs.energy - 0.07 * ticks, 0, 100);
-          life.needs.fun = clamp(life.needs.fun - 0.06 * ticks, 0, 100);
-          life.needs.social = clamp(life.needs.social - 0.05 * ticks, 0, 100);
-          life.needs.hygiene = clamp(life.needs.hygiene - 0.04 * ticks, 0, 100);
+          const householdNeeds = [life.needs, life.companionNeeds];
+          if (life.hasChild) householdNeeds.push(life.childNeeds);
+          for (const memberNeeds of householdNeeds) {
+            memberNeeds.hunger = clamp(memberNeeds.hunger - 0.10 * ticks, 0, 100);
+            memberNeeds.energy = clamp(memberNeeds.energy - 0.07 * ticks, 0, 100);
+            memberNeeds.fun = clamp(memberNeeds.fun - 0.06 * ticks, 0, 100);
+            memberNeeds.social = clamp(memberNeeds.social - 0.05 * ticks, 0, 100);
+            memberNeeds.hygiene = clamp(memberNeeds.hygiene - 0.04 * ticks, 0, 100);
+          }
           life.minute += 2 * ticks;
           while (life.minute >= 60) {
             life.minute -= 60;
@@ -5475,8 +5641,9 @@
           sofa:[0.64,0.42], tv:[0.80,0.42], desk:[0.70,0.70]
         };
         const target = targets[lifeRuntime.active.target];
-        lifeRuntime.avatarX += (target[0] - lifeRuntime.avatarX) * Math.min(1, dt * 4);
-        lifeRuntime.avatarY += (target[1] - lifeRuntime.avatarY) * Math.min(1, dt * 4);
+        const position = lifeRuntime.memberPositions[life.activeMember];
+        position.x += (target[0] - position.x) * Math.min(1, dt * 4);
+        position.y += (target[1] - position.y) * Math.min(1, dt * 4);
         lifeRuntime.progress += dt / lifeRuntime.active.duration;
         if (lifeRuntime.progress >= 1) {
           completeLifeAction(lifeRuntime.active);
@@ -5559,7 +5726,11 @@
       function drawMoonlightLife(time) {
         const w = canvas.width, h = canvas.height;
         const life = game.save.lifeSim;
-        const mood = lifeMood(life.needs);
+        const avatar = activeLifeAvatar(life);
+        const needs = activeLifeNeeds(life);
+        const skills = activeLifeSkills(life);
+        const actions = availableLifeActions(life);
+        const mood = lifeMood(needs);
         const roomX = 24, roomY = 86;
         const roomW = Math.max(330, w - 390), roomH = Math.max(300, h - 245);
         const panelX = w - 340, panelY = 86, panelW = 316;
@@ -5600,24 +5771,35 @@
           drawLifeRoomObject(type, label, fx, fy, time);
         }
 
-        drawLifeAvatar(
-          time,
-          roomX + lifeRuntime.avatarX * roomW,
-          roomY + lifeRuntime.avatarY * roomH,
-          !!lifeRuntime.active
-        );
+        const members = lifeHouseholdMembers(life);
+        const renderOrder = members.map((member, index) => ({
+          member,
+          index,
+          position: lifeRuntime.memberPositions[index]
+        })).sort((a, b) => a.position.y - b.position.y);
+        for (const entry of renderOrder) {
+          const px = roomX + entry.position.x * roomW;
+          const py = roomY + entry.position.y * roomH;
+          const active = entry.index === life.activeMember;
+          drawLifeAvatar(time, px, py, active && !!lifeRuntime.active, 1, entry.member);
+          ctx.textAlign = "center";
+          ctx.fillStyle = active ? "#14394a" : "#59697a";
+          ctx.font = active ? "bold 12px Trebuchet MS, Arial, sans-serif" : "11px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText(entry.member.name, px, py + 45);
+        }
+        const activePosition = lifeRuntime.memberPositions[life.activeMember];
         drawMoonMarker(
-          roomX + lifeRuntime.avatarX * roomW,
-          roomY + lifeRuntime.avatarY * roomH - 51,
+          roomX + activePosition.x * roomW,
+          roomY + activePosition.y * roomH - 51,
           time
         );
 
-        drawPixelPanel(panelX, panelY, panelW, Math.min(430, h - 180));
+        drawPixelPanel(panelX, panelY, panelW, Math.min(480, h - 180));
         ctx.textAlign = "left";
         ctx.fillStyle = "#f4e8b8";
         ctx.font = "bold 21px Trebuchet MS, Arial, sans-serif";
         ctx.fillText("Choose an action", panelX + 18, panelY + 30);
-        LIFE_ACTIONS.forEach((action, index) => {
+        actions.forEach((action, index) => {
           const y = panelY + 48 + index * 43;
           drawPixelPanel(
             panelX + 12, y, panelW - 24, 35,
@@ -5634,7 +5816,7 @@
         ctx.textAlign = "left";
         ctx.fillStyle = "#f3e8b8";
         ctx.font = "bold 26px Trebuchet MS, Arial, sans-serif";
-        ctx.fillText(`${game.save.lifeSim.avatar.name}'s Moonlight Life`, 24, 31);
+        ctx.fillText(`${avatar.name}'s Moonlight Life`, 24, 31);
         ctx.fillStyle = mood.colour;
         ctx.font = "bold 15px Trebuchet MS, Arial, sans-serif";
         ctx.fillText(`◆ ${mood.label}`, 25, 54);
@@ -5648,10 +5830,11 @@
         ctx.textAlign = "left";
         ctx.fillStyle = "#8bdac9";
         ctx.font = "12px Trebuchet MS, Arial, sans-serif";
-        ctx.fillText(`${LIFE_TRAITS[game.save.lifeSim.avatar.trait]} · ${LIFE_ASPIRATIONS[game.save.lifeSim.avatar.aspiration]}`, 25, 68);
+        const role = life.activeMember === 2 ? "Child" : LIFE_RELATIONSHIPS[life.householdRelationship];
+        ctx.fillText(`${role} · ${LIFE_TRAITS[avatar.trait]} · ${LIFE_ASPIRATIONS[avatar.aspiration]}`, 25, 68);
 
         const needsY = h - 120;
-        const needEntries = [["Hunger",life.needs.hunger],["Energy",life.needs.energy],["Fun",life.needs.fun],["Social",life.needs.social],["Hygiene",life.needs.hygiene]];
+        const needEntries = [["Hunger",needs.hunger],["Energy",needs.energy],["Fun",needs.fun],["Social",needs.social],["Hygiene",needs.hygiene]];
         const needW = Math.max(90, (w - 72) / 5 - 16);
         needEntries.forEach(([label,value], index) => drawLifeNeed(label, value, 24 + index * (needW + 16), needsY, needW));
 
@@ -5663,10 +5846,10 @@
         ctx.fillStyle = "#f0e8c8";
         ctx.fillText(lifeRuntime.message, 24, h - 47);
         ctx.fillStyle = "#8796aa";
-        ctx.fillText("↑↓ choose  ·  Enter/E queue  ·  Backspace remove last  ·  Esc save & return", 24, h - 20);
+        ctx.fillText("Tab switch person  ·  ↑↓ choose  ·  Enter/E queue  ·  Backspace remove  ·  Esc save", 24, h - 20);
         ctx.textAlign = "right";
         ctx.fillStyle = "#b9c7d8";
-        ctx.fillText(`Cooking ${life.skills.cooking}  ·  Charisma ${life.skills.charisma}  ·  Logic ${life.skills.logic}  ·  Nova ♥ ${life.novaRelationship}/10`, panelX + panelW - 18, panelY + 386);
+        ctx.fillText(`Cooking ${skills.cooking} · Charisma ${skills.charisma} · Logic ${skills.logic} · Household ♥ ${life.householdBond}/10`, panelX + panelW - 18, panelY + 460);
         if (lifeRuntime.active) {
           const barX = roomX + 18, barY = roomY + roomH - 25, barW = roomW - 36;
           ctx.fillStyle = "#26364d";
