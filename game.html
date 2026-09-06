@@ -47,7 +47,7 @@
       // === CONSTANTS & ENUMS ============================
       // ==================================================
 
-      const SCHEMA_VERSION = 8;
+      const SCHEMA_VERSION = 9;
       const SAVE_KEY = "moonlight-city-save";
 
       // Scene IDs
@@ -207,7 +207,7 @@
         { id:"work",   emoji:"💼", label:"Work a shift",      duration:2.8, hours:6, target:"desk", needs:{ hunger:-18, energy:-22, fun:-12, social:-8 }, money:90 }
       ];
       const LIFE_CHILD_ACTION = {
-        id:"child", emoji:"🍼", label:"Welcome a child", duration:2.5, hours:8,
+        id:"child", emoji:"🍼", label:"Welcome a baby", duration:2.5, hours:8,
         target:"bed", needs:{ energy:-18 }, childAction:true
       };
       const LIFE_VAMPIRE_ACTION = {
@@ -221,6 +221,8 @@
       const LIFE_RELATIONSHIPS = ["Partners", "Spouses", "Siblings", "Best Friends"];
       const LIFE_STATES = ["Human", "Vampire"];
       const LIFE_AGES = ["adult", "child"];
+      const LIFE_MAX_CHILDREN = 4;
+      const LIFE_TWIN_CHANCE = 0.25;
 
       function createDefaultLifeSim() {
         const defaultNeeds = { hunger:75, energy:75, fun:70, social:65, hygiene:80, thirst:75 };
@@ -265,6 +267,10 @@
             lifeState: 0
           },
           hasChild: false,
+          children: [],
+          pendingBabyNames: [],
+          pendingBabyTwins: false,
+          pendingBabyNameTotal: 0,
           activeMember: 0,
           householdRelationship: 0,
           householdBond: 1,
@@ -867,6 +873,20 @@
               save.lifeSim = Object.assign({}, createDefaultLifeSim(), save.lifeSim || {});
               save.version = 8;
               break;
+            case 8: {
+              const life = save.lifeSim = Object.assign({}, createDefaultLifeSim(), save.lifeSim || {});
+              if (!Array.isArray(life.children)) life.children = [];
+              if (life.hasChild && life.children.length === 0) {
+                const defaults = createDefaultLifeSim();
+                life.children.push({
+                  avatar: Object.assign({}, defaults.child, life.child || {}),
+                  needs: Object.assign({}, defaults.childNeeds, life.childNeeds || {}),
+                  skills: Object.assign({}, defaults.childSkills, life.childSkills || {})
+                });
+              }
+              save.version = 9;
+              break;
+            }
             default:
               return createNewSave();
           }
@@ -898,6 +918,21 @@
         save.lifeSim.skills = Object.assign({}, fresh.lifeSim.skills, save.lifeSim.skills || {});
         save.lifeSim.companionSkills = Object.assign({}, fresh.lifeSim.companionSkills, save.lifeSim.companionSkills || {});
         save.lifeSim.childSkills = Object.assign({}, fresh.lifeSim.childSkills, save.lifeSim.childSkills || {});
+        save.lifeSim.children = Array.isArray(save.lifeSim.children)
+          ? save.lifeSim.children.slice(0, LIFE_MAX_CHILDREN).map(child => ({
+              avatar: Object.assign({}, fresh.lifeSim.child, child.avatar || {}),
+              needs: Object.assign({}, fresh.lifeSim.childNeeds, child.needs || {}),
+              skills: Object.assign({}, fresh.lifeSim.childSkills, child.skills || {})
+            }))
+          : [];
+        save.lifeSim.hasChild = save.lifeSim.children.length > 0;
+        save.lifeSim.pendingBabyNames = Array.isArray(save.lifeSim.pendingBabyNames)
+          ? save.lifeSim.pendingBabyNames.filter(index => Number.isInteger(index) && index >= 0 && index < save.lifeSim.children.length)
+          : [];
+        save.lifeSim.pendingBabyTwins = !!save.lifeSim.pendingBabyTwins;
+        save.lifeSim.pendingBabyNameTotal = save.lifeSim.pendingBabyNames.length
+          ? Math.max(save.lifeSim.pendingBabyNames.length, save.lifeSim.pendingBabyNameTotal || 0)
+          : 0;
         return save;
       }
 
@@ -994,6 +1029,39 @@
       };
 
       window.addEventListener("keydown", (e) => {
+        const editingCityName = game.scene === SCENE.CHARACTER_CREATION && cc.field === "name";
+        const editingLifeName = game.scene === SCENE.LIFE_CHARACTER_CREATION &&
+          LIFE_CREATOR_FIELDS[lifeCreator.field] === "name";
+        const editingBabyName = game.scene === SCENE.MOONLIGHT_LIFE && !!lifeRuntime.babyNaming;
+        if (editingCityName || editingLifeName || editingBabyName) {
+          if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            if (editingCityName && cc.typedName.length < 14) {
+              cc.typedName += e.key;
+              cc.name = cc.typedName;
+            } else if (editingLifeName && lifeCreator.draft.name.length < 14) {
+              if (lifeCreator.draft.name === "Hero") lifeCreator.draft.name = "";
+              lifeCreator.draft.name += e.key;
+            } else if (editingBabyName && lifeRuntime.babyNaming.name.length < 14) {
+              lifeRuntime.babyNaming.name += e.key;
+            }
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return;
+          }
+          if (e.code === "Backspace") {
+            if (editingCityName) {
+              cc.typedName = cc.typedName.slice(0, -1);
+              cc.name = cc.typedName || "Hero";
+            } else if (editingLifeName) {
+              lifeCreator.draft.name = lifeCreator.draft.name.slice(0, -1) || "Hero";
+            } else {
+              lifeRuntime.babyNaming.name = lifeRuntime.babyNaming.name.slice(0, -1);
+            }
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return;
+          }
+        }
         const action = keyMap[e.code];
         if (action) {
           if (!keys[action]) justPressedKeys[action] = true;
@@ -5076,24 +5144,6 @@
         }
       }
 
-      window.addEventListener("keypress", (e) => {
-        if (game.scene !== SCENE.CHARACTER_CREATION) return;
-        if (cc.field !== "name") return;
-        if (e.key === "Enter") { cc.name = cc.typedName || "Hero"; return; }
-        if (e.key.length === 1 && cc.typedName.length < 14) {
-          cc.typedName += e.key;
-          cc.name = cc.typedName;
-        }
-      });
-      window.addEventListener("keydown", (e) => {
-        if (game.scene !== SCENE.CHARACTER_CREATION) return;
-        if (cc.field !== "name") return;
-        if (e.code === "Backspace" && cc.typedName.length > 0) {
-          cc.typedName = cc.typedName.slice(0, -1);
-          cc.name = cc.typedName || "Hero";
-        }
-      }, { capture: true });
-
       const modeSelect = { selected: 0 };
 
       function updateModeSelect() {
@@ -5257,19 +5307,8 @@
         }
       }
 
-      window.addEventListener("keypress", (e) => {
-        if (game.scene !== SCENE.LIFE_CHARACTER_CREATION) return;
-        if (LIFE_CREATOR_FIELDS[lifeCreator.field] !== "name") return;
-        if (e.key.length === 1 && lifeCreator.draft.name.length < 14) {
-          if (lifeCreator.draft.name === "Hero") lifeCreator.draft.name = "";
-          lifeCreator.draft.name += e.key;
-        }
-      });
-
       function lifeHouseholdMembers(life = game.save.lifeSim) {
-        const members = [life.avatar, life.companion];
-        if (life.hasChild) members.push(life.child);
-        return members;
+        return [life.avatar, life.companion, ...life.children.map(child => child.avatar)];
       }
 
       function activeLifeAvatar(life = game.save.lifeSim) {
@@ -5277,12 +5316,12 @@
       }
 
       function activeLifeNeeds(life = game.save.lifeSim) {
-        if (life.activeMember === 2 && life.hasChild) return life.childNeeds;
+        if (life.activeMember >= 2) return life.children[life.activeMember - 2]?.needs || life.needs;
         return life.activeMember === 1 ? life.companionNeeds : life.needs;
       }
 
       function activeLifeSkills(life = game.save.lifeSim) {
-        if (life.activeMember === 2 && life.hasChild) return life.childSkills;
+        if (life.activeMember >= 2) return life.children[life.activeMember - 2]?.skills || life.skills;
         return life.activeMember === 1 ? life.companionSkills : life.skills;
       }
 
@@ -5296,7 +5335,9 @@
         if (activeAvatar.lifeState === 1) actions.splice(1, 0, LIFE_VAMPIRE_ACTION);
         const spouses = LIFE_RELATIONSHIPS[life.householdRelationship] === "Spouses";
         const adultSpouses = life.avatar.ageType === "adult" && life.companion.ageType === "adult";
-        if (spouses && adultSpouses && !life.hasChild && life.householdBond >= 3) actions.push(LIFE_CHILD_ACTION);
+        if (spouses && adultSpouses && life.children.length < LIFE_MAX_CHILDREN && life.householdBond >= 3) {
+          actions.push(LIFE_CHILD_ACTION);
+        }
         return actions;
       }
 
@@ -5509,8 +5550,12 @@
         memberPositions: [
           { x:0.48, y:0.58 },
           { x:0.62, y:0.54 },
-          { x:0.36, y:0.61 }
+          { x:0.36, y:0.61 },
+          { x:0.76, y:0.61 },
+          { x:0.30, y:0.46 },
+          { x:0.52, y:0.72 }
         ],
+        babyNaming: null,
         decayTimer: 0,
         saveTimer: 0,
         message: "Choose actions to shape the day."
@@ -5528,6 +5573,17 @@
         game.save.lifeSim.skills = Object.assign({}, fresh.skills, game.save.lifeSim.skills || {});
         game.save.lifeSim.companionSkills = Object.assign({}, fresh.companionSkills, game.save.lifeSim.companionSkills || {});
         game.save.lifeSim.childSkills = Object.assign({}, fresh.childSkills, game.save.lifeSim.childSkills || {});
+        game.save.lifeSim.children = Array.isArray(game.save.lifeSim.children)
+          ? game.save.lifeSim.children.slice(0, LIFE_MAX_CHILDREN).map(child => ({
+              avatar: Object.assign({}, fresh.child, child.avatar || {}),
+              needs: Object.assign({}, fresh.childNeeds, child.needs || {}),
+              skills: Object.assign({}, fresh.childSkills, child.skills || {})
+            }))
+          : [];
+        game.save.lifeSim.hasChild = game.save.lifeSim.children.length > 0;
+        game.save.lifeSim.pendingBabyNames = Array.isArray(game.save.lifeSim.pendingBabyNames)
+          ? game.save.lifeSim.pendingBabyNames.filter(index => Number.isInteger(index) && index >= 0 && index < game.save.lifeSim.children.length)
+          : [];
         if (!game.save.lifeSim.characterCreated) {
           enterLifeCharacterCreation();
           return;
@@ -5542,19 +5598,36 @@
         lifeRuntime.memberPositions = [
           { x:0.48, y:0.58 },
           { x:0.62, y:0.54 },
-          { x:0.36, y:0.61 }
+          { x:0.36, y:0.61 },
+          { x:0.76, y:0.61 },
+          { x:0.30, y:0.46 },
+          { x:0.52, y:0.72 }
         ];
+        lifeRuntime.babyNaming = null;
         lifeRuntime.decayTimer = 0;
         lifeRuntime.saveTimer = 0;
         const canGrowFamily = LIFE_RELATIONSHIPS[game.save.lifeSim.householdRelationship] === "Spouses" &&
           game.save.lifeSim.avatar.ageType === "adult" &&
           game.save.lifeSim.companion.ageType === "adult" &&
-          !game.save.lifeSim.hasChild;
+          game.save.lifeSim.children.length < LIFE_MAX_CHILDREN;
         lifeRuntime.message = canGrowFamily
           ? game.save.lifeSim.householdBond >= 3
-            ? "Welcome a child is unlocked in the action list."
-            : "Spend time together to reach Bond 3 and unlock Welcome a child."
+            ? "Welcome a baby is unlocked in the action list."
+            : "Spend time together to reach Bond 3 and unlock Welcome a baby."
           : "Choose actions to shape the household day.";
+        if (game.save.lifeSim.pendingBabyNames.length) {
+          lifeRuntime.babyNaming = {
+            indices: game.save.lifeSim.pendingBabyNames.slice(),
+            name: "",
+            twins: game.save.lifeSim.pendingBabyTwins,
+            completedNames: [],
+            startIndex: game.save.lifeSim.pendingBabyNameTotal - game.save.lifeSim.pendingBabyNames.length,
+            total: game.save.lifeSim.pendingBabyNameTotal
+          };
+          lifeRuntime.message = lifeRuntime.babyNaming.twins
+            ? "Finish naming the twins."
+            : "Finish naming the new baby.";
+        }
         switchScene(SCENE.MOONLIGHT_LIFE);
       }
 
@@ -5572,6 +5645,70 @@
         }
       }
 
+      function createInheritedBaby(life, index) {
+        const defaults = createDefaultLifeSim();
+        const firstParent = life.avatar;
+        const secondParent = life.companion;
+        return {
+          avatar: {
+            ...defaults.child,
+            name: `Baby ${life.children.length + index + 1}`,
+            skin: Math.round((firstParent.skin + secondParent.skin) / 2),
+            hairColour: index % 2 ? firstParent.hairColour : secondParent.hairColour,
+            hairStyle: (firstParent.hairStyle + secondParent.hairStyle + index) % HAIR_STYLE_COUNT,
+            outfit: (firstParent.outfit + secondParent.outfit + index) % OUTFIT_COLORS.length,
+            trait: (firstParent.trait + secondParent.trait + index) % LIFE_TRAITS.length,
+            ageType: "child",
+            lifeState: firstParent.lifeState === 1 || secondParent.lifeState === 1 ? 1 : 0
+          },
+          needs: { ...defaults.childNeeds },
+          skills: { ...defaults.childSkills }
+        };
+      }
+
+      function beginBabyNaming(life) {
+        const availableSlots = LIFE_MAX_CHILDREN - life.children.length;
+        const twinBirth = availableSlots >= 2 && Math.random() < LIFE_TWIN_CHANCE;
+        const count = twinBirth ? 2 : 1;
+        const babies = Array.from({ length: count }, (_, index) => createInheritedBaby(life, index));
+        const firstIndex = life.children.length;
+        life.children.push(...babies);
+        life.hasChild = true;
+        life.pendingBabyNames = babies.map((_, index) => firstIndex + index);
+        life.pendingBabyTwins = twinBirth;
+        life.pendingBabyNameTotal = count;
+        lifeRuntime.babyNaming = {
+          indices: life.pendingBabyNames.slice(),
+          name: "",
+          twins: twinBirth,
+          completedNames: [],
+          startIndex: 0,
+          total: count
+        };
+        lifeRuntime.message = twinBirth ? "Twins! Choose a name for each baby." : "Choose a name for the new baby.";
+        writeSave(game.save);
+      }
+
+      function finishBabyName() {
+        const naming = lifeRuntime.babyNaming;
+        const life = game.save.lifeSim;
+        const currentIndex = naming.indices[0];
+        const current = life.children[currentIndex];
+        current.avatar.name = naming.name.trim() || current.avatar.name;
+        naming.completedNames.push(current.avatar.name);
+        naming.indices.shift();
+        life.pendingBabyNames = naming.indices.slice();
+        writeSave(game.save);
+        naming.name = "";
+        if (naming.indices.length) return;
+        const names = naming.completedNames.join(" and ");
+        life.pendingBabyTwins = false;
+        life.pendingBabyNameTotal = 0;
+        lifeRuntime.babyNaming = null;
+        lifeRuntime.message = `${names} joined the family! Press Tab to play as ${naming.twins ? "them" : "the new child"}.`;
+        writeSave(game.save);
+      }
+
       function completeLifeAction(action) {
         const life = game.save.lifeSim;
         const needs = activeLifeNeeds(life);
@@ -5587,25 +5724,16 @@
         }
         if (action.householdBond) {
           life.householdBond = clamp(life.householdBond + action.householdBond, 0, 10);
-          const otherNeeds = [life.needs, life.companionNeeds, ...(life.hasChild ? [life.childNeeds] : [])]
+          const otherNeeds = [life.needs, life.companionNeeds, ...life.children.map(child => child.needs)]
             .filter(memberNeeds => memberNeeds !== needs);
           for (const memberNeeds of otherNeeds) {
             memberNeeds.social = clamp(memberNeeds.social + 18, 0, 100);
             memberNeeds.fun = clamp(memberNeeds.fun + 8, 0, 100);
           }
         }
-        if (action.childAction && !life.hasChild) {
-          life.hasChild = true;
-          life.child = {
-            ...life.child,
-            skin: Math.round((life.avatar.skin + life.companion.skin) / 2),
-            hairColour: life.householdBond % 2 ? life.avatar.hairColour : life.companion.hairColour,
-            hairStyle: (life.avatar.hairStyle + life.companion.hairStyle) % HAIR_STYLE_COUNT,
-            ageType: "child",
-            lifeState: life.avatar.lifeState === 1 || life.companion.lifeState === 1 ? 1 : 0
-          };
+        if (action.childAction && life.children.length < LIFE_MAX_CHILDREN) {
+          beginBabyNaming(life);
           lifeRuntime.queue = lifeRuntime.queue.filter(queued => !queued.childAction);
-          lifeRuntime.message = `${life.child.name} joined the family! Press Tab to play as them.`;
         }
         advanceLifeClock(action.hours);
         let reward = "";
@@ -5618,8 +5746,8 @@
           lifeRuntime.message = `${action.label} finished.${action.money ? ` +${action.money} gold.` : ""}${reward}`;
           if (LIFE_RELATIONSHIPS[life.householdRelationship] === "Spouses" &&
               life.avatar.ageType === "adult" && life.companion.ageType === "adult" &&
-              !life.hasChild && life.householdBond >= 3) {
-            lifeRuntime.message += " Welcome a child is now available.";
+              life.children.length < LIFE_MAX_CHILDREN && life.householdBond >= 3) {
+            lifeRuntime.message += " Welcome a baby is now available.";
           }
         }
         writeSave(game.save);
@@ -5627,6 +5755,13 @@
 
       function updateMoonlightLife(dt) {
         const life = game.save.lifeSim;
+        if (lifeRuntime.babyNaming) {
+          if (justPressedKeys.back) {
+            lifeRuntime.babyNaming.name = lifeRuntime.babyNaming.name.slice(0, -1);
+          }
+          if (justPressedKeys.confirm || justPressedKeys.interact) finishBabyName();
+          return;
+        }
         const actions = availableLifeActions(life);
         lifeRuntime.selected = clamp(lifeRuntime.selected, 0, actions.length - 1);
         if (justPressedKeys.pause) {
@@ -5658,7 +5793,7 @@
             const childActionQueued = action.childAction &&
               (lifeRuntime.active?.childAction || lifeRuntime.queue.some(queued => queued.childAction));
             if (childActionQueued) {
-              lifeRuntime.message = "Welcome a child is already queued.";
+              lifeRuntime.message = "Welcome a baby is already queued.";
             } else {
               lifeRuntime.queue.push(action);
               lifeRuntime.message = `${action.label} added to the queue.`;
@@ -5675,9 +5810,9 @@
           lifeRuntime.decayTimer -= ticks;
           const household = [
             { avatar:life.avatar, needs:life.needs },
-            { avatar:life.companion, needs:life.companionNeeds }
+            { avatar:life.companion, needs:life.companionNeeds },
+            ...life.children.map(child => ({ avatar:child.avatar, needs:child.needs }))
           ];
-          if (life.hasChild) household.push({ avatar:life.child, needs:life.childNeeds });
           for (const member of household) {
             const memberNeeds = member.needs;
             memberNeeds.hunger = clamp(memberNeeds.hunger - 0.10 * ticks, 0, 100);
@@ -5758,40 +5893,60 @@
         ctx.fillStyle = "rgba(17,31,45,0.18)";
         ctx.fillRect(-48, 22, 96, 8);
         if (type === "kitchen") {
-          ctx.fillStyle = "#e9d5ae"; ctx.fillRect(-48, -24, 96, 46);
-          ctx.fillStyle = "#83b5aa"; ctx.fillRect(-48, -24, 96, 8);
-          ctx.fillStyle = "#466177"; ctx.fillRect(-36, -12, 26, 22);
-          ctx.fillStyle = "#182538"; ctx.fillRect(-31, -8, 16, 3); ctx.fillRect(-31, 1, 16, 3);
-          ctx.fillStyle = "#bd765d"; ctx.fillRect(5, -12, 34, 25);
-          ctx.fillStyle = "#f5d76e"; ctx.fillRect(10, -7, 7, 7); ctx.fillRect(27, -7, 7, 7);
+          ctx.fillStyle = "#263b52"; ctx.fillRect(-50, -27, 100, 50);
+          ctx.fillStyle = "#f4e8d5"; ctx.fillRect(-47, -24, 94, 44);
+          ctx.fillStyle = "#58b8aa"; ctx.fillRect(-50, -28, 100, 8);
+          ctx.fillStyle = "#bde9dd"; ctx.fillRect(-47, -27, 94, 3);
+          ctx.fillStyle = "#47637a"; ctx.fillRect(-38, -14, 28, 27);
+          ctx.fillStyle = "#182538"; ctx.fillRect(-33, -9, 18, 4); ctx.fillRect(-33, 2, 18, 4);
+          ctx.fillStyle = "#d78068"; ctx.fillRect(4, -14, 35, 27);
+          ctx.fillStyle = "#f3c45a"; ctx.fillRect(10, -8, 7, 7); ctx.fillRect(27, -8, 7, 7);
+          ctx.fillStyle = "#466177"; ctx.fillRect(-4, -16, 3, 31);
+          ctx.fillStyle = "#f7fbf8"; ctx.fillRect(-2, -24, 21, 6);
+          ctx.fillStyle = "#67c5b5"; ctx.fillRect(1, -23, 9, 3);
         } else if (type === "bathroom") {
-          ctx.fillStyle = "#c9e9ee"; ctx.fillRect(-34, -43, 68, 66);
-          ctx.fillStyle = "#7fc4d2"; ctx.fillRect(-31, -40, 62, 4); ctx.fillRect(-31, 14, 62, 5);
-          ctx.fillStyle = "rgba(255,255,255,0.62)"; ctx.fillRect(-24, -30, 5, 37);
-          ctx.fillStyle = "#466177"; ctx.fillRect(17, -29, 5, 18);
-          ctx.fillStyle = "#86d8e1"; ctx.fillRect(12, -31, 14, 5);
+          ctx.fillStyle = "#36546c"; ctx.fillRect(-37, -46, 74, 70);
+          ctx.fillStyle = "#d9f4f2"; ctx.fillRect(-34, -43, 68, 64);
+          ctx.fillStyle = "#75cfc7"; ctx.fillRect(-34, -43, 68, 6); ctx.fillRect(-34, 15, 68, 6);
+          ctx.fillStyle = "rgba(255,255,255,0.68)"; ctx.fillRect(-27, -34, 6, 42);
+          ctx.fillStyle = "rgba(125,203,211,0.34)"; ctx.fillRect(-15, -34, 31, 45);
+          ctx.fillStyle = "#43637a"; ctx.fillRect(17, -31, 5, 20);
+          ctx.fillStyle = "#8be0d3"; ctx.fillRect(11, -34, 16, 6);
+          ctx.fillStyle = "#f6cc67"; ctx.fillRect(-27, 9, 9, 5);
         } else if (type === "bed") {
-          ctx.fillStyle = "#594a67"; ctx.fillRect(-54, -21, 108, 43);
-          ctx.fillStyle = "#f3eee2"; ctx.fillRect(-45, -17, 90, 34);
-          ctx.fillStyle = "#5db8a1"; ctx.fillRect(-45, 0, 90, 17);
-          ctx.fillStyle = "#ffffff"; ctx.fillRect(-38, -13, 30, 12); ctx.fillRect(8, -13, 30, 12);
+          ctx.fillStyle = "#34465d"; ctx.fillRect(-56, -25, 112, 48);
+          ctx.fillStyle = "#f9f4e9"; ctx.fillRect(-49, -20, 98, 38);
+          ctx.fillStyle = "#5bc2ad"; ctx.fillRect(-49, -1, 98, 19);
+          ctx.fillStyle = "#83ddc5"; ctx.fillRect(-49, -1, 98, 5);
+          ctx.fillStyle = "#ffffff"; ctx.fillRect(-42, -16, 34, 13); ctx.fillRect(8, -16, 34, 13);
+          ctx.fillStyle = "#f0bc62"; ctx.fillRect(-4, 4, 8, 8);
+          ctx.fillStyle = "#213448"; ctx.fillRect(-54, 23, 8, 5); ctx.fillRect(46, 23, 8, 5);
         } else if (type === "sofa") {
-          ctx.fillStyle = "#285b72"; ctx.fillRect(-52, -21, 104, 43);
-          ctx.fillStyle = "#3d8292"; ctx.fillRect(-44, -15, 88, 25);
-          ctx.fillStyle = "#6fb6b2"; ctx.fillRect(-40, -12, 35, 20); ctx.fillRect(5, -12, 35, 20);
-          ctx.fillStyle = "#1d4257"; ctx.fillRect(-55, -9, 10, 31); ctx.fillRect(45, -9, 10, 31);
+          ctx.fillStyle = "#263d55"; ctx.fillRect(-55, -24, 110, 47);
+          ctx.fillStyle = "#3a8991"; ctx.fillRect(-48, -18, 96, 32);
+          ctx.fillStyle = "#72c9ba"; ctx.fillRect(-43, -14, 39, 24); ctx.fillRect(4, -14, 39, 24);
+          ctx.fillStyle = "#a5ead8"; ctx.fillRect(-40, -12, 33, 4); ctx.fillRect(7, -12, 33, 4);
+          ctx.fillStyle = "#efb65f"; ctx.fillRect(-8, -8, 16, 15);
+          ctx.fillStyle = "#1c3348"; ctx.fillRect(-58, -10, 11, 34); ctx.fillRect(47, -10, 11, 34);
+          ctx.fillStyle = "#263d55"; ctx.fillRect(-48, 23, 8, 5); ctx.fillRect(40, 23, 8, 5);
         } else if (type === "tv") {
-          ctx.fillStyle = "#26334a"; ctx.fillRect(-40, -34, 80, 49);
-          ctx.fillStyle = "#75c6d9"; ctx.fillRect(-34, -28, 68, 36);
+          ctx.fillStyle = "#1d2d42"; ctx.fillRect(-43, -37, 86, 52);
+          ctx.fillStyle = "#75c6d9"; ctx.fillRect(-37, -31, 74, 38);
+          ctx.fillStyle = "#67d0c1"; ctx.fillRect(-34, -28, 68, 5);
           ctx.fillStyle = `rgba(255,255,255,${0.12 + Math.abs(Math.sin(time * 2)) * 0.18})`;
-          ctx.fillRect(-28, -22, 26, 5); ctx.fillRect(4, -10, 23, 5);
-          ctx.fillStyle = "#5d4338"; ctx.fillRect(-46, 15, 92, 9);
+          ctx.fillRect(-28, -18, 26, 5); ctx.fillRect(4, -7, 23, 5);
+          ctx.fillStyle = "#d7a263"; ctx.fillRect(-48, 15, 96, 10);
+          ctx.fillStyle = "#6c4938"; ctx.fillRect(-44, 18, 88, 7);
+          ctx.fillStyle = "#263d55"; ctx.fillRect(-34, 25, 7, 5); ctx.fillRect(27, 25, 7, 5);
         } else {
-          ctx.fillStyle = "#9a6a42"; ctx.fillRect(-48, -10, 96, 13);
-          ctx.fillRect(-42, 3, 7, 22); ctx.fillRect(35, 3, 7, 22);
-          ctx.fillStyle = "#26334a"; ctx.fillRect(-17, -36, 40, 28);
-          ctx.fillStyle = "#7cd8d2"; ctx.fillRect(-13, -32, 32, 20);
-          ctx.fillStyle = "#5b6a7c"; ctx.fillRect(-1, -8, 8, 9);
+          ctx.fillStyle = "#d59a5f"; ctx.fillRect(-50, -12, 100, 15);
+          ctx.fillStyle = "#f0bf78"; ctx.fillRect(-47, -11, 94, 5);
+          ctx.fillStyle = "#6f4b38"; ctx.fillRect(-43, 3, 8, 24); ctx.fillRect(35, 3, 8, 24);
+          ctx.fillStyle = "#22364b"; ctx.fillRect(-19, -40, 44, 32);
+          ctx.fillStyle = "#76d2c4"; ctx.fillRect(-15, -36, 36, 24);
+          ctx.fillStyle = "#a7eee0"; ctx.fillRect(-12, -33, 29, 5);
+          ctx.fillStyle = "#526a7e"; ctx.fillRect(-1, -8, 8, 10);
+          ctx.fillStyle = "#f1c158"; ctx.fillRect(30, -8, 9, 7);
         }
         ctx.fillStyle = "rgba(18,34,51,0.80)";
         ctx.fillRect(-42, 31, 84, 18);
@@ -5800,6 +5955,43 @@
         ctx.textAlign = "center";
         ctx.fillText(label, 0, 44);
         ctx.restore();
+      }
+
+      function drawBabyNaming() {
+        const naming = lifeRuntime.babyNaming;
+        if (!naming) return;
+        const w = canvas.width, h = canvas.height;
+        ctx.fillStyle = "rgba(7,15,27,0.76)";
+        ctx.fillRect(0, 0, w, h);
+        const panelW = Math.min(540, w - 48);
+        const panelH = 270;
+        const x = (w - panelW) / 2;
+        const y = (h - panelH) / 2;
+        drawPixelPanel(x, y, panelW, panelH, "#f7f0e7", "#5ec8b3");
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#17364a";
+        ctx.font = "bold 30px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(naming.twins ? "Two New Moonbeams!" : "A New Moonbeam!", w / 2, y + 50);
+        ctx.fillStyle = "#527080";
+        ctx.font = "16px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(
+          naming.twins
+            ? `Name twin ${naming.startIndex + naming.completedNames.length + 1} of ${naming.total}`
+            : "Choose the baby's name",
+          w / 2,
+          y + 82
+        );
+        drawPixelPanel(x + 70, y + 110, panelW - 140, 64, "#ffffff", "#88bfb5");
+        ctx.fillStyle = "#193c50";
+        ctx.font = "bold 27px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(`${naming.name || "Type a name"}${Math.floor(game.elapsed * 2) % 2 ? "▌" : ""}`, w / 2, y + 151);
+        ctx.fillStyle = "#607988";
+        ctx.font = "14px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("Type a name  ·  Backspace delete  ·  Enter confirm", w / 2, y + 214);
+        ctx.fillStyle = "#2d8d79";
+        ctx.font = "bold 13px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("Every child becomes a playable household member", w / 2, y + 243);
+        ctx.textAlign = "left";
       }
 
       function drawMoonlightLife(time) {
@@ -5941,6 +6133,7 @@
           ctx.fillStyle = "#66d9c1";
           ctx.fillRect(barX, barY, barW * clamp(lifeRuntime.progress, 0, 1), 10);
         }
+        drawBabyNaming();
         ctx.textAlign = "left";
       }
 

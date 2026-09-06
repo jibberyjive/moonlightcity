@@ -197,7 +197,9 @@ A prioritised task list for building Moonlight City. Work through phases in orde
   - [x] Choose Partners, Spouses, Siblings, or Best Friends in household creation
   - [x] Allow sibling households to begin with two playable children
   - [x] Let married characters build their bond and welcome a playable child
+  - [x] Allow repeated baby events, player-chosen names, and a 25% twin chance
   - [x] Add playable Vampire household members with Thirst and daylight effects
+  - [x] Redesign Moonlight Life furniture with an original bright-modern life-sim style
   - [ ] Add partner, marriage, child, sibling, parent, and guardian relationships
   - [ ] Track relationships independently between every household member
   - [ ] Add family trees and persistent household history

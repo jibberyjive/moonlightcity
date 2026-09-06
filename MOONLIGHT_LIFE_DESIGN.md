@@ -40,7 +40,7 @@ The pack has a dedicated household creator. Players design two characters, choos
 
 Both characters use the City Fashion HD renderer and remain independently playable. Their choices do not overwrite the main game's character.
 
-Sibling households can begin with two playable children. Adult Spouses can still build their bond and welcome a child during play.
+Sibling households can begin with two playable children. Adult Spouses can still build their bond and welcome children during play.
 
 Returning players can select Moonlight Life Pack on the world-selection screen and press **C** to edit their household.
 
@@ -116,8 +116,11 @@ Gold is shared with Moonlight City. A work shift in Moonlight Life can fund a ci
 - Press **Tab** while the queue is empty to switch the active playable character.
 - Each member has separate needs and skill progress.
 - The moon marker and HUD identify the active character.
-- Spouses unlock **Welcome a child** after reaching Household Bond 3.
-- The child inherits visual choices from both parents, uses the child City Fashion HD template, has separate needs and skills, and becomes playable with Tab.
+- Spouses unlock **Welcome a baby** after reaching Household Bond 3.
+- Welcome a baby can be used repeatedly until the household has four children.
+- Each birth has a 25% twin chance when at least two household child slots remain.
+- A naming screen lets the player name every baby, including each twin separately.
+- Children inherit visual choices from both parents, use the child City Fashion HD template, have separate needs and skills, and become playable with Tab.
 - Children inherit the Vampire life state when either parent is a Vampire.
 
 ### Vampire life state
@@ -128,6 +131,19 @@ Gold is shared with Moonlight City. A work shift in Moonlight Life can fund a ci
 - Plasma-fruit drinks safely restore Thirst.
 - Vampire Thirst falls over time, and daylight between 07:00 and 19:00 drains extra Energy.
 - Vampires retain all household, relationship, skill, and action-queue gameplay.
+
+### Furniture direction
+
+The apartment uses an original bright-modern life-simulation furniture language:
+
+- Modular cabinets with contrasting counters and visible handles
+- Glass shower panels with colourful fixtures
+- Layered bedding, pillows, throws, and accent cushions
+- Rounded-colour sectional styling translated into crisp pixel geometry
+- Slim televisions and warm wood media consoles
+- Coordinated desks, screens, decorative objects, and furniture feet
+
+These pieces use broad genre principles such as readable silhouettes, cheerful colour blocking, and coordinated room sets without copying another game's assets or exact designs.
 
 ## Controls
 
