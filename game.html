@@ -227,6 +227,7 @@
         const defaultSkills = { cooking:0, charisma:0, logic:0 };
         return {
           characterCreated: false,
+          householdCreatorVersion: 0,
           avatar: {
             name: "Hero",
             skin: 0,
@@ -5110,8 +5111,11 @@
           switchScene(SCENE.CITY);
           return;
         }
-        if (game.save.lifeSim.characterCreated) enterMoonlightLife();
-        else enterLifeCharacterCreation();
+        if (game.save.lifeSim.characterCreated && game.save.lifeSim.householdCreatorVersion >= 2) {
+          enterMoonlightLife();
+        } else {
+          enterLifeCharacterCreation();
+        }
       }
 
       function drawModeSelect(time) {
@@ -5132,7 +5136,16 @@
 
         const cards = [
           { title:"Moonlight City", icon:"🌙", colour:"#4f68a8", desc:"Explore the city, meet friends, decorate homes, and brave the dungeon." },
-          { title:"Moonlight Life Pack", icon:"🏡", colour:"#39a88e", desc: game.save.lifeSim.characterCreated ? "Continue your playable household, relationships, supernatural lives, skills, and wishes." : "Design two playable humans or vampires, choose their ages and relationship, then begin a household story." }
+          {
+            title:"Moonlight Life Pack",
+            icon:"🏡",
+            colour:"#39a88e",
+            desc: game.save.lifeSim.characterCreated && game.save.lifeSim.householdCreatorVersion < 2
+              ? "NEW: Upgrade your household with two playable people, children, siblings, and Vampires."
+              : game.save.lifeSim.characterCreated
+                ? "Continue your playable household, relationships, supernatural lives, skills, and wishes."
+                : "Design two playable humans or vampires, choose their ages and relationship, then begin a household story."
+          }
         ];
         const gap = 34, cardW = Math.min(420, (w - 110 - gap) / 2), cardH = Math.min(390, h - 235);
         const startX = w / 2 - cardW - gap / 2;
@@ -5238,6 +5251,7 @@
           game.save.lifeSim.householdRelationship = lifeCreator.relationship;
           game.save.lifeSim.activeMember = 0;
           game.save.lifeSim.characterCreated = true;
+          game.save.lifeSim.householdCreatorVersion = 2;
           writeSave(game.save);
           enterMoonlightLife();
         }
