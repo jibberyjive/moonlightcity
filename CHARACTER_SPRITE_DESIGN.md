@@ -215,15 +215,22 @@ This keeps customization consistent without requiring separately painted portrai
 
 ## Implementation plan
 
-1. Build the City Fashion HD adult front-facing idle sprite at native 32 × 64.
-2. Add four-direction idle and walk animation.
-3. Convert the player and one NPC as a side-by-side test.
-4. Add the layered appearance data model.
-5. Convert remaining adults in small groups.
-6. Build child and toddler templates.
-7. Add emotion and interaction animations.
-8. Add generated dialogue portraits.
-9. Remove legacy sprite branches after every character has migrated.
+### Implemented foundation
+
+- Native-resolution 32 × 64 adult renderer with shared PC/NPC layering
+- Four-direction silhouettes and eight-step procedural walk cycle
+- Three-tone hair, clothing, skin, and footwear shading
+- Separate 28 × 52 child and 24 × 40 toddler templates
+- Six hair silhouettes, layered outfits, NPC accessories, and wedding rings
+- Shared rendering in the city, character creators, Moonlight Life, and dialogue portraits
+- Existing collision, interaction, customization, and save data preserved
+
+### Next sprite passes
+
+1. Add talk, happy, sad, angry, attack, hurt, sit, sleep, and use-object poses.
+2. Add creator options for eyes, brows, mouths, face shapes, and accessories.
+3. Add NPC-specific idle and reaction animations.
+4. Remove the legacy sprite renderer after extended playtesting.
 
 ## Acceptance criteria
 

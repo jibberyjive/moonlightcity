@@ -192,6 +192,15 @@ A prioritised task list for building Moonlight City. Work through phases in orde
 
 ## 🔮 Future / Backlog
 
+- [ ] Families & Relationships expansion *(post-v1.0)*
+  - [ ] Create and manage multi-character households
+  - [ ] Add partner, marriage, child, sibling, parent, and guardian relationships
+  - [ ] Track relationships independently between every household member
+  - [ ] Add family trees and persistent household history
+  - [ ] Give household members individual needs, traits, and schedules
+  - [ ] Add family activities, milestones, visits, and home events
+  - [ ] Support adult, child, and toddler City Fashion HD character templates
+  - [ ] Add save migration for household and family relationship data
 - [ ] Dungeon Zone 2 — The Underground Crypts (floors 26–50)
 - [ ] Dungeon Zone 3 — The Magma Depths (floors 51–75)
 - [ ] Dungeon Zone 4 — The Shadow Realm (floors 76–100)
@@ -205,4 +214,4 @@ A prioritised task list for building Moonlight City. Work through phases in orde
 
 ---
 
-*Last updated: August 2026*
+*Last updated: September 2026*

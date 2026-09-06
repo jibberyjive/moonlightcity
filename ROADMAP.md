@@ -128,6 +128,18 @@ Crafting (all of Phase 9), dungeon zones 2–4, the black market, seasonal event
 | `v0.9` | Housing depth: tier 2, 40 furniture items, rotation, storage |
 | `v1.0` | Floors 16–25 + Slime King + tutorial + balance + audio + touch controls |
 
+### 2.5 Post-launch milestone - Families & Relationships
+
+This is a **post-v1.0 Moonlight Life expansion**, not part of the current launch contract. It should deepen the existing social simulation without delaying the core city, housing, and dungeon loop.
+
+- Create multi-character households with adult, child, and toddler family roles.
+- Add persistent family relationships alongside friendships and romance.
+- Support partners, marriage, children, siblings, parents, and guardians.
+- Give each household member individual needs, traits, schedules, and relationship values.
+- Add family-focused interactions, shared activities, milestones, and home events.
+- Preserve family trees and household state in versioned saves.
+- Reuse the City Fashion HD age templates so every generation has a distinct silhouette.
+
 ---
 
 ## 3. ⚠️ Top 5 Risks (ranked by "most likely to kill the project")

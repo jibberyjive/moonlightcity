@@ -38,6 +38,7 @@
       function resize() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+        ctx.imageSmoothingEnabled = false;
       }
       window.addEventListener("resize", resize);
       resize();
@@ -46,16 +47,19 @@
       // === CONSTANTS & ENUMS ============================
       // ==================================================
 
-      const SCHEMA_VERSION = 4;
+      const SCHEMA_VERSION = 6;
       const SAVE_KEY = "moonlight-city-save";
 
       // Scene IDs
       const SCENE = {
         TITLE: "TITLE",
         CHARACTER_CREATION: "CHARACTER_CREATION",
+        MODE_SELECT: "MODE_SELECT",
+        LIFE_CHARACTER_CREATION: "LIFE_CHARACTER_CREATION",
         CITY: "CITY",
         HOUSE_INTERIOR: "HOUSE_INTERIOR",
         DUNGEON: "DUNGEON",
+        MOONLIGHT_LIFE: "MOONLIGHT_LIFE",
         DIALOGUE: "DIALOGUE",
         INVENTORY: "INVENTORY",
         PAUSE: "PAUSE"
@@ -84,21 +88,35 @@
 
       // Palette — city
       const COLORS = {
-        grass: "#5a8a3c",
-        darkGrass: "#4b7432",
-        slumGrass: "#3b5c2e",
-        water: "#3a7bd5",
-        waterShimmer: "#8dc9ff",
-        path: "#c4a35a",
-        stone: "#7a7a82",
+        grass: "#68a84a",
+        darkGrass: "#47783b",
+        slumGrass: "#375d35",
+        water: "#3288c8",
+        waterShimmer: "#a8e4ff",
+        path: "#d4b16b",
+        stone: "#85899a",
         stoneMortar: "rgba(40,38,50,0.32)",
         stoneShadow: "rgba(0,0,0,0.18)",
-        darkPath: "#5c4a38",
+        darkPath: "#685342",
         darkPathCrack: "rgba(28,18,10,0.45)",
-        rock: "#8d9196",
-        trunk: "#6d4a2d",
-        leaves: "#285a2d",
-        leavesHi: "#4e8e4f"
+        rock: "#9299a5",
+        trunk: "#704528",
+        leaves: "#28653a",
+        leavesHi: "#56a64e"
+      };
+
+      const DELUXE = {
+        ink: "#17243b",
+        inkSoft: "#2d4663",
+        cream: "#fff4cf",
+        teal: "#39b99a",
+        tealDark: "#187862",
+        coral: "#ef7d72",
+        sky: "#8fd7f0",
+        panel: "rgba(20,34,55,0.92)",
+        panelSoft: "rgba(31,51,76,0.90)",
+        border: "#8fd7d1",
+        shadow: "rgba(9,18,30,0.35)"
       };
 
       // Character creation options
@@ -133,7 +151,7 @@
         "47,20": "south", "57,20": "south",  // Row 1 — door faces Elm Road from above
         "47,25": "north", "57,25": "north",  // Row 2 — door faces Elm Road from below
         "47,39": "north", "57,39": "north",  // Row 3 — door faces Blossom Lane
-        "65,20": "south",                    // House 7 — Cedar Drive Row 1
+        "65,20": "south", "76,85": "south", "85,83": "south", "85,90": "south",                    // House 7 — Cedar Drive Row 1
         "65,25": "north",                    // House 8 — Cedar Drive Row 2
         "65,39": "north",                    // House 9 — Cedar Drive Row 3
         "58,53": "south",                    // Sweet Dreams candy store — south door
@@ -177,6 +195,44 @@
         { id: "romance", emoji: "💕",  title: "Moonlight by Midnight",  desc: "Warm fuzzy feeling (+15 HP)", price: 5,
           fn: (p) => { p.hp = Math.min(p.hp + 15, p.maxHp); return "Felt all the feelings. +15 HP!"; } },
       ];
+
+      const LIFE_ACTIONS = [
+        { id:"cook",   emoji:"🍳", label:"Cook a meal",      duration:2.0, hours:1, target:"kitchen", needs:{ hunger:38, energy:-5, hygiene:-3 }, skill:"cooking" },
+        { id:"shower", emoji:"🚿", label:"Take a shower",    duration:1.6, hours:1, target:"bathroom", needs:{ hygiene:48, energy:3 } },
+        { id:"sleep",  emoji:"💤", label:"Sleep",             duration:3.0, hours:8, target:"bed", needs:{ energy:70, hunger:-18 } },
+        { id:"chat",   emoji:"💬", label:"Chat with Nova",    duration:1.8, hours:1, target:"sofa", needs:{ social:38, fun:8 }, relationship:1, skill:"charisma" },
+        { id:"play",   emoji:"🎮", label:"Play a game",       duration:1.8, hours:2, target:"tv", needs:{ fun:45, social:-4 } },
+        { id:"study",  emoji:"📚", label:"Study skills",      duration:2.2, hours:2, target:"desk", needs:{ fun:-10, energy:-10 }, skill:"logic" },
+        { id:"work",   emoji:"💼", label:"Work a shift",      duration:2.8, hours:6, target:"desk", needs:{ hunger:-18, energy:-22, fun:-12, social:-8 }, money:90 }
+      ];
+      const LIFE_WISHES = ["cook", "chat", "play", "study", "work", "shower", "sleep"];
+      const LIFE_BODY_FRAMES = ["Slim", "Classic", "Strong"];
+      const LIFE_ASPIRATIONS = ["Social Star", "Mastermind", "Joyful Life"];
+      const LIFE_TRAITS = ["Cheerful", "Creative", "Ambitious", "Kind", "Goofball"];
+
+      function createDefaultLifeSim() {
+        return {
+          characterCreated: false,
+          avatar: {
+            name: "Hero",
+            skin: 0,
+            hairStyle: 0,
+            hairColour: 0,
+            outfit: 0,
+            bodyFrame: 1,
+            aspiration: 0,
+            trait: 0
+          },
+          day: 1,
+          hour: 8,
+          minute: 0,
+          needs: { hunger:75, energy:75, fun:70, social:65, hygiene:80 },
+          skills: { cooking:0, charisma:0, logic:0 },
+          novaRelationship: 0,
+          aspirationPoints: 0,
+          completedWishes: 0
+        };
+      }
 
       const CANDY_ITEMS = [
         { id: "gobstopper",   emoji: "🟠", name: "Gobstopper",    desc: "Restores 3 HP",          price:  3, hp: 3  },
@@ -348,6 +404,12 @@
             "Have you been in the sewers?! What's it like?! Is it scary?! I bet it's REALLY scary."
           ]
         },
+        { id: "kai",    name: "Kai",    homeX: 76*32+16, homeY: 83*32+16, skin: "#c87840", hair: "#f0c050", torso: "#1a6aaa", legs: "#f0e0b0", hairStyle: 5,
+          dialogue: ["Bro, the waves are gnarly today! 🏄","I live for the ocean, sun, and good vibes.","You should try surfing sometime!","This island is paradise, yeah?","Nothing beats a fresh coconut after a swim. 🥥"] },
+        { id: "marina", name: "Marina", homeX: 72*32+16, homeY: 83*32+16, skin: "#80c8c0", hair: "#40d0f0", torso: "#2050c0", legs: "#1a3080", hairStyle: 2,
+          dialogue: ["I've lived by this ocean my whole life. 🌊","The coral reef is so beautiful at sunrise!","Can you hear the waves? So peaceful...","Legend says mermaids dance here at midnight. 🧜","The sea has many secrets..."] },
+        { id: "beau",   name: "Beau",   homeX: 78*32+16, homeY: 88*32+16, skin: "#d09060", hair: "#603820", torso: "#e05030", legs: "#ffffff", hairStyle: 0,
+          dialogue: ["Volleyball is life! Wanna play? 🏐","I've been coming to this island every summer!","Sun, sand, volleyball — what else do you need?","I set the island high score last season!","The tiki bar makes amazing smoothies. 🍹"] },
         { id: "cleo",   name: "Cleo",   homeX:  8*32+16, homeY: 28*32+16, skin: "#3a2818", hair: "#c83030", torso: "#101828", legs: "#080c18", hairStyle: 2,
           lines: [
             "You're going to the cinema? I used to go every Friday. Then I saw something in one of the films.",
@@ -693,7 +755,7 @@
             placedFurniture: []
           },
           relationships: { ella: 0, rex: 0, lumi: 0 },
-          friendship: { ella: 0, will: 0, pipper: 0, rose: 0, lumi: 0, rex: 0, mabel: 0, finn: 0, doc: 0, nora: 0, sam: 0, cleo: 0 },
+          friendship: { ella: 0, will: 0, pipper: 0, rose: 0, lumi: 0, rex: 0, mabel: 0, finn: 0, doc: 0, nora: 0, sam: 0, cleo: 0, kai: 0, marina: 0, beau: 0 },
           married: null,
           marriageDay: 0,
           hasBaby: false,
@@ -706,7 +768,8 @@
             metLumi: false,
             unlockedHouse: true
           },
-          buildItems: []
+          buildItems: [],
+          lifeSim: createDefaultLifeSim()
         };
       }
 
@@ -739,6 +802,14 @@
               save.buildItems = Array.isArray(save.buildItems) ? save.buildItems : [];
               save.version = 4;
               break;
+            case 4:
+              save.lifeSim = save.lifeSim || createDefaultLifeSim();
+              save.version = 5;
+              break;
+            case 5:
+              save.lifeSim = Object.assign({}, createDefaultLifeSim(), save.lifeSim || {});
+              save.version = 6;
+              break;
             default:
               return createNewSave();
           }
@@ -760,6 +831,10 @@
         if (save.hasBaby === undefined) save.hasBaby = false;
         if (save.hasRing  === undefined) save.hasRing  = false;
         if (!Array.isArray(save.buildItems)) save.buildItems = [];
+        save.lifeSim = Object.assign({}, fresh.lifeSim, save.lifeSim || {});
+        save.lifeSim.avatar = Object.assign({}, fresh.lifeSim.avatar, save.lifeSim.avatar || {});
+        save.lifeSim.needs = Object.assign({}, fresh.lifeSim.needs, save.lifeSim.needs || {});
+        save.lifeSim.skills = Object.assign({}, fresh.lifeSim.skills, save.lifeSim.skills || {});
         return save;
       }
 
@@ -841,6 +916,7 @@
         KeyE: "interact",
         KeyX: "map",
         KeyB: "build",
+        KeyC: "customize",
         KeyI: "inventory",
         Escape: "pause",
         Enter: "confirm",
@@ -1275,6 +1351,76 @@
 
         // Path from docks to beach
         fillRectTiles(47, 62, 2, 3, TILE.PATH);
+
+        // ══════════════════════════════════════════════════════════════════
+        // SULANI TROPICAL ISLAND  (Sims 4 Island Living inspired)
+        // Large island in the southern ocean, connected by wooden pier
+        // ══════════════════════════════════════════════════════════════════
+
+        // Wooden pier / bridge from mainland beach (y:64) down to island
+        fillRectTiles(71, 64, 3, 13, TILE.PATH);    // main pier planks
+        fillRectTiles(70, 64, 1, 13, TILE.DARK_PATH); // left rail
+        fillRectTiles(74, 64, 1, 13, TILE.DARK_PATH); // right rail
+
+        // Island base — oval sand beach perimeter
+        fillRectTiles(70, 77, 22, 16, TILE.PATH);   // full beach rectangle
+        // Trim corners for oval shape
+        fillRectTiles(70, 77, 2, 2,  TILE.WATER); fillRectTiles(90, 77, 2, 2,  TILE.WATER);
+        fillRectTiles(70, 91, 2, 2,  TILE.WATER); fillRectTiles(90, 91, 2, 2,  TILE.WATER);
+        fillRectTiles(70, 78, 1, 1,  TILE.PATH);  fillRectTiles(91, 78, 1, 1,  TILE.PATH);
+        fillRectTiles(70, 90, 1, 1,  TILE.PATH);  fillRectTiles(91, 90, 1, 1,  TILE.PATH);
+
+        // Island interior — lush tropical grass
+        fillRectTiles(73, 79, 16, 12, TILE.GRASS);
+
+        // Tiki Bar building (centre-left of island)
+        fillRectTiles(74, 81, 5, 4, TILE.STONE);    // building walls
+        fillRectTiles(76, 85, 1, 1, TILE.PATH);     // tiki bar door
+
+        // Beach houses (right side of island)
+        fillRectTiles(83, 79, 5, 4, TILE.STONE);    // beach house 1
+        fillRectTiles(85, 83, 1, 1, TILE.PATH);     // door 1
+        fillRectTiles(83, 86, 5, 4, TILE.STONE);    // beach house 2
+        fillRectTiles(85, 90, 1, 1, TILE.PATH);     // door 2
+
+        // Volleyball court (sandy, centre of island)
+        fillRectTiles(74, 87, 7, 4, TILE.PATH);     // court sand
+        setTile(77, 87, TILE.GRASS); setTile(77, 88, TILE.GRASS); // net posts
+        setTile(77, 89, TILE.GRASS); setTile(77, 90, TILE.GRASS);
+
+        // Island paths
+        fillRectTiles(73, 85, 1, 4, TILE.PATH);     // path along tiki bar
+        fillRectTiles(81, 79, 2, 12, TILE.PATH);    // main island road N-S
+        fillRectTiles(73, 85, 10, 2, TILE.PATH);    // cross-island path
+
+        // Palm trees scattered around island (TREE = blocking tropical)
+        for (const [tx,ty] of [
+          [70,79],[70,83],[70,88],[70,92],[71,92],[72,91],
+          [91,79],[91,83],[91,88],[91,92],[90,92],[89,91],
+          [73,80],[74,80],[89,80],[88,80],
+          [73,90],[74,91],[88,91],[89,90],
+          [78,80],[79,80],[80,80],
+          [78,91],[79,91],[80,91],
+        ]) { setTile(tx, ty, TILE.TREE); }
+
+        // Tropical flowers along paths and beach
+        for (const [tx,ty] of [
+          [75,80],[77,80],[82,80],[84,80],[86,80],[87,80],
+          [73,87],[73,88],[82,87],[82,88],
+          [74,86],[81,86],[81,87],
+          [75,91],[76,91],[77,92],[82,92],[83,91],
+        ]) { setTile(tx, ty, TILE.FLOWERS); }
+
+        // Coral reef decorations near shore (flowers in water edge = sea floor)
+        for (const [tx,ty] of [
+          [72,76],[73,76],[74,76],[75,76],[76,76],[77,76],[80,76],[83,76],[86,76],[89,76],
+          [93,80],[93,84],[93,88],
+          [68,80],[68,84],[68,88],
+        ]) { setTile(tx, ty, TILE.FLOWERS); }
+
+        // Small rock formations in ocean near island
+        stampTiles([[69,81],[69,86],[69,91],[93,82],[93,87]], TILE.ROCK);
+
       }
 
       // ==================================================
@@ -2304,63 +2450,101 @@
       // === RENDERING ====================================
       // ==================================================
 
+      function drawPixelPanel(x, y, width, height, fill = DELUXE.panel, border = DELUXE.border) {
+        ctx.fillStyle = DELUXE.shadow;
+        ctx.fillRect(x + 5, y + 7, width, height);
+        ctx.fillStyle = fill;
+        ctx.fillRect(x + 4, y, width - 8, height);
+        ctx.fillRect(x, y + 4, width, height - 8);
+        ctx.strokeStyle = border;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + 4, y + 1, width - 8, height - 2);
+        ctx.strokeRect(x + 1, y + 4, width - 2, height - 8);
+        ctx.fillStyle = "rgba(255,255,255,0.13)";
+        ctx.fillRect(x + 7, y + 5, width - 14, 2);
+      }
+
+      function drawMoonMarker(x, y, time, colour = DELUXE.teal) {
+        const bob = Math.sin(time * 3.2) * 3;
+        ctx.save();
+        ctx.translate(Math.round(x), Math.round(y + bob));
+        ctx.fillStyle = "rgba(57,185,154,0.18)";
+        ctx.beginPath();
+        ctx.arc(0, 0, 17, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = shade(colour, 24);
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(-1, 0, 9, Math.PI * 0.35, Math.PI * 1.65);
+        ctx.stroke();
+        ctx.fillStyle = "#dffff5";
+        ctx.fillRect(7, -10, 3, 3);
+        ctx.fillRect(8, -12, 1, 7);
+        ctx.fillRect(6, -9, 7, 1);
+        ctx.restore();
+      }
+
       function drawGrass(x, y, tileX, tileY, base) {
         ctx.fillStyle = base;
         ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
 
-        for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = shade(base, (tileX + tileY) % 2 === 0 ? 4 : -3);
+        ctx.fillRect(x, y, 16, 16);
+        ctx.fillRect(x + 16, y + 16, 16, 16);
+        for (let i = 0; i < 6; i++) {
           const nx = noise(tileX * 2 + i, tileY, i);
           const ny = noise(tileX, tileY * 3 + i, i + 11);
           const px = x + 3 + Math.floor(nx * 24);
           const py = y + 3 + Math.floor(ny * 24);
-          ctx.fillStyle = shade(base, i % 2 === 0 ? 10 : -12);
-          ctx.fillRect(px, py, 3 + (i % 2), 2 + ((i + 1) % 2));
+          ctx.fillStyle = shade(base, i % 2 === 0 ? 14 : -14);
+          ctx.fillRect(px, py, 2, 4);
+          ctx.fillRect(px + 2, py + 2, 2, 2);
         }
-
-        ctx.fillStyle = "rgba(255,255,255,0.06)";
-        ctx.fillRect(x + 2, y + 2, 1, 1);
-        ctx.fillRect(x + 18, y + 8, 1, 1);
-        ctx.fillRect(x + 25, y + 20, 1, 1);
+        ctx.fillStyle = "rgba(255,255,220,0.12)";
+        ctx.fillRect(x + 2, y + 2, 2, 2);
+        ctx.fillRect(x + 24, y + 18, 2, 2);
       }
 
       function drawPath(x, y, tileX, tileY) {
         ctx.fillStyle = COLORS.path;
         ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-        ctx.fillStyle = "rgba(110,80,38,0.18)";
-        for (let i = 0; i < 5; i++) {
-          const px = x + 2 + Math.floor(noise(tileX, tileY, i + 20) * 26);
-          const py = y + 2 + Math.floor(noise(tileY, tileX, i + 30) * 26);
-          ctx.fillRect(px, py, 2, 2);
+        ctx.fillStyle = "rgba(96,65,32,0.18)";
+        ctx.fillRect(x, y + 15, TILE_SIZE, 2);
+        ctx.fillRect(x + 15, y, 2, 15);
+        ctx.fillRect(x + 7, y + 17, 2, 15);
+        for (let i = 0; i < 3; i++) {
+          const px = x + 3 + Math.floor(noise(tileX, tileY, i + 20) * 25);
+          const py = y + 3 + Math.floor(noise(tileY, tileX, i + 30) * 25);
+          ctx.fillRect(px, py, 3, 2);
         }
-        ctx.fillStyle = "rgba(255,230,180,0.10)";
-        ctx.fillRect(x + 5, y + 4, 18, 3);
+        ctx.fillStyle = "rgba(255,242,194,0.24)";
+        ctx.fillRect(x + 2, y + 2, 28, 2);
       }
 
       function drawWater(x, y, tileX, tileY, time) {
-        ctx.fillStyle = COLORS.water;
+        ctx.fillStyle = shade(COLORS.water, (tileX + tileY) % 2 === 0 ? 2 : -4);
         ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-
-        const shimmer = 0.18 + 0.12 * Math.sin(time * 2.8 + tileX * 0.8 + tileY * 0.45);
-        ctx.fillStyle = `rgba(141, 201, 255, ${shimmer.toFixed(3)})`;
-        ctx.fillRect(x + 3, y + 7, 22, 3);
-        ctx.fillRect(x + 10, y + 17, 16, 2);
-        ctx.fillRect(x + 6, y + 25, 12, 2);
-
-        ctx.strokeStyle = "rgba(255,255,255,0.10)";
-        ctx.beginPath();
-        ctx.moveTo(x + 4, y + 12);
-        ctx.quadraticCurveTo(x + 12, y + 8, x + 20, y + 12);
-        ctx.quadraticCurveTo(x + 25, y + 15, x + 29, y + 12);
-        ctx.stroke();
+        const shift = Math.round(Math.sin(time * 2 + tileX * 0.7 + tileY) * 3);
+        ctx.fillStyle = "rgba(22,92,151,0.30)";
+        ctx.fillRect(x, y + 14, TILE_SIZE, 3);
+        ctx.fillStyle = "rgba(185,238,255,0.48)";
+        ctx.fillRect(x + 3 + shift, y + 6, 13, 2);
+        ctx.fillRect(x + 15 - shift, y + 22, 12, 2);
+        ctx.fillStyle = "rgba(255,255,255,0.38)";
+        ctx.fillRect(x + 6 + shift, y + 5, 5, 1);
+        ctx.fillRect(x + 18 - shift, y + 21, 5, 1);
       }
 
       function drawFlowers(x, y, tileX, tileY) {
         drawGrass(x, y, tileX, tileY, COLORS.grass);
-        const palette = ["#f1d84e", "#db5d5d", "#b777ea", "#ffef8f"];
-        for (let i = 0; i < 8; i++) {
+        const palette = ["#ffd95a", "#f46f7b", "#bd83ed", "#fff4a8"];
+        for (let i = 0; i < 6; i++) {
           const px = x + 4 + Math.floor(noise(tileX, tileY, i + 40) * 24);
           const py = y + 4 + Math.floor(noise(tileY, tileX, i + 50) * 24);
           ctx.fillStyle = palette[i % palette.length];
+          ctx.fillRect(px - 1, py, 4, 2);
+          ctx.fillRect(px, py - 1, 2, 4);
+          ctx.fillStyle = "#fff1a0";
           ctx.fillRect(px, py, 2, 2);
         }
       }
@@ -2866,28 +3050,33 @@
       function drawTree(tileX, tileY, time) {
         const x = tileX * TILE_SIZE;
         const y = tileY * TILE_SIZE;
-        const sway = Math.sin(time * 1.3 + tileX * 0.7 + tileY * 0.5) * 1.4;
+        const sway = Math.round(Math.sin(time * 1.3 + tileX * 0.7 + tileY * 0.5));
 
-        ctx.fillStyle = "rgba(0,0,0,0.18)";
+        ctx.fillStyle = "rgba(12,30,25,0.24)";
         ctx.beginPath();
-        ctx.ellipse(x + 16, y + 23, 12, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(x + 18, y + 27, 14, 5, -0.2, 0, Math.PI * 2);
         ctx.fill();
 
+        ctx.fillStyle = shade(COLORS.trunk, -20);
+        ctx.fillRect(x + 12, y + 14, 10, 15);
         ctx.fillStyle = COLORS.trunk;
-        ctx.fillRect(x + 13, y + 15, 6, 13);
+        ctx.fillRect(x + 14, y + 13, 6, 15);
+        ctx.fillStyle = shade(COLORS.trunk, 28);
+        ctx.fillRect(x + 15, y + 14, 2, 12);
 
+        const ox = sway;
+        ctx.fillStyle = shade(COLORS.leaves, -18);
+        ctx.fillRect(x + 3 + ox, y + 5, 26, 15);
+        ctx.fillRect(x + 7 + ox, y + 1, 18, 23);
         ctx.fillStyle = COLORS.leaves;
-        ctx.beginPath();
-        ctx.arc(x + 16 + sway, y + 10, 12, 0, Math.PI * 2);
-        ctx.arc(x + 10 + sway * 0.8, y + 14, 9, 0, Math.PI * 2);
-        ctx.arc(x + 22 + sway * 0.8, y + 14, 9, 0, Math.PI * 2);
-        ctx.fill();
-
+        ctx.fillRect(x + 5 + ox, y + 3, 22, 15);
+        ctx.fillRect(x + 9 + ox, y, 14, 22);
         ctx.fillStyle = COLORS.leavesHi;
-        ctx.beginPath();
-        ctx.arc(x + 12 + sway, y + 8, 5, 0, Math.PI * 2);
-        ctx.arc(x + 20 + sway, y + 11, 4, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillRect(x + 8 + ox, y + 3, 10, 5);
+        ctx.fillRect(x + 5 + ox, y + 9, 6, 5);
+        ctx.fillStyle = "#8dcc62";
+        ctx.fillRect(x + 10 + ox, y + 3, 5, 3);
+        ctx.fillRect(x + 19 + ox, y + 8, 4, 3);
       }
 
       function drawObstacle(tile, tileX, tileY, time) {
@@ -2913,6 +3102,7 @@
           torso:     outfit.torso,
           legs:      outfit.legs,
           hairStyle: p.hairStyle || 0,
+          bodyFrame: p.bodyFrame ?? 1,
           ageType:   p.ageType   || "adult"
         });
       }
@@ -3105,7 +3295,7 @@
         ctx.restore();
       }
 
-      function drawNpcSprite(time, npc) {
+      function drawLegacyNpcSprite(time, npc) {
         if(npc.ageType==="toddler"){ drawToddlerSprite(time,npc); return; }
         if(npc.ageType==="child")  { drawChildSprite(time,npc);   return; }
 
@@ -3285,6 +3475,229 @@
           ctx.fillText(nm,x,by+10);
           if(hearts>0){ ctx.fillStyle="#e84c88"; ctx.font="7px monospace"; ctx.fillText(hRow,x,by+21); }
           ctx.textAlign="left";
+          ctx.restore();
+        }
+      }
+
+      function drawNpcSprite(time, npc) {
+        const age = npc.ageType || "adult";
+        const metrics = age === "toddler"
+          ? { width: 24, height: 40, head: 20, torsoW: 14, torsoH: 10, legH: 8, armW: 3, handH: 4 }
+          : age === "child"
+            ? { width: 28, height: 52, head: 22, torsoW: 16, torsoH: 15, legH: 13, armW: 3, handH: 4 }
+            : { width: 32, height: 64, head: 24, torsoW: 18, torsoH: 20, legH: 18, armW: 4, handH: 5 };
+        const skin = npc.skin || SKIN_TONES[0];
+        const hair = npc.hair || HAIR_COLORS[0];
+        const top = npc.torso || OUTFIT_COLORS[0].torso;
+        const bottoms = npc.legs || OUTFIT_COLORS[0].legs;
+        const ink = "#211b38";
+        const skinShadow = shade(skin, -24);
+        const skinHighlight = shade(skin, 18);
+        const hairShadow = shade(hair, -30);
+        const hairHighlight = shade(hair, 28);
+        const topShadow = shade(top, -28);
+        const topHighlight = shade(top, 24);
+        const bottomShadow = shade(bottoms, -26);
+        const shoe = shade(bottoms, -48);
+        const moving = Math.hypot(npc.vx || 0, npc.vy || 0) > 4;
+        const frame = moving ? Math.floor((npc.walkTime || 0) * 8) % 8 : 0;
+        const cycle = [0, 1, 2, 1, 0, -1, -2, -1][frame];
+        const bob = moving ? Math.abs(cycle) : Math.round(Math.sin(time * 1.4 + (npc.homeX || 0) * 0.01) * 0.5);
+        const x = Math.round(npc.x);
+        const y = Math.round(npc.y + bob);
+        const dir = npc.dir || "down";
+        const side = dir === "left" || dir === "right";
+        const facing = dir === "left" ? -1 : 1;
+        const footY = 32;
+        const topY = footY - metrics.height;
+        const headX = -Math.floor(metrics.head / 2);
+        const headY = topY;
+        const torsoY = headY + metrics.head - 1;
+        const frameAdjust = age === "adult" ? (npc.bodyFrame ?? 1) - 1 : 0;
+        const torsoW = metrics.torsoW + frameAdjust * 2;
+        const torsoX = -Math.floor(torsoW / 2);
+        const hipsY = torsoY + metrics.torsoH - 2;
+        const legW = age === "adult" ? 7 : age === "child" ? 6 : 5;
+        const legGap = age === "toddler" ? 1 : 2;
+        const legsW = legW * 2 + legGap;
+        const legsX = -Math.floor(legsW / 2);
+        const legY = footY - metrics.legH - 3;
+        const stride = moving ? cycle : 0;
+        const armSwing = moving ? -cycle : 0;
+        const r = (rx, ry, rw, rh, color) => {
+          ctx.fillStyle = color;
+          ctx.fillRect(x + Math.round(rx), y + Math.round(ry), Math.round(rw), Math.round(rh));
+        };
+
+        ctx.fillStyle = "rgba(9,18,30,0.24)";
+        ctx.beginPath();
+        ctx.ellipse(x, y + footY + 1, metrics.width * 0.34, age === "adult" ? 3 : 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Back hair is a separate layer so long styles sit behind jackets and faces.
+        const hairStyle = npc.hairStyle || 0;
+        if (hairStyle === 2 || hairStyle === 3) {
+          const backW = hairStyle === 3 ? metrics.head + 4 : metrics.head;
+          r(-Math.floor(backW / 2), headY + 3, backW, metrics.head + (age === "adult" ? 12 : 7), ink);
+          r(-Math.floor(backW / 2) + 2, headY + 4, backW - 4, metrics.head + (age === "adult" ? 9 : 5), hairShadow);
+          r(-Math.floor(backW / 2) + 3, headY + 4, backW - 6, metrics.head + (age === "adult" ? 7 : 4), hair);
+        }
+
+        // Legs, shoes, waist, jacket, and undershirt use distinct material layers.
+        const leftStride = side ? 0 : stride;
+        const rightStride = side ? stride : -stride;
+        r(legsX + leftStride, legY, legW, metrics.legH, ink);
+        r(legsX + leftStride + 1, legY, legW - 2, metrics.legH - 1, bottomShadow);
+        r(legsX + leftStride + 2, legY, Math.max(1, legW - 3), metrics.legH - 2, bottoms);
+        r(legsX + legW + legGap + rightStride, legY, legW, metrics.legH, ink);
+        r(legsX + legW + legGap + rightStride + 1, legY, legW - 2, metrics.legH - 1, bottomShadow);
+        r(legsX + legW + legGap + rightStride + 1, legY, Math.max(1, legW - 3), metrics.legH - 2, bottoms);
+        r(legsX + leftStride - 1, footY - 4, legW + 2, 4, ink);
+        r(legsX + leftStride, footY - 3, legW + 1, 2, shoe);
+        r(legsX + legW + legGap + rightStride - 1, footY - 4, legW + 2, 4, ink);
+        r(legsX + legW + legGap + rightStride, footY - 3, legW + 1, 2, shoe);
+        r(torsoX - 1, hipsY, torsoW + 2, 4, ink);
+        r(torsoX, hipsY, torsoW, 2, bottomShadow);
+        r(torsoX - 1, torsoY, torsoW + 2, metrics.torsoH, ink);
+        r(torsoX, torsoY + 1, torsoW, metrics.torsoH - 2, topShadow);
+        r(torsoX + 2, torsoY + 1, torsoW - 4, metrics.torsoH - 3, top);
+        if (dir === "down") {
+          const shirtW = Math.max(4, Math.floor(torsoW * 0.36));
+          r(-Math.floor(shirtW / 2), torsoY + 2, shirtW, metrics.torsoH - 4, shade(top, 46));
+          r(torsoX + 1, torsoY + 1, 3, metrics.torsoH - 3, topHighlight);
+          r(-1, hipsY - 1, 2, 3, shade(bottoms, 14));
+        } else if (dir === "up") {
+          r(torsoX + 1, torsoY + 1, torsoW - 2, metrics.torsoH - 2, topShadow);
+          r(torsoX + 2, torsoY + 1, Math.max(2, torsoW - 5), 2, top);
+        } else {
+          r(torsoX + (facing < 0 ? torsoW - 4 : 1), torsoY + 1, 3, metrics.torsoH - 3, topHighlight);
+        }
+
+        const armY = torsoY + 2;
+        const leftArmX = torsoX - metrics.armW - 1;
+        const rightArmX = torsoX + torsoW + 1;
+        r(leftArmX, armY + armSwing, metrics.armW, metrics.torsoH - 2, ink);
+        r(leftArmX + 1, armY + armSwing + 1, metrics.armW - 1, metrics.torsoH - metrics.handH - 2, topShadow);
+        r(leftArmX + 1, armY + metrics.torsoH - metrics.handH - 1 + armSwing, metrics.armW - 1, metrics.handH, skinShadow);
+        r(rightArmX, armY - armSwing, metrics.armW, metrics.torsoH - 2, ink);
+        r(rightArmX, armY - armSwing + 1, metrics.armW - 1, metrics.torsoH - metrics.handH - 2, top);
+        r(rightArmX, armY + metrics.torsoH - metrics.handH - 1 - armSwing, metrics.armW - 1, metrics.handH, skin);
+        r(-3, torsoY - 3, 6, 5, ink);
+        r(-2, torsoY - 3, 4, 4, skinShadow);
+
+        // Head and face retain readable expressions at normal gameplay scale.
+        const profileInset = side ? 3 : 0;
+        r(headX + profileInset, headY, metrics.head - profileInset, metrics.head, ink);
+        r(headX + 1 + profileInset, headY + 1, metrics.head - 2 - profileInset, metrics.head - 2, skinShadow);
+        r(headX + 3 + profileInset, headY + 2, metrics.head - 6 - profileInset, metrics.head - 4, skin);
+        r(headX + 4 + profileInset, headY + 3, Math.max(3, metrics.head - 10 - profileInset), 4, skinHighlight);
+        if (dir === "up") {
+          r(headX + 2, headY + 4, metrics.head - 4, metrics.head - 5, hairShadow);
+          r(headX + 4, headY + 5, metrics.head - 7, metrics.head - 7, hair);
+          r(headX + 5, headY + 5, Math.max(3, metrics.head - 12), 3, hairHighlight);
+        } else if (side) {
+          const faceEdge = facing < 0 ? headX + profileInset : headX + metrics.head - 4;
+          const eyeX = facing < 0 ? faceEdge + 2 : faceEdge - 3;
+          r(eyeX, headY + 9, 4, 5, ink);
+          r(eyeX + (facing < 0 ? 1 : 0), headY + 10, 3, 3, "#f7fbff");
+          r(eyeX + (facing < 0 ? 1 : 2), headY + 11, 1, 2, shade(hair, -10));
+          r(faceEdge + (facing < 0 ? -1 : 3), headY + 13, 3, 3, skin);
+          r(faceEdge + (facing < 0 ? 1 : 0), headY + 18, 3, 2, shade(skin, -38));
+        } else if (dir === "down") {
+          const eyeY = headY + Math.floor(metrics.head * 0.39);
+          const leftEye = headX + 5;
+          const rightEye = headX + metrics.head - 9;
+          r(leftEye, eyeY - 2, 5, 1, hairShadow);
+          r(rightEye, eyeY - 2, 5, 1, hairShadow);
+          r(leftEye, eyeY, 5, 6, ink);
+          r(rightEye, eyeY, 5, 6, ink);
+          r(leftEye + 1, eyeY + 1, 3, 4, "#f7fbff");
+          r(rightEye + 1, eyeY + 1, 3, 4, "#f7fbff");
+          r(leftEye + 2, eyeY + 2, 2, 3, shade(hair, -8));
+          r(rightEye + 1, eyeY + 2, 2, 3, shade(hair, -8));
+          r(leftEye + 2, eyeY + 1, 1, 1, "#ffffff");
+          r(rightEye + 1, eyeY + 1, 1, 1, "#ffffff");
+          r(-1, eyeY + 7, 2, 2, skinShadow);
+          r(-3, eyeY + 11, 6, 2, shade(skin, -42));
+          r(-2, eyeY + 11, 4, 1, "#d98286");
+        }
+
+        // Front hair carries the six creator silhouettes and a three-tone highlight.
+        const capX = headX - (hairStyle === 3 ? 2 : 0);
+        const capW = metrics.head + (hairStyle === 3 ? 4 : 0);
+        if (hairStyle === 4) {
+          r(-5, headY - 8, 10, 9, ink);
+          r(-4, headY - 7, 8, 7, hairShadow);
+          r(-3, headY - 7, 5, 3, hairHighlight);
+        }
+        if (hairStyle === 5) {
+          for (let spike = 0; spike < 5; spike++) {
+            const spikeX = capX + spike * Math.max(3, Math.floor(capW / 5));
+            r(spikeX, headY - 4 - (spike % 2) * 2, 6, 8 + (spike % 2) * 2, ink);
+            r(spikeX + 1, headY - 3 - (spike % 2) * 2, 4, 6 + (spike % 2) * 2, hair);
+          }
+        } else {
+          r(capX, headY - 2, capW, 9, ink);
+          r(capX + 1, headY - 1, capW - 2, 7, hairShadow);
+          r(capX + 3, headY - 1, capW - 7, 3, hairHighlight);
+        }
+        r(headX - 1, headY + 3, 4, hairStyle === 2 ? metrics.head : 10, ink);
+        r(headX, headY + 3, 2, hairStyle === 2 ? metrics.head - 2 : 8, hairShadow);
+        r(headX + metrics.head - 3, headY + 3, 4, hairStyle === 2 ? metrics.head : 10, ink);
+        r(headX + metrics.head - 2, headY + 3, 2, hairStyle === 2 ? metrics.head - 2 : 8, hair);
+        if (dir !== "up") {
+          if (hairStyle === 1) {
+            r(headX + 2, headY + 3, metrics.head - 5, 6, hair);
+            r(headX + metrics.head - 9, headY + 6, 7, 7, hairShadow);
+          } else if (hairStyle !== 5) {
+            r(headX + 2, headY + 3, metrics.head - 4, 4, hair);
+            r(headX + 3, headY + 3, Math.max(3, metrics.head - 10), 2, hairHighlight);
+          }
+        }
+
+        if (dir !== "up") {
+          const id = npc.id || "";
+          if (id === "ella" || id === "mabel") {
+            r(torsoX + 2, torsoY + 3, torsoW - 4, 3, "#fff7df");
+            r(torsoX + 3, torsoY + 6, 3, metrics.torsoH - 7, "#fff7df");
+            r(torsoX + torsoW - 6, torsoY + 6, 3, metrics.torsoH - 7, "#fff7df");
+          }
+          if (id === "doc") {
+            r(torsoX, torsoY + 1, torsoW, metrics.torsoH - 2, "#e8eef8");
+            r(-2, torsoY + 7, 4, 2, "#c92e42");
+            r(-1, torsoY + 6, 2, 4, "#c92e42");
+          }
+          if (id === "lumi") r(torsoX + torsoW - 3, torsoY + 2, 5, 4, "#f5c518");
+          if (id === "finn") r(torsoX - 2, torsoY + 1, 5, 3, "#d7c06d");
+          if (id === "cleo") r(torsoX + torsoW - 2, torsoY + 4, 5, 8, "#d4a060");
+          if (npc.married) r(rightArmX, armY + metrics.torsoH - metrics.handH, 2, 1, "#ffd34d");
+        }
+
+        const dist = Math.hypot((typeof player !== "undefined" ? player.x : 0) - npc.x,
+          (typeof player !== "undefined" ? player.y : 0) - npc.y);
+        if (npc.name && dist < 90) {
+          ctx.save();
+          ctx.font = "bold 9px monospace";
+          const hearts = Math.min(10, (game.save && game.save.friendship && game.save.friendship[npc.id]) || 0);
+          const heartRow = hearts > 0 ? "♥".repeat(hearts) : "";
+          const textWidth = ctx.measureText(npc.name).width;
+          const heartWidth = hearts > 0 ? ctx.measureText(heartRow).width : 0;
+          const boxW = Math.max(textWidth, heartWidth) + 8;
+          const boxH = hearts > 0 ? 24 : 14;
+          const boxX = x - boxW / 2;
+          const boxY = y + topY - 12 - boxH;
+          ctx.fillStyle = npc.married ? "rgba(80,30,0,0.78)" : "rgba(9,18,30,0.72)";
+          ctx.beginPath();
+          ctx.roundRect(boxX, boxY, boxW, boxH, 3);
+          ctx.fill();
+          ctx.fillStyle = npc.married ? "#ffd34d" : "#fff4cf";
+          ctx.textAlign = "center";
+          ctx.fillText(npc.name, x, boxY + 10);
+          if (hearts > 0) {
+            ctx.fillStyle = "#ef7d92";
+            ctx.font = "7px monospace";
+            ctx.fillText(heartRow, x, boxY + 21);
+          }
           ctx.restore();
         }
       }
@@ -3545,6 +3958,7 @@
         { label: "⚔️  Enter Dungeon",          fn: () => { if(game.scene===SCENE.CITY){ enterDungeon(1); } return "Into the sewer!"; } },
         { label: "💀 Kill All Enemies",        fn: () => { if(dungeon.enemies) dungeon.enemies.forEach(e=>e.alive=false); return "Enemies cleared!"; } },
         { label: "🏆 Max HP +10",              fn: () => { player.maxHp+=10; player.hp=player.maxHp; if(game.save) game.save.player.hpMax=player.maxHp; return `Max HP now ${player.maxHp}!`; } },
+        { label: "🌴 +1 Heart Island NPCs", fn: () => { ["kai","marina","beau"].forEach(id=>{ game.save.friendship[id]=Math.min(10,(game.save.friendship[id]||0)+1); }); writeSave(game.save); return "+1 heart with island NPCs!"; } },
         { label: "💕 +1 Heart All NPCs",       fn: () => {
           if (!game.save.friendship) game.save.friendship = {};
           ["ella","will","pipper","rose","lumi","rex","mabel","finn","doc","nora","sam","cleo"].forEach(id => {
@@ -3751,6 +4165,7 @@
         for (const [tile, x, y] of lateObstacles) {
           drawObstacle(tile, x, y, time);
         }
+        drawMoonMarker(player.x, player.y - 52, time);
       }
 
       // ── Build mode draw functions ────────────────────────────────────────────
@@ -3904,19 +4319,19 @@
         ctx.save();
         const day = save ? save.time.currentDay : 1;
         const name = save ? save.player.name : "";
+        drawPixelPanel(14, 12, 252, 96);
+        drawPixelPanel(canvas.width - 226, 12, 212, 96);
 
-        ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
-        ctx.fillRect(14, 12, 178, 36);
-        ctx.fillRect(canvas.width - 140, 12, 126, 36);
+        ctx.fillStyle = DELUXE.cream;
+        ctx.font = "bold 20px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("MOONLIGHT CITY", 30, 38);
+        ctx.fillStyle = DELUXE.teal;
+        ctx.fillRect(30, 45, 116, 3);
 
         ctx.fillStyle = "#f3f7e8";
-        ctx.font = "bold 22px Trebuchet MS, Arial, sans-serif";
-        ctx.fillText("Moonlight City", 24, 37);
-
-        ctx.font = "bold 18px Trebuchet MS, Arial, sans-serif";
-        const dayText = name ? `${name}  ·  Day ${day}` : `Day ${day}`;
-        const dayWidth = ctx.measureText(dayText).width;
-        ctx.fillText(dayText, canvas.width - 26 - dayWidth, 37);
+        ctx.font = "bold 15px Trebuchet MS, Arial, sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(name || "Hero", canvas.width - 30, 36);
 
         // Clock display
         if (save) {
@@ -3925,45 +4340,43 @@
           const _h12  = _ch % 12 || 12;
           const _clockStr = `${_h12}:${String(_cm).padStart(2,"0")} ${_ampm}`;
           const _isNight = _ch >= 20 || _ch < 8;
-          ctx.fillStyle = "rgba(0,0,0,0.28)";
-          const _cw = ctx.measureText(_clockStr).width + 16;
-          ctx.fillRect(canvas.width - _cw - 4, 52, _cw + 4, 20);
           ctx.fillStyle = _isNight ? "#aac8ff" : "#ffe8a0";
-          ctx.font = "bold 12px Trebuchet MS, Arial, sans-serif";
-          ctx.textAlign = "right";
-          ctx.fillText((_isNight ? "🌙 " : "☀️ ") + _clockStr, canvas.width - 10, 66);
-          ctx.textAlign = "left";
+          ctx.font = "bold 13px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText(`Day ${day}  ${_isNight ? "🌙" : "☀️"} ${_clockStr}`, canvas.width - 30, 59);
         }
 
-        // Inventory + gold badge
-        const inv = save && save.inventory ? save.inventory : [];
-        const invText = `🎒 ${inv.length}  ⬡ ${getCarriedGold()}`;
-        ctx.fillStyle = "rgba(0,0,0,0.28)";
-        const badgeW = ctx.measureText(invText).width + 20;
-        ctx.fillRect(14, 54, badgeW, 24);
-        ctx.fillStyle = inv.length > 0 ? "#e8f4ff" : "#607080";
-        ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+        // Vitals, inventory, and gold
+        const hpRatio = clamp(player.hp / Math.max(1, player.maxHp), 0, 1);
         ctx.textAlign = "left";
-        ctx.fillText(invText, 24, 70);
+        ctx.fillStyle = "#0d1728";
+        ctx.fillRect(30, 58, 122, 12);
+        ctx.fillStyle = hpRatio < 0.3 ? DELUXE.coral : "#62d178";
+        ctx.fillRect(30, 58, 122 * hpRatio, 12);
+        ctx.fillStyle = "#f5fbff";
+        ctx.font = "bold 10px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(`HP ${Math.ceil(player.hp)} / ${player.maxHp}`, 35, 68);
+
+        const inv = save && save.inventory ? save.inventory : [];
+        ctx.fillStyle = "#dce8f2";
+        ctx.font = "bold 12px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(`🎒 ${inv.length} items`, 30, 91);
+        ctx.fillStyle = "#ffd66b";
+        ctx.fillText(`⬡ ${getCarriedGold()}`, 146, 91);
+
         const seasonText = game.save ? getSeason(game.save.time.currentDay) : "";
         const weatherIcon = weather.type === "rain" ? " 🌧️" : weather.type === "snow" ? " ❄️" : "";
-        const seasonShown = !!seasonText;
-        if (seasonShown) {
-          ctx.fillStyle = "rgba(0,0,0,0.28)";
-          const seasonW = ctx.measureText(seasonText + weatherIcon).width + 20;
-          ctx.fillRect(14, 78, seasonW, 20);
-          ctx.fillStyle = "#e8f8e8";
-          ctx.font = "11px Trebuchet MS, Arial, sans-serif";
-          ctx.fillText(seasonText + weatherIcon, 24, 92);
-        }
+        ctx.fillStyle = "#bcd7d0";
+        ctx.font = "11px Trebuchet MS, Arial, sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(seasonText + weatherIcon, canvas.width - 30, 96);
+
         // Speed boost indicator on HUD
         if (player.speedBoost > 0) {
-          ctx.fillStyle = "rgba(0,0,0,0.28)";
-          const boostY = seasonShown ? 102 : 82;
-          ctx.fillRect(14, boostY, 120, 20);
+          drawPixelPanel(14, 116, 148, 28, DELUXE.panelSoft, "#69e6e3");
           ctx.fillStyle = "#80ffff";
           ctx.font = "11px Trebuchet MS, Arial, sans-serif";
-          ctx.fillText(`⚡ Speed boost: ${Math.ceil(player.speedBoost)}s`, 20, boostY + 14);
+          ctx.textAlign = "left";
+          ctx.fillText(`⚡ Speed boost ${Math.ceil(player.speedBoost)}s`, 26, 135);
         }
 
         ctx.restore();
@@ -3973,11 +4386,10 @@
         if (!game.noticeText || game.noticeTimer <= 0) return;
         ctx.font = "bold 16px Trebuchet MS, Arial, sans-serif";
         const textW = Math.max(220, ctx.measureText(game.noticeText).width + 36);
-        ctx.fillStyle = "rgba(0,0,0,0.55)";
-        ctx.fillRect(canvas.width / 2 - textW / 2, 16, textW, 30);
-        ctx.fillStyle = "#f0e8c8";
+        drawPixelPanel(canvas.width / 2 - textW / 2, 16, textW, 34, DELUXE.panel, DELUXE.teal);
+        ctx.fillStyle = DELUXE.cream;
         ctx.textAlign = "center";
-        ctx.fillText(game.noticeText, canvas.width / 2, 37);
+        ctx.fillText(game.noticeText, canvas.width / 2, 39);
         ctx.textAlign = "left";
       }
 
@@ -4039,6 +4451,35 @@
           ctx.fillStyle = "rgba(200,215,240,0.07)";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.restore();
+        }
+      }
+
+      function drawCityAtmosphere(time) {
+        const hour = game.save ? game.save.time.currentHour : 12;
+        if (hour >= 7 && hour < 19) {
+          const daylight = ctx.createLinearGradient(0, 0, 0, canvas.height);
+          daylight.addColorStop(0, "rgba(255,238,178,0.08)");
+          daylight.addColorStop(0.55, "rgba(255,255,255,0)");
+          daylight.addColorStop(1, "rgba(45,115,90,0.05)");
+          ctx.fillStyle = daylight;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        const vignette = ctx.createRadialGradient(
+          canvas.width / 2, canvas.height / 2, canvas.height * 0.22,
+          canvas.width / 2, canvas.height / 2, canvas.width * 0.72
+        );
+        vignette.addColorStop(0, "rgba(8,16,30,0)");
+        vignette.addColorStop(1, "rgba(8,16,30,0.24)");
+        ctx.fillStyle = vignette;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (weather.type === "clear" && hour >= 7 && hour < 19) {
+          ctx.fillStyle = "rgba(255,245,188,0.34)";
+          for (let i = 0; i < 12; i++) {
+            const px = (noise(i, 7, 31) * canvas.width + time * (4 + i % 3)) % canvas.width;
+            const py = noise(i, 9, 33) * canvas.height;
+            ctx.fillRect(Math.floor(px / 2) * 2, Math.floor(py / 2) * 2, 2, 2);
+          }
         }
       }
 
@@ -4306,23 +4747,21 @@
         });
 
         // ── HUD ───────────────────────────────────────────────────
-        ctx.fillStyle = "rgba(0,0,0,0.6)";
-        ctx.fillRect(8, 8, 210, 44);
-        ctx.fillStyle = "#c22"; ctx.fillRect(12, 14, 120, 10);
-        ctx.fillStyle = "#e55"; ctx.fillRect(12, 14, 120 * (player.hp / player.maxHp), 10);
-        ctx.fillStyle = "#fff"; ctx.font = "11px Arial"; ctx.textAlign = "left";
-        ctx.fillText(`HP ${player.hp} / ${player.maxHp}`, 12, 36);
+        drawPixelPanel(10, 10, 222, 54, "rgba(12,18,29,0.94)", TC.wAcc);
+        ctx.fillStyle = "#3b1720"; ctx.fillRect(22, 22, 128, 11);
+        ctx.fillStyle = "#e75a66"; ctx.fillRect(22, 22, 128 * (player.hp / player.maxHp), 11);
+        ctx.fillStyle = "#fff"; ctx.font = "bold 11px Arial"; ctx.textAlign = "left";
+        ctx.fillText(`HP ${player.hp} / ${player.maxHp}`, 22, 49);
         ctx.fillStyle = "#ffd700";
-        ctx.fillText(`⬡ ${getCarriedGold()}`, 110, 36);
+        ctx.fillText(`⬡ ${getCarriedGold()}`, 150, 49);
 
         // Floor + tier label (top right)
-        ctx.fillStyle = "rgba(0,0,0,0.6)";
         const flLabel = `Floor ${dungeon.floor} — ${_tierLabel}`;
         const flW = ctx.measureText(flLabel).width + 16;
-        ctx.fillRect(canvas.width - flW - 4, 8, flW + 4, 30);
+        drawPixelPanel(canvas.width - flW - 12, 10, flW + 2, 34, "rgba(12,18,29,0.94)", TC.wAcc);
         ctx.fillStyle = TC.wAcc;
         ctx.font = "bold 11px Arial"; ctx.textAlign = "right";
-        ctx.fillText(flLabel, canvas.width - 8, 27);
+        ctx.fillText(flLabel, canvas.width - 20, 32);
 
         if (player.attackCooldown <= 0) {
           ctx.fillStyle = "rgba(0,0,0,0.5)";
@@ -4366,7 +4805,7 @@
 
       // ---- TITLE SCENE ---------------------------------
 
-      const titleState = { selected: 0 }; // 0 = New Game, 1 = Continue
+      const titleState = { selected: 0 }; // New Game, Continue
 
       function updateTitle() {
         if (justPressedKeys.up)   titleState.selected = 0;
@@ -4380,12 +4819,12 @@
             initNpcs();
             initDogs();
             switchScene(SCENE.CHARACTER_CREATION);
-          } else if (hasSave) {
+          } else if (titleState.selected === 1 && hasSave) {
             game.save = loadSave();
             player = createPlayer(game.save);
             initNpcs();
             initDogs();
-            switchScene(SCENE.CITY);
+            switchScene(SCENE.MODE_SELECT);
           }
         }
       }
@@ -4393,19 +4832,27 @@
       function drawTitle(time) {
         const w = canvas.width, h = canvas.height;
 
-        // Animated starfield background
-        ctx.fillStyle = "#0a1020";
+        // Deluxe pixel night gradient
+        const sky = ctx.createLinearGradient(0, 0, 0, h);
+        sky.addColorStop(0, "#071226");
+        sky.addColorStop(0.58, "#182a48");
+        sky.addColorStop(1, "#14283a");
+        ctx.fillStyle = sky;
         ctx.fillRect(0, 0, w, h);
         for (let i = 0; i < 120; i++) {
-          const sx = noise(i, 0, 1) * w;
-          const sy = noise(i, 0, 2) * h;
+          const sx = Math.floor(noise(i, 0, 1) * w / 2) * 2;
+          const sy = Math.floor(noise(i, 0, 2) * h / 2) * 2;
           const bright = 0.4 + 0.6 * Math.abs(Math.sin(time * 0.8 + i));
           ctx.fillStyle = `rgba(220,230,255,${bright.toFixed(2)})`;
           const sr = noise(i, 0, 3) < 0.15 ? 2 : 1;
           ctx.fillRect(sx, sy, sr, sr);
         }
 
-        // Moon
+        // Moon and square glow bands
+        ctx.fillStyle = "rgba(143,215,240,0.07)";
+        ctx.fillRect(w * 0.72 - 76, h * 0.22 - 76, 152, 152);
+        ctx.fillStyle = "rgba(143,215,240,0.10)";
+        ctx.fillRect(w * 0.72 - 64, h * 0.22 - 64, 128, 128);
         ctx.fillStyle = "#f0e8c8";
         ctx.beginPath();
         ctx.arc(w * 0.72, h * 0.22, 54, 0, Math.PI * 2);
@@ -4434,6 +4881,16 @@
         ];
         for (const [bx, by, bw, bh] of bldgs) {
           ctx.fillRect(bx * w, by * h, bw * w, bh * h);
+          ctx.fillStyle = "rgba(255,215,111,0.35)";
+          const left = Math.floor(bx * w) + 12;
+          const right = Math.floor((bx + bw) * w) - 8;
+          const top = Math.floor(by * h) + 16;
+          for (let wx = left; wx < right; wx += 18) {
+            for (let wy = top; wy < h * 0.79; wy += 22) {
+              if (noise(wx, wy, 44) > 0.55) ctx.fillRect(wx, wy, 5, 7);
+            }
+          }
+          ctx.fillStyle = "#111922";
         }
         ctx.fillRect(0, h * 0.82, w, h * 0.18);
 
@@ -4447,6 +4904,9 @@
         ctx.font = "22px Trebuchet MS, Arial, sans-serif";
         ctx.fillStyle = "#b8c8d8";
         ctx.fillText("Go down scary.  Come back rich.  Make home warmer.", w / 2, h * 0.44);
+        ctx.fillStyle = DELUXE.teal;
+        ctx.font = "bold 12px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("DELUXE PIXEL LIFE", w / 2, h * 0.48);
 
         // Menu buttons
         const hasSave = !!loadSave();
@@ -4458,13 +4918,11 @@
           const selected = titleState.selected === i;
           const alpha = btn.disabled ? 0.35 : 1;
           ctx.globalAlpha = alpha;
-          ctx.fillStyle = selected ? "rgba(240,232,200,0.18)" : "rgba(0,0,0,0.25)";
-          ctx.fillRect(w / 2 - 140, btn.y - 30, 280, 46);
-          if (selected) {
-            ctx.strokeStyle = "#f0e8c8";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(w / 2 - 140, btn.y - 30, 280, 46);
-          }
+          drawPixelPanel(
+            w / 2 - 150, btn.y - 31, 300, 48,
+            selected ? "rgba(35,107,105,0.94)" : "rgba(12,25,42,0.88)",
+            selected ? "#a9f1d9" : "#40516a"
+          );
           ctx.fillStyle = selected ? "#f0e8c8" : "#8899aa";
           ctx.font = selected ? "bold 24px Trebuchet MS, Arial, sans-serif" : "22px Trebuchet MS, Arial, sans-serif";
           ctx.fillText(btn.label, w / 2, btn.y + 4);
@@ -4538,7 +4996,7 @@
           player = createPlayer(game.save);
           initNpcs();
           initDogs();
-          switchScene(SCENE.CITY);
+          switchScene(SCENE.MODE_SELECT);
         }
       }
 
@@ -4559,6 +5017,243 @@
           cc.name = cc.typedName || "Hero";
         }
       }, { capture: true });
+
+      const modeSelect = { selected: 0 };
+
+      function updateModeSelect() {
+        if (justPressedKeys.up || justPressedKeys.down) modeSelect.selected = 1 - modeSelect.selected;
+        if (justPressedKeys.pause || justPressedKeys.back) {
+          switchScene(SCENE.TITLE);
+          return;
+        }
+        if (justPressedKeys.customize && modeSelect.selected === 1 && game.save.lifeSim.characterCreated) {
+          enterLifeCharacterCreation();
+          return;
+        }
+        if (!(justPressedKeys.confirm || justPressedKeys.interact || mouse.clicked)) return;
+        if (modeSelect.selected === 0) {
+          switchScene(SCENE.CITY);
+          return;
+        }
+        if (game.save.lifeSim.characterCreated) enterMoonlightLife();
+        else enterLifeCharacterCreation();
+      }
+
+      function drawModeSelect(time) {
+        const w = canvas.width, h = canvas.height;
+        ctx.fillStyle = "#0b1324";
+        ctx.fillRect(0, 0, w, h);
+        for (let i = 0; i < 80; i++) {
+          ctx.fillStyle = `rgba(190,220,255,${0.12 + noise(i, 2, 7) * 0.35})`;
+          ctx.fillRect(noise(i, 1, 5) * w, noise(i, 4, 8) * h, 2, 2);
+        }
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#f0e8c8";
+        ctx.font = "bold 40px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("Choose Your World", w / 2, 82);
+        ctx.fillStyle = "#aebed1";
+        ctx.font = "17px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("Continue with your hero in one of two connected adventures.", w / 2, 112);
+
+        const cards = [
+          { title:"Moonlight City", icon:"🌙", colour:"#4f68a8", desc:"Explore the city, meet friends, decorate homes, and brave the dungeon." },
+          { title:"Moonlight Life Pack", icon:"🏡", colour:"#39a88e", desc: game.save.lifeSim.characterCreated ? "Continue your household story, needs, career, skills, and wishes." : "Create a household character, then begin a new life story." }
+        ];
+        const gap = 34, cardW = Math.min(420, (w - 110 - gap) / 2), cardH = Math.min(390, h - 235);
+        const startX = w / 2 - cardW - gap / 2;
+        cards.forEach((card, index) => {
+          const x = startX + index * (cardW + gap), y = 150;
+          drawPixelPanel(
+            x, y, cardW, cardH,
+            index === modeSelect.selected ? card.colour : "#17243a",
+            index === modeSelect.selected ? "#f3f8ff" : "#35455f"
+          );
+          ctx.fillStyle = "rgba(255,255,255,0.08)";
+          for (let py = y + 12; py < y + cardH - 12; py += 12) {
+            ctx.fillRect(x + 10, py, cardW - 20, 1);
+          }
+          ctx.font = "64px Arial";
+          ctx.fillText(card.icon, x + cardW / 2, y + 104);
+          ctx.fillStyle = "#f4f7fb";
+          ctx.font = "bold 27px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText(card.title, x + cardW / 2, y + 154);
+          ctx.fillStyle = index === modeSelect.selected ? "#ecf8f6" : "#aab7c8";
+          ctx.font = "16px Trebuchet MS, Arial, sans-serif";
+          wrapText(ctx, card.desc, x + cardW / 2, y + 194, cardW - 70, 24);
+          ctx.fillStyle = index === modeSelect.selected ? "#ffffff" : "#7d8ca0";
+          ctx.font = "bold 18px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText(index === modeSelect.selected ? "▶ SELECTED" : "Select", x + cardW / 2, y + cardH - 35);
+        });
+        ctx.fillStyle = "#8595aa";
+        ctx.font = "15px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("↑↓ choose  ·  Enter select  ·  C edit Life character  ·  Esc back", w / 2, h - 32);
+        ctx.textAlign = "left";
+      }
+
+      const lifeCreator = {
+        field: 0,
+        draft: null
+      };
+      const LIFE_CREATOR_FIELDS = ["name", "skin", "hairColour", "hairStyle", "outfit", "bodyFrame", "aspiration", "trait", "done"];
+
+      function enterLifeCharacterCreation() {
+        const life = game.save.lifeSim;
+        const base = life.avatar || createDefaultLifeSim().avatar;
+        lifeCreator.draft = {
+          ...base,
+          name: life.characterCreated ? base.name : game.save.player.name,
+          skin: life.characterCreated ? base.skin : game.save.player.skin,
+          hairStyle: life.characterCreated ? base.hairStyle : game.save.player.hairStyle,
+          hairColour: life.characterCreated ? base.hairColour : game.save.player.hairColour,
+          outfit: life.characterCreated ? base.outfit : game.save.player.outfit
+        };
+        lifeCreator.field = 0;
+        switchScene(SCENE.LIFE_CHARACTER_CREATION);
+      }
+
+      function cycleLifeCreatorValue(field, direction) {
+        const draft = lifeCreator.draft;
+        if (field === "skin") draft.skin = (draft.skin + direction + SKIN_TONES.length) % SKIN_TONES.length;
+        if (field === "hairColour") draft.hairColour = (draft.hairColour + direction + HAIR_COLORS.length) % HAIR_COLORS.length;
+        if (field === "hairStyle") draft.hairStyle = (draft.hairStyle + direction + HAIR_STYLE_COUNT) % HAIR_STYLE_COUNT;
+        if (field === "outfit") draft.outfit = (draft.outfit + direction + OUTFIT_COLORS.length) % OUTFIT_COLORS.length;
+        if (field === "bodyFrame") draft.bodyFrame = (draft.bodyFrame + direction + LIFE_BODY_FRAMES.length) % LIFE_BODY_FRAMES.length;
+        if (field === "aspiration") draft.aspiration = (draft.aspiration + direction + LIFE_ASPIRATIONS.length) % LIFE_ASPIRATIONS.length;
+        if (field === "trait") draft.trait = (draft.trait + direction + LIFE_TRAITS.length) % LIFE_TRAITS.length;
+      }
+
+      function updateLifeCharacterCreation() {
+        if (justPressedKeys.pause) {
+          switchScene(SCENE.MODE_SELECT);
+          return;
+        }
+        if (justPressedKeys.left) lifeCreator.field = Math.max(0, lifeCreator.field - 1);
+        if (justPressedKeys.right) lifeCreator.field = Math.min(LIFE_CREATOR_FIELDS.length - 1, lifeCreator.field + 1);
+        const field = LIFE_CREATOR_FIELDS[lifeCreator.field];
+        if (justPressedKeys.up || justPressedKeys.down) {
+          cycleLifeCreatorValue(field, justPressedKeys.up ? -1 : 1);
+        }
+        if (justPressedKeys.back && field === "name") {
+          lifeCreator.draft.name = lifeCreator.draft.name.slice(0, -1) || "Hero";
+        }
+        if ((justPressedKeys.confirm || justPressedKeys.interact || mouse.clicked) && field === "done") {
+          game.save.lifeSim.avatar = { ...lifeCreator.draft };
+          game.save.lifeSim.characterCreated = true;
+          writeSave(game.save);
+          enterMoonlightLife();
+        }
+      }
+
+      window.addEventListener("keypress", (e) => {
+        if (game.scene !== SCENE.LIFE_CHARACTER_CREATION) return;
+        if (LIFE_CREATOR_FIELDS[lifeCreator.field] !== "name") return;
+        if (e.key.length === 1 && lifeCreator.draft.name.length < 14) {
+          if (lifeCreator.draft.name === "Hero") lifeCreator.draft.name = "";
+          lifeCreator.draft.name += e.key;
+        }
+      });
+
+      function lifeAvatarData(x, y, time) {
+        const avatar = game.save.lifeSim.avatar;
+        return {
+          ...player,
+          x, y,
+          skin: avatar.skin,
+          hairStyle: avatar.hairStyle,
+          hairColour: avatar.hairColour,
+          outfit: avatar.outfit,
+          ageType: "adult",
+          walkTime: time
+        };
+      }
+
+      function drawLifeAvatar(time, x, y, walking = false, scale = 1) {
+        const frame = game.save.lifeSim.avatar.bodyFrame;
+        const widthScale = frame === 0 ? 0.82 : frame === 2 ? 1.18 : 1;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(widthScale * scale, scale);
+        const avatar = lifeAvatarData(0, 0, walking ? time * 3 : 0);
+        avatar.vx = walking ? 1 : 0;
+        avatar.vy = 0;
+        avatar.dir = walking ? "right" : "down";
+        drawPlayerSprite(time, avatar);
+        ctx.restore();
+      }
+
+      function drawLifeCharacterCreation(time) {
+        const w = canvas.width, h = canvas.height;
+        const draft = lifeCreator.draft;
+        ctx.fillStyle = "#d8f3ef";
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = "rgba(25,120,105,0.06)";
+        for (let y = 0; y < h; y += 16) {
+          for (let x = (y / 16) % 2 ? 8 : 0; x < w; x += 16) ctx.fillRect(x, y, 2, 2);
+        }
+        const glow = ctx.createRadialGradient(w * 0.3, h * 0.46, 20, w * 0.3, h * 0.46, h * 0.55);
+        glow.addColorStop(0, "rgba(74,205,177,0.55)");
+        glow.addColorStop(1, "rgba(74,205,177,0)");
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.fillStyle = "#14394a";
+        ctx.font = "bold 34px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("Create Your Life", 38, 54);
+        ctx.fillStyle = "#477080";
+        ctx.font = "16px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("Make an original household character for the Moonlight Life Pack.", 40, 80);
+
+        const previewX = w * 0.29, previewY = h * 0.54;
+        const savedAvatar = game.save.lifeSim.avatar;
+        game.save.lifeSim.avatar = draft;
+        drawMoonMarker(previewX, previewY - 125, time, "#2bbd94");
+        drawLifeAvatar(time, previewX, previewY, false, 3.2);
+        game.save.lifeSim.avatar = savedAvatar;
+
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#14394a";
+        ctx.font = "bold 25px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(draft.name || "Hero", previewX, h * 0.79);
+        ctx.fillStyle = "#477080";
+        ctx.font = "16px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(`${LIFE_TRAITS[draft.trait]} · ${LIFE_ASPIRATIONS[draft.aspiration]}`, previewX, h * 0.83);
+
+        const panelX = w * 0.53, panelY = 108, panelW = Math.min(500, w * 0.42), rowH = 51;
+        ctx.textAlign = "left";
+        LIFE_CREATOR_FIELDS.forEach((field, index) => {
+          const y = panelY + index * rowH;
+          const selected = lifeCreator.field === index;
+          drawPixelPanel(
+            panelX, y, panelW, 42,
+            selected ? "#238e78" : "rgba(247,253,252,0.92)",
+            selected ? "#bdf9e8" : "#8bbcaf"
+          );
+          const labels = {
+            name:"Name", skin:"Skin Tone", hairColour:"Hair Colour", hairStyle:"Hair Style",
+            outfit:"Outfit", bodyFrame:"Body Frame", aspiration:"Aspiration", trait:"Personality", done:"Start Life"
+          };
+          let value = "";
+          if (field === "name") value = draft.name;
+          if (field === "skin") value = `${draft.skin + 1} / ${SKIN_TONES.length}`;
+          if (field === "hairColour") value = `${draft.hairColour + 1} / ${HAIR_COLORS.length}`;
+          if (field === "hairStyle") value = HAIR_STYLE_NAMES[draft.hairStyle];
+          if (field === "outfit") value = `${draft.outfit + 1} / ${OUTFIT_COLORS.length}`;
+          if (field === "bodyFrame") value = LIFE_BODY_FRAMES[draft.bodyFrame];
+          if (field === "aspiration") value = LIFE_ASPIRATIONS[draft.aspiration];
+          if (field === "trait") value = LIFE_TRAITS[draft.trait];
+          if (field === "done") value = "▶ Play";
+          ctx.fillStyle = selected ? "#ffffff" : "#25475a";
+          ctx.font = "bold 14px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText(labels[field], panelX + 16, y + 17);
+          ctx.textAlign = "right";
+          ctx.font = selected ? "bold 16px Trebuchet MS, Arial, sans-serif" : "15px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText(value, panelX + panelW - 16, y + 27);
+          ctx.textAlign = "left";
+        });
+        ctx.fillStyle = "#477080";
+        ctx.font = "14px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("← → category  ·  ↑ ↓ change  ·  type a name  ·  Enter start  ·  Esc back", panelX, h - 28);
+      }
 
       function drawCharacterCreation(time) {
         const w = canvas.width, h = canvas.height;
@@ -4642,6 +5337,343 @@
         ctx.font = "16px Trebuchet MS, Arial, sans-serif";
         ctx.fillStyle = "rgba(180,190,200,0.6)";
         ctx.fillText("← → choose  ·  ↑ ↓ change  ·  Enter confirm  ·  Type name when Name is selected", w / 2, h * 0.92);
+        ctx.textAlign = "left";
+      }
+
+      // ---- MOONLIGHT LIFE SCENE -----------------------
+
+      const lifeRuntime = {
+        selected: 0,
+        queue: [],
+        active: null,
+        progress: 0,
+        avatarX: 0.5,
+        avatarY: 0.56,
+        decayTimer: 0,
+        saveTimer: 0,
+        message: "Choose actions to shape the day."
+      };
+
+      function enterMoonlightLife() {
+        const fresh = createDefaultLifeSim();
+        game.save.lifeSim = Object.assign({}, fresh, game.save.lifeSim || {});
+        game.save.lifeSim.avatar = Object.assign({}, fresh.avatar, game.save.lifeSim.avatar || {});
+        game.save.lifeSim.needs = Object.assign({}, fresh.needs, game.save.lifeSim.needs || {});
+        game.save.lifeSim.skills = Object.assign({}, fresh.skills, game.save.lifeSim.skills || {});
+        if (!game.save.lifeSim.characterCreated) {
+          enterLifeCharacterCreation();
+          return;
+        }
+        worldMapOpen = false;
+        inventory.open = false;
+        lifeRuntime.selected = 0;
+        lifeRuntime.queue = [];
+        lifeRuntime.active = null;
+        lifeRuntime.progress = 0;
+        lifeRuntime.avatarX = 0.5;
+        lifeRuntime.avatarY = 0.56;
+        lifeRuntime.decayTimer = 0;
+        lifeRuntime.saveTimer = 0;
+        lifeRuntime.message = "Choose actions to shape the day.";
+        switchScene(SCENE.MOONLIGHT_LIFE);
+      }
+
+      function lifeWishAction() {
+        const life = game.save.lifeSim;
+        return LIFE_WISHES[life.completedWishes % LIFE_WISHES.length];
+      }
+
+      function advanceLifeClock(hours) {
+        const life = game.save.lifeSim;
+        life.hour += hours;
+        while (life.hour >= 24) {
+          life.hour -= 24;
+          life.day += 1;
+        }
+      }
+
+      function completeLifeAction(action) {
+        const life = game.save.lifeSim;
+        for (const [need, amount] of Object.entries(action.needs)) {
+          life.needs[need] = clamp(life.needs[need] + amount, 0, 100);
+        }
+        if (action.money) {
+          setCarriedGold(getCarriedGold() + action.money);
+        }
+        if (action.skill) {
+          life.skills[action.skill] = (life.skills[action.skill] || 0) + 1;
+        }
+        if (action.relationship) {
+          life.novaRelationship = clamp(life.novaRelationship + action.relationship, 0, 10);
+        }
+        advanceLifeClock(action.hours);
+        let reward = "";
+        if (action.id === lifeWishAction()) {
+          life.completedWishes += 1;
+          life.aspirationPoints += 25;
+          reward = " Wish complete! +25 aspiration.";
+        }
+        lifeRuntime.message = `${action.label} finished.${action.money ? ` +${action.money} gold.` : ""}${reward}`;
+        writeSave(game.save);
+      }
+
+      function updateMoonlightLife(dt) {
+        const life = game.save.lifeSim;
+        if (justPressedKeys.pause) {
+          writeSave(game.save);
+          lifeRuntime.queue = [];
+          lifeRuntime.active = null;
+          switchScene(SCENE.MODE_SELECT);
+          return;
+        }
+
+        if (justPressedKeys.up) lifeRuntime.selected = (lifeRuntime.selected - 1 + LIFE_ACTIONS.length) % LIFE_ACTIONS.length;
+        if (justPressedKeys.down) lifeRuntime.selected = (lifeRuntime.selected + 1) % LIFE_ACTIONS.length;
+        if (justPressedKeys.back && lifeRuntime.queue.length) {
+          const removed = lifeRuntime.queue.pop();
+          lifeRuntime.message = `${removed.label} removed from the queue.`;
+        }
+        if (justPressedKeys.interact || justPressedKeys.confirm) {
+          if (lifeRuntime.queue.length < 4) {
+            const action = LIFE_ACTIONS[lifeRuntime.selected];
+            lifeRuntime.queue.push(action);
+            lifeRuntime.message = `${action.label} added to the queue.`;
+          } else {
+            lifeRuntime.message = "The action queue is full.";
+          }
+        }
+
+        lifeRuntime.decayTimer += dt;
+        lifeRuntime.saveTimer += dt;
+        if (lifeRuntime.decayTimer >= 1) {
+          const ticks = Math.floor(lifeRuntime.decayTimer);
+          lifeRuntime.decayTimer -= ticks;
+          life.needs.hunger = clamp(life.needs.hunger - 0.10 * ticks, 0, 100);
+          life.needs.energy = clamp(life.needs.energy - 0.07 * ticks, 0, 100);
+          life.needs.fun = clamp(life.needs.fun - 0.06 * ticks, 0, 100);
+          life.needs.social = clamp(life.needs.social - 0.05 * ticks, 0, 100);
+          life.needs.hygiene = clamp(life.needs.hygiene - 0.04 * ticks, 0, 100);
+          life.minute += 2 * ticks;
+          while (life.minute >= 60) {
+            life.minute -= 60;
+            advanceLifeClock(1);
+          }
+        }
+        if (lifeRuntime.saveTimer >= 15) {
+          lifeRuntime.saveTimer = 0;
+          writeSave(game.save);
+        }
+
+        if (!lifeRuntime.active && lifeRuntime.queue.length) {
+          lifeRuntime.active = lifeRuntime.queue.shift();
+          lifeRuntime.progress = 0;
+        }
+        if (!lifeRuntime.active) return;
+
+        const targets = {
+          kitchen:[0.20,0.28], bathroom:[0.45,0.27], bed:[0.22,0.66],
+          sofa:[0.64,0.42], tv:[0.80,0.42], desk:[0.70,0.70]
+        };
+        const target = targets[lifeRuntime.active.target];
+        lifeRuntime.avatarX += (target[0] - lifeRuntime.avatarX) * Math.min(1, dt * 4);
+        lifeRuntime.avatarY += (target[1] - lifeRuntime.avatarY) * Math.min(1, dt * 4);
+        lifeRuntime.progress += dt / lifeRuntime.active.duration;
+        if (lifeRuntime.progress >= 1) {
+          completeLifeAction(lifeRuntime.active);
+          lifeRuntime.active = null;
+          lifeRuntime.progress = 0;
+        }
+      }
+
+      function lifeMood(needs) {
+        const lowest = Math.min(...Object.values(needs));
+        const average = Object.values(needs).reduce((sum, value) => sum + value, 0) / Object.keys(needs).length;
+        if (lowest < 15) return { label:"Miserable", colour:"#e85d68" };
+        if (lowest < 35) return { label:"Uncomfortable", colour:"#f2a65a" };
+        if (average > 82) return { label:"Inspired", colour:"#66d9c1" };
+        if (average > 62) return { label:"Happy", colour:"#8bd35f" };
+        return { label:"Fine", colour:"#6fb4e8" };
+      }
+
+      function drawLifeNeed(label, value, x, y, width) {
+        const colour = value < 25 ? "#e85d68" : value < 50 ? "#f2c14e" : "#72cf6a";
+        ctx.fillStyle = "#273044";
+        ctx.fillRect(x, y, width, 13);
+        ctx.fillStyle = colour;
+        ctx.fillRect(x, y, width * value / 100, 13);
+        ctx.fillStyle = "#e9eef5";
+        ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(`${label} ${Math.round(value)}`, x, y - 4);
+      }
+
+      function drawLifeRoomObject(type, label, x, y, time) {
+        ctx.save();
+        ctx.translate(Math.round(x), Math.round(y));
+        ctx.fillStyle = "rgba(17,31,45,0.18)";
+        ctx.fillRect(-48, 22, 96, 8);
+        if (type === "kitchen") {
+          ctx.fillStyle = "#e9d5ae"; ctx.fillRect(-48, -24, 96, 46);
+          ctx.fillStyle = "#83b5aa"; ctx.fillRect(-48, -24, 96, 8);
+          ctx.fillStyle = "#466177"; ctx.fillRect(-36, -12, 26, 22);
+          ctx.fillStyle = "#182538"; ctx.fillRect(-31, -8, 16, 3); ctx.fillRect(-31, 1, 16, 3);
+          ctx.fillStyle = "#bd765d"; ctx.fillRect(5, -12, 34, 25);
+          ctx.fillStyle = "#f5d76e"; ctx.fillRect(10, -7, 7, 7); ctx.fillRect(27, -7, 7, 7);
+        } else if (type === "bathroom") {
+          ctx.fillStyle = "#c9e9ee"; ctx.fillRect(-34, -43, 68, 66);
+          ctx.fillStyle = "#7fc4d2"; ctx.fillRect(-31, -40, 62, 4); ctx.fillRect(-31, 14, 62, 5);
+          ctx.fillStyle = "rgba(255,255,255,0.62)"; ctx.fillRect(-24, -30, 5, 37);
+          ctx.fillStyle = "#466177"; ctx.fillRect(17, -29, 5, 18);
+          ctx.fillStyle = "#86d8e1"; ctx.fillRect(12, -31, 14, 5);
+        } else if (type === "bed") {
+          ctx.fillStyle = "#594a67"; ctx.fillRect(-54, -21, 108, 43);
+          ctx.fillStyle = "#f3eee2"; ctx.fillRect(-45, -17, 90, 34);
+          ctx.fillStyle = "#5db8a1"; ctx.fillRect(-45, 0, 90, 17);
+          ctx.fillStyle = "#ffffff"; ctx.fillRect(-38, -13, 30, 12); ctx.fillRect(8, -13, 30, 12);
+        } else if (type === "sofa") {
+          ctx.fillStyle = "#285b72"; ctx.fillRect(-52, -21, 104, 43);
+          ctx.fillStyle = "#3d8292"; ctx.fillRect(-44, -15, 88, 25);
+          ctx.fillStyle = "#6fb6b2"; ctx.fillRect(-40, -12, 35, 20); ctx.fillRect(5, -12, 35, 20);
+          ctx.fillStyle = "#1d4257"; ctx.fillRect(-55, -9, 10, 31); ctx.fillRect(45, -9, 10, 31);
+        } else if (type === "tv") {
+          ctx.fillStyle = "#26334a"; ctx.fillRect(-40, -34, 80, 49);
+          ctx.fillStyle = "#75c6d9"; ctx.fillRect(-34, -28, 68, 36);
+          ctx.fillStyle = `rgba(255,255,255,${0.12 + Math.abs(Math.sin(time * 2)) * 0.18})`;
+          ctx.fillRect(-28, -22, 26, 5); ctx.fillRect(4, -10, 23, 5);
+          ctx.fillStyle = "#5d4338"; ctx.fillRect(-46, 15, 92, 9);
+        } else {
+          ctx.fillStyle = "#9a6a42"; ctx.fillRect(-48, -10, 96, 13);
+          ctx.fillRect(-42, 3, 7, 22); ctx.fillRect(35, 3, 7, 22);
+          ctx.fillStyle = "#26334a"; ctx.fillRect(-17, -36, 40, 28);
+          ctx.fillStyle = "#7cd8d2"; ctx.fillRect(-13, -32, 32, 20);
+          ctx.fillStyle = "#5b6a7c"; ctx.fillRect(-1, -8, 8, 9);
+        }
+        ctx.fillStyle = "rgba(18,34,51,0.80)";
+        ctx.fillRect(-42, 31, 84, 18);
+        ctx.fillStyle = "#f4f8fb";
+        ctx.font = "bold 11px Trebuchet MS, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(label, 0, 44);
+        ctx.restore();
+      }
+
+      function drawMoonlightLife(time) {
+        const w = canvas.width, h = canvas.height;
+        const life = game.save.lifeSim;
+        const mood = lifeMood(life.needs);
+        const roomX = 24, roomY = 86;
+        const roomW = Math.max(330, w - 390), roomH = Math.max(300, h - 245);
+        const panelX = w - 340, panelY = 86, panelW = 316;
+
+        ctx.fillStyle = "#17223a";
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = "#eef5fb";
+        ctx.fillRect(roomX, roomY, roomW, roomH);
+        ctx.fillStyle = "rgba(95,151,170,0.09)";
+        for (let stripe = roomX + 12; stripe < roomX + roomW; stripe += 24) {
+          ctx.fillRect(stripe, roomY, 4, roomH * 0.5);
+        }
+        ctx.fillStyle = "#d7b98d";
+        ctx.fillRect(roomX, roomY + roomH * 0.5, roomW, roomH * 0.5);
+        ctx.fillStyle = "rgba(93,63,40,0.12)";
+        for (let plank = roomY + roomH * 0.5; plank < roomY + roomH; plank += 22) {
+          ctx.fillRect(roomX, plank, roomW, 2);
+        }
+        for (let seam = roomX + 20; seam < roomX + roomW; seam += 70) {
+          ctx.fillRect(seam, roomY + roomH * 0.5, 2, roomH * 0.5);
+        }
+        ctx.strokeStyle = "#54627a";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(roomX, roomY, roomW, roomH);
+        ctx.beginPath();
+        ctx.moveTo(roomX + roomW * 0.36, roomY);
+        ctx.lineTo(roomX + roomW * 0.36, roomY + roomH * 0.5);
+        ctx.moveTo(roomX, roomY + roomH * 0.5);
+        ctx.lineTo(roomX + roomW, roomY + roomH * 0.5);
+        ctx.stroke();
+
+        const furniture = [
+          ["kitchen","Kitchen",0.20,0.28], ["bathroom","Shower",0.45,0.27], ["bed","Bed",0.22,0.66],
+          ["sofa","Sofa",0.64,0.42], ["tv","TV",0.80,0.42], ["desk","Desk",0.70,0.70]
+        ];
+        for (const [type, label, nx, ny] of furniture) {
+          const fx = roomX + nx * roomW, fy = roomY + ny * roomH;
+          drawLifeRoomObject(type, label, fx, fy, time);
+        }
+
+        drawLifeAvatar(
+          time,
+          roomX + lifeRuntime.avatarX * roomW,
+          roomY + lifeRuntime.avatarY * roomH,
+          !!lifeRuntime.active
+        );
+        drawMoonMarker(
+          roomX + lifeRuntime.avatarX * roomW,
+          roomY + lifeRuntime.avatarY * roomH - 51,
+          time
+        );
+
+        drawPixelPanel(panelX, panelY, panelW, Math.min(430, h - 180));
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#f4e8b8";
+        ctx.font = "bold 21px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText("Choose an action", panelX + 18, panelY + 30);
+        LIFE_ACTIONS.forEach((action, index) => {
+          const y = panelY + 48 + index * 43;
+          drawPixelPanel(
+            panelX + 12, y, panelW - 24, 35,
+            lifeRuntime.selected === index ? "#287d82" : "#202c42",
+            lifeRuntime.selected === index ? "#a9f1d9" : "#34445d"
+          );
+          ctx.fillStyle = "#f3f6fb";
+          ctx.font = lifeRuntime.selected === index ? "bold 15px Trebuchet MS, Arial, sans-serif" : "14px Trebuchet MS, Arial, sans-serif";
+          ctx.fillText(`${action.emoji} ${action.label}`, panelX + 24, y + 23);
+        });
+
+        ctx.fillStyle = "#0d1422";
+        ctx.fillRect(0, 0, w, 68);
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#f3e8b8";
+        ctx.font = "bold 26px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(`${game.save.lifeSim.avatar.name}'s Moonlight Life`, 24, 31);
+        ctx.fillStyle = mood.colour;
+        ctx.font = "bold 15px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(`◆ ${mood.label}`, 25, 54);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#e8edf5";
+        ctx.font = "bold 14px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(`Day ${life.day}  ${String(life.hour).padStart(2,"0")}:${String(Math.floor(life.minute)).padStart(2,"0")}   ⬡ ${getCarriedGold()}   ★ ${life.aspirationPoints}`, w - 24, 30);
+        const wish = LIFE_ACTIONS.find(action => action.id === lifeWishAction());
+        ctx.fillStyle = "#9fd8ff";
+        ctx.fillText(`Wish: ${wish.emoji} ${wish.label}`, w - 24, 54);
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#8bdac9";
+        ctx.font = "12px Trebuchet MS, Arial, sans-serif";
+        ctx.fillText(`${LIFE_TRAITS[game.save.lifeSim.avatar.trait]} · ${LIFE_ASPIRATIONS[game.save.lifeSim.avatar.aspiration]}`, 25, 68);
+
+        const needsY = h - 120;
+        const needEntries = [["Hunger",life.needs.hunger],["Energy",life.needs.energy],["Fun",life.needs.fun],["Social",life.needs.social],["Hygiene",life.needs.hygiene]];
+        const needW = Math.max(90, (w - 72) / 5 - 16);
+        needEntries.forEach(([label,value], index) => drawLifeNeed(label, value, 24 + index * (needW + 16), needsY, needW));
+
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#cbd4e2";
+        ctx.font = "13px Trebuchet MS, Arial, sans-serif";
+        const queueText = [lifeRuntime.active, ...lifeRuntime.queue].filter(Boolean).map(action => action.emoji).join(" → ") || "empty";
+        ctx.fillText(`Queue: ${queueText}`, 24, h - 72);
+        ctx.fillStyle = "#f0e8c8";
+        ctx.fillText(lifeRuntime.message, 24, h - 47);
+        ctx.fillStyle = "#8796aa";
+        ctx.fillText("↑↓ choose  ·  Enter/E queue  ·  Backspace remove last  ·  Esc save & return", 24, h - 20);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#b9c7d8";
+        ctx.fillText(`Cooking ${life.skills.cooking}  ·  Charisma ${life.skills.charisma}  ·  Logic ${life.skills.logic}  ·  Nova ♥ ${life.novaRelationship}/10`, panelX + panelW - 18, panelY + 386);
+        if (lifeRuntime.active) {
+          const barX = roomX + 18, barY = roomY + roomH - 25, barW = roomW - 36;
+          ctx.fillStyle = "#26364d";
+          ctx.fillRect(barX, barY, barW, 10);
+          ctx.fillStyle = "#66d9c1";
+          ctx.fillRect(barX, barY, barW * clamp(lifeRuntime.progress, 0, 1), 10);
+        }
         ctx.textAlign = "left";
       }
 
@@ -5013,6 +6045,7 @@
           else if (_nh <= 8)  _na = Math.max(0, (8 - _nh) / 5 * 0.45);
           if (_na > 0) { ctx.fillStyle = `rgba(8,12,48,${_na})`; ctx.fillRect(0,0,canvas.width,canvas.height); }
         }
+        drawCityAtmosphere(time);
         if (buildMode.active) drawBuildHUD();
         drawCityHUD(game.save);
         if (!dialogue.active && Math.hypot(player.x - SEWER_ENTRANCE.x, player.y - SEWER_ENTRANCE.y) < 60) {
@@ -5270,6 +6303,9 @@
       }
 
       function npcNameColour(id) {
+        if (id==="kai")    return "#f0c050";
+        if (id==="marina") return "#40d0f0";
+        if (id==="beau")   return "#e05030";
         return { ella:"#f5c870", will:"#7ab8f5", pipper:"#f57a3a", rose:"#c47af5", lumi:"#b8f0e0", rex:"#d48a58",
                  mabel:"#f07840", finn:"#58a8c8", doc:"#d0d8f8", nora:"#c870e0", sam:"#60a0f0", cleo:"#e84040" }[id] || "#f0ede4";
       }
@@ -7051,12 +8087,12 @@
         }
 
         // World map toggle (works in any scene except title/char-create)
-        if (justPressedKeys.map && game.scene !== SCENE.TITLE && game.scene !== SCENE.CHARACTER_CREATION) {
+        if (justPressedKeys.map && ![SCENE.TITLE, SCENE.CHARACTER_CREATION, SCENE.MODE_SELECT, SCENE.LIFE_CHARACTER_CREATION, SCENE.MOONLIGHT_LIFE].includes(game.scene)) {
           worldMapOpen = !worldMapOpen;
           inventory.open = false;
         }
         // Inventory toggle
-        if (justPressedKeys.inventory && game.scene !== SCENE.TITLE && game.scene !== SCENE.CHARACTER_CREATION) {
+        if (justPressedKeys.inventory && ![SCENE.TITLE, SCENE.CHARACTER_CREATION, SCENE.MODE_SELECT, SCENE.LIFE_CHARACTER_CREATION, SCENE.MOONLIGHT_LIFE].includes(game.scene)) {
           inventory.open = !inventory.open;
           worldMapOpen = false;
         }
@@ -7088,9 +8124,12 @@
         switch (game.scene) {
           case SCENE.TITLE:              updateTitle();           break;
           case SCENE.CHARACTER_CREATION: updateCharacterCreation(); break;
+          case SCENE.MODE_SELECT:        updateModeSelect();      break;
+          case SCENE.LIFE_CHARACTER_CREATION: updateLifeCharacterCreation(); break;
           case SCENE.CITY:               updateCity(dt);          break;
           case SCENE.DUNGEON:            updateDungeonScene(dt);  break;
           case SCENE.HOUSE_INTERIOR:     updateHouseInterior(dt); break;
+          case SCENE.MOONLIGHT_LIFE:     updateMoonlightLife(dt); break;
         }
 
         // Clear
@@ -7102,9 +8141,12 @@
         switch (game.scene) {
           case SCENE.TITLE:              drawTitle(game.elapsed);            break;
           case SCENE.CHARACTER_CREATION: drawCharacterCreation(game.elapsed); break;
+          case SCENE.MODE_SELECT:        drawModeSelect(game.elapsed);       break;
+          case SCENE.LIFE_CHARACTER_CREATION: drawLifeCharacterCreation(game.elapsed); break;
           case SCENE.CITY:               drawCity(game.elapsed);             break;
           case SCENE.DUNGEON:            drawDungeonScene(game.elapsed);     break;
           case SCENE.HOUSE_INTERIOR:     drawHouseInterior(game.elapsed);    break;
+          case SCENE.MOONLIGHT_LIFE:     drawMoonlightLife(game.elapsed);    break;
         }
 
         drawFade();
