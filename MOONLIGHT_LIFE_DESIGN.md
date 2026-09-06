@@ -28,15 +28,19 @@ The world-selection screen appears before the player enters Moonlight City. A fi
 The pack has a dedicated household creator. Players design two characters, choose which member they are editing, and select their relationship:
 
 - Name
+- Age: adult or child
 - Skin tone
 - Hair colour and style
 - Outfit
 - Body frame
 - Aspiration
 - Personality trait
+- Life state: Human or Vampire
 - Relationship: Partners, Spouses, Siblings, or Best Friends
 
 Both characters use the City Fashion HD renderer and remain independently playable. Their choices do not overwrite the main game's character.
+
+Sibling households can begin with two playable children. Adult Spouses can still build their bond and welcome a child during play.
 
 Returning players can select Moonlight Life Pack on the world-selection screen and press **C** to edit their household.
 
@@ -69,6 +73,7 @@ Needs range from 0 to 100. Low needs affect the visible mood but do not delete p
 | Sleep | Restores Energy | Advances the clock by 8 hours |
 | Call a friend | Restores Social | Raises Charisma |
 | Spend time together | Restores Social and Fun | Raises the household bond |
+| Sip plasma-fruit drink | Restores Vampire Thirst | Vampire-only action |
 | Play a game | Restores Fun | Small Social cost |
 | Study skills | Raises Logic | Costs Energy and Fun |
 | Work a shift | Earns 90 shared gold | Costs several needs |
@@ -113,6 +118,16 @@ Gold is shared with Moonlight City. A work shift in Moonlight Life can fund a ci
 - The moon marker and HUD identify the active character.
 - Spouses unlock **Welcome a child** after reaching Household Bond 3.
 - The child inherits visual choices from both parents, uses the child City Fashion HD template, has separate needs and skills, and becomes playable with Tab.
+- Children inherit the Vampire life state when either parent is a Vampire.
+
+### Vampire life state
+
+- Human or Vampire is selected independently for each starting household member.
+- Vampires have red eyes, small fangs, and a Vampire label in the active-character HUD.
+- Thirst replaces Hygiene in the visible needs panel for Vampires.
+- Plasma-fruit drinks safely restore Thirst.
+- Vampire Thirst falls over time, and daylight between 07:00 and 19:00 drains extra Energy.
+- Vampires retain all household, relationship, skill, and action-queue gameplay.
 
 ## Controls
 

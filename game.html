@@ -47,7 +47,7 @@
       // === CONSTANTS & ENUMS ============================
       // ==================================================
 
-      const SCHEMA_VERSION = 7;
+      const SCHEMA_VERSION = 8;
       const SAVE_KEY = "moonlight-city-save";
 
       // Scene IDs
@@ -210,14 +210,20 @@
         id:"child", emoji:"🍼", label:"Welcome a child", duration:2.5, hours:8,
         target:"bed", needs:{ energy:-18 }, childAction:true
       };
+      const LIFE_VAMPIRE_ACTION = {
+        id:"plasma", emoji:"🧃", label:"Sip plasma-fruit drink", duration:1.6, hours:1,
+        target:"kitchen", needs:{ thirst:55, energy:8 }, vampireOnly:true
+      };
       const LIFE_WISHES = ["cook", "chat", "play", "study", "work", "shower", "sleep"];
       const LIFE_BODY_FRAMES = ["Slim", "Classic", "Strong"];
       const LIFE_ASPIRATIONS = ["Social Star", "Mastermind", "Joyful Life"];
       const LIFE_TRAITS = ["Cheerful", "Creative", "Ambitious", "Kind", "Goofball"];
       const LIFE_RELATIONSHIPS = ["Partners", "Spouses", "Siblings", "Best Friends"];
+      const LIFE_STATES = ["Human", "Vampire"];
+      const LIFE_AGES = ["adult", "child"];
 
       function createDefaultLifeSim() {
-        const defaultNeeds = { hunger:75, energy:75, fun:70, social:65, hygiene:80 };
+        const defaultNeeds = { hunger:75, energy:75, fun:70, social:65, hygiene:80, thirst:75 };
         const defaultSkills = { cooking:0, charisma:0, logic:0 };
         return {
           characterCreated: false,
@@ -229,7 +235,9 @@
             outfit: 0,
             bodyFrame: 1,
             aspiration: 0,
-            trait: 0
+            trait: 0,
+            lifeState: 0,
+            ageType: "adult"
           },
           companion: {
             name: "Nova",
@@ -239,7 +247,9 @@
             outfit: 1,
             bodyFrame: 1,
             aspiration: 0,
-            trait: 3
+            trait: 3,
+            lifeState: 0,
+            ageType: "adult"
           },
           child: {
             name: "Luna",
@@ -250,7 +260,8 @@
             bodyFrame: 1,
             aspiration: 2,
             trait: 0,
-            ageType: "child"
+            ageType: "child",
+            lifeState: 0
           },
           hasChild: false,
           activeMember: 0,
@@ -850,6 +861,10 @@
             case 6:
               save.lifeSim = Object.assign({}, createDefaultLifeSim(), save.lifeSim || {});
               save.version = 7;
+              break;
+            case 7:
+              save.lifeSim = Object.assign({}, createDefaultLifeSim(), save.lifeSim || {});
+              save.version = 8;
               break;
             default:
               return createNewSave();
@@ -3150,6 +3165,7 @@
           legs:      outfit.legs,
           hairStyle: p.hairStyle || 0,
           bodyFrame: p.bodyFrame ?? 1,
+          occult:    p.occult || false,
           ageType:   p.ageType   || "adult"
         });
       }
@@ -3703,6 +3719,18 @@
         }
 
         if (dir !== "up") {
+          if (npc.occult) {
+            if (dir === "down") {
+              const vampireEyeY = headY + Math.floor(metrics.head * 0.39) + 2;
+              r(headX + 7, vampireEyeY, 2, 2, "#d52f55");
+              r(headX + metrics.head - 8, vampireEyeY, 2, 2, "#d52f55");
+              r(-3, headY + metrics.head - 6, 2, 3, "#fffdf4");
+              r(1, headY + metrics.head - 6, 2, 3, "#fffdf4");
+            } else {
+              const fangX = dir === "left" ? headX + 5 : headX + metrics.head - 7;
+              r(fangX, headY + metrics.head - 6, 2, 3, "#fffdf4");
+            }
+          }
           const id = npc.id || "";
           if (id === "ella" || id === "mabel") {
             r(torsoX + 2, torsoY + 3, torsoW - 4, 3, "#fff7df");
@@ -5104,7 +5132,7 @@
 
         const cards = [
           { title:"Moonlight City", icon:"🌙", colour:"#4f68a8", desc:"Explore the city, meet friends, decorate homes, and brave the dungeon." },
-          { title:"Moonlight Life Pack", icon:"🏡", colour:"#39a88e", desc: game.save.lifeSim.characterCreated ? "Continue your playable household, relationships, needs, skills, and wishes." : "Design two playable people, choose their relationship, and begin a household story." }
+          { title:"Moonlight Life Pack", icon:"🏡", colour:"#39a88e", desc: game.save.lifeSim.characterCreated ? "Continue your playable household, relationships, supernatural lives, skills, and wishes." : "Design two playable humans or vampires, choose their ages and relationship, then begin a household story." }
         ];
         const gap = 34, cardW = Math.min(420, (w - 110 - gap) / 2), cardH = Math.min(390, h - 235);
         const startX = w / 2 - cardW - gap / 2;
@@ -5144,7 +5172,7 @@
         draft: null,
         relationship: 0
       };
-      const LIFE_CREATOR_FIELDS = ["member", "name", "skin", "hairColour", "hairStyle", "outfit", "bodyFrame", "aspiration", "trait", "relationship", "done"];
+      const LIFE_CREATOR_FIELDS = ["member", "name", "age", "skin", "hairColour", "hairStyle", "outfit", "bodyFrame", "lifeState", "aspiration", "trait", "relationship", "done"];
 
       function setLifeCreatorMember(index) {
         lifeCreator.member = clamp(index, 0, 1);
@@ -5173,11 +5201,16 @@
       function cycleLifeCreatorValue(field, direction) {
         const draft = lifeCreator.draft;
         if (field === "member") setLifeCreatorMember((lifeCreator.member + direction + 2) % 2);
+        if (field === "age") {
+          const ageIndex = Math.max(0, LIFE_AGES.indexOf(draft.ageType));
+          draft.ageType = LIFE_AGES[(ageIndex + direction + LIFE_AGES.length) % LIFE_AGES.length];
+        }
         if (field === "skin") draft.skin = (draft.skin + direction + SKIN_TONES.length) % SKIN_TONES.length;
         if (field === "hairColour") draft.hairColour = (draft.hairColour + direction + HAIR_COLORS.length) % HAIR_COLORS.length;
         if (field === "hairStyle") draft.hairStyle = (draft.hairStyle + direction + HAIR_STYLE_COUNT) % HAIR_STYLE_COUNT;
         if (field === "outfit") draft.outfit = (draft.outfit + direction + OUTFIT_COLORS.length) % OUTFIT_COLORS.length;
         if (field === "bodyFrame") draft.bodyFrame = (draft.bodyFrame + direction + LIFE_BODY_FRAMES.length) % LIFE_BODY_FRAMES.length;
+        if (field === "lifeState") draft.lifeState = (draft.lifeState + direction + LIFE_STATES.length) % LIFE_STATES.length;
         if (field === "aspiration") draft.aspiration = (draft.aspiration + direction + LIFE_ASPIRATIONS.length) % LIFE_ASPIRATIONS.length;
         if (field === "trait") draft.trait = (draft.trait + direction + LIFE_TRAITS.length) % LIFE_TRAITS.length;
         if (field === "relationship") {
@@ -5240,9 +5273,16 @@
       }
 
       function availableLifeActions(life = game.save.lifeSim) {
-        const actions = LIFE_ACTIONS.filter(action => life.activeMember !== 2 || action.id !== "work");
+        const activeAvatar = activeLifeAvatar(life);
+        const actions = LIFE_ACTIONS.filter(action => {
+          if (activeAvatar.ageType === "child" && action.id === "work") return false;
+          if (activeAvatar.lifeState === 1 && action.id === "shower") return false;
+          return true;
+        });
+        if (activeAvatar.lifeState === 1) actions.splice(1, 0, LIFE_VAMPIRE_ACTION);
         const spouses = LIFE_RELATIONSHIPS[life.householdRelationship] === "Spouses";
-        if (spouses && !life.hasChild && life.householdBond >= 3) actions.push(LIFE_CHILD_ACTION);
+        const adultSpouses = life.avatar.ageType === "adult" && life.companion.ageType === "adult";
+        if (spouses && adultSpouses && !life.hasChild && life.householdBond >= 3) actions.push(LIFE_CHILD_ACTION);
         return actions;
       }
 
@@ -5254,6 +5294,7 @@
           hairStyle: avatar.hairStyle,
           hairColour: avatar.hairColour,
           outfit: avatar.outfit,
+          occult: avatar.lifeState === 1,
           ageType: avatar.ageType || "adult",
           walkTime: time
         };
@@ -5315,31 +5356,33 @@
         ctx.fillText(LIFE_RELATIONSHIPS[lifeCreator.relationship], w * 0.29, h * 0.84);
         ctx.fillStyle = "#477080";
         ctx.font = "14px Trebuchet MS, Arial, sans-serif";
-        ctx.fillText(`${LIFE_TRAITS[draft.trait]} · ${LIFE_ASPIRATIONS[draft.aspiration]}`, w * 0.29, h * 0.88);
+        ctx.fillText(`${LIFE_STATES[draft.lifeState]} · ${LIFE_TRAITS[draft.trait]} · ${LIFE_ASPIRATIONS[draft.aspiration]}`, w * 0.29, h * 0.88);
 
-        const panelX = w * 0.53, panelY = 92, panelW = Math.min(500, w * 0.42), rowH = 45;
+        const panelX = w * 0.53, panelY = 70, panelW = Math.min(500, w * 0.42), rowH = 40;
         ctx.textAlign = "left";
         LIFE_CREATOR_FIELDS.forEach((field, index) => {
           const y = panelY + index * rowH;
           const selected = lifeCreator.field === index;
           drawPixelPanel(
-            panelX, y, panelW, 42,
+            panelX, y, panelW, 36,
             selected ? "#238e78" : "rgba(247,253,252,0.92)",
             selected ? "#bdf9e8" : "#8bbcaf"
           );
           const labels = {
-            member:"Editing", name:"Name", skin:"Skin Tone", hairColour:"Hair Colour", hairStyle:"Hair Style",
-            outfit:"Outfit", bodyFrame:"Body Frame", aspiration:"Aspiration", trait:"Personality",
+            member:"Editing", name:"Name", age:"Age", skin:"Skin Tone", hairColour:"Hair Colour", hairStyle:"Hair Style",
+            outfit:"Outfit", bodyFrame:"Body Frame", lifeState:"Life State", aspiration:"Aspiration", trait:"Personality",
             relationship:"Relationship", done:"Start Household"
           };
           let value = "";
           if (field === "member") value = `Member ${lifeCreator.member + 1}`;
           if (field === "name") value = draft.name;
+          if (field === "age") value = draft.ageType === "child" ? "Child" : "Adult";
           if (field === "skin") value = `${draft.skin + 1} / ${SKIN_TONES.length}`;
           if (field === "hairColour") value = `${draft.hairColour + 1} / ${HAIR_COLORS.length}`;
           if (field === "hairStyle") value = HAIR_STYLE_NAMES[draft.hairStyle];
           if (field === "outfit") value = `${draft.outfit + 1} / ${OUTFIT_COLORS.length}`;
           if (field === "bodyFrame") value = LIFE_BODY_FRAMES[draft.bodyFrame];
+          if (field === "lifeState") value = LIFE_STATES[draft.lifeState];
           if (field === "aspiration") value = LIFE_ASPIRATIONS[draft.aspiration];
           if (field === "trait") value = LIFE_TRAITS[draft.trait];
           if (field === "relationship") value = LIFE_RELATIONSHIPS[lifeCreator.relationship];
@@ -5489,7 +5532,10 @@
         ];
         lifeRuntime.decayTimer = 0;
         lifeRuntime.saveTimer = 0;
-        const canGrowFamily = LIFE_RELATIONSHIPS[game.save.lifeSim.householdRelationship] === "Spouses" && !game.save.lifeSim.hasChild;
+        const canGrowFamily = LIFE_RELATIONSHIPS[game.save.lifeSim.householdRelationship] === "Spouses" &&
+          game.save.lifeSim.avatar.ageType === "adult" &&
+          game.save.lifeSim.companion.ageType === "adult" &&
+          !game.save.lifeSim.hasChild;
         lifeRuntime.message = canGrowFamily
           ? game.save.lifeSim.householdBond >= 3
             ? "Welcome a child is unlocked in the action list."
@@ -5541,7 +5587,8 @@
             skin: Math.round((life.avatar.skin + life.companion.skin) / 2),
             hairColour: life.householdBond % 2 ? life.avatar.hairColour : life.companion.hairColour,
             hairStyle: (life.avatar.hairStyle + life.companion.hairStyle) % HAIR_STYLE_COUNT,
-            ageType: "child"
+            ageType: "child",
+            lifeState: life.avatar.lifeState === 1 || life.companion.lifeState === 1 ? 1 : 0
           };
           lifeRuntime.queue = lifeRuntime.queue.filter(queued => !queued.childAction);
           lifeRuntime.message = `${life.child.name} joined the family! Press Tab to play as them.`;
@@ -5555,7 +5602,9 @@
         }
         if (!action.childAction) {
           lifeRuntime.message = `${action.label} finished.${action.money ? ` +${action.money} gold.` : ""}${reward}`;
-          if (LIFE_RELATIONSHIPS[life.householdRelationship] === "Spouses" && !life.hasChild && life.householdBond >= 3) {
+          if (LIFE_RELATIONSHIPS[life.householdRelationship] === "Spouses" &&
+              life.avatar.ageType === "adult" && life.companion.ageType === "adult" &&
+              !life.hasChild && life.householdBond >= 3) {
             lifeRuntime.message += " Welcome a child is now available.";
           }
         }
@@ -5610,14 +5659,24 @@
         if (lifeRuntime.decayTimer >= 1) {
           const ticks = Math.floor(lifeRuntime.decayTimer);
           lifeRuntime.decayTimer -= ticks;
-          const householdNeeds = [life.needs, life.companionNeeds];
-          if (life.hasChild) householdNeeds.push(life.childNeeds);
-          for (const memberNeeds of householdNeeds) {
+          const household = [
+            { avatar:life.avatar, needs:life.needs },
+            { avatar:life.companion, needs:life.companionNeeds }
+          ];
+          if (life.hasChild) household.push({ avatar:life.child, needs:life.childNeeds });
+          for (const member of household) {
+            const memberNeeds = member.needs;
             memberNeeds.hunger = clamp(memberNeeds.hunger - 0.10 * ticks, 0, 100);
             memberNeeds.energy = clamp(memberNeeds.energy - 0.07 * ticks, 0, 100);
             memberNeeds.fun = clamp(memberNeeds.fun - 0.06 * ticks, 0, 100);
             memberNeeds.social = clamp(memberNeeds.social - 0.05 * ticks, 0, 100);
             memberNeeds.hygiene = clamp(memberNeeds.hygiene - 0.04 * ticks, 0, 100);
+            if (member.avatar.lifeState === 1) {
+              memberNeeds.thirst = clamp(memberNeeds.thirst - 0.13 * ticks, 0, 100);
+              if (life.hour >= 7 && life.hour < 19) {
+                memberNeeds.energy = clamp(memberNeeds.energy - 0.12 * ticks, 0, 100);
+              }
+            }
           }
           life.minute += 2 * ticks;
           while (life.minute >= 60) {
@@ -5660,6 +5719,12 @@
         if (average > 82) return { label:"Inspired", colour:"#66d9c1" };
         if (average > 62) return { label:"Happy", colour:"#8bd35f" };
         return { label:"Fine", colour:"#6fb4e8" };
+      }
+
+      function visibleLifeNeeds(avatar, needs) {
+        return avatar.lifeState === 1
+          ? { hunger:needs.hunger, energy:needs.energy, fun:needs.fun, social:needs.social, thirst:needs.thirst }
+          : { hunger:needs.hunger, energy:needs.energy, fun:needs.fun, social:needs.social, hygiene:needs.hygiene };
       }
 
       function drawLifeNeed(label, value, x, y, width) {
@@ -5730,7 +5795,8 @@
         const needs = activeLifeNeeds(life);
         const skills = activeLifeSkills(life);
         const actions = availableLifeActions(life);
-        const mood = lifeMood(needs);
+        const visibleNeeds = visibleLifeNeeds(avatar, needs);
+        const mood = lifeMood(visibleNeeds);
         const roomX = 24, roomY = 86;
         const roomW = Math.max(330, w - 390), roomH = Math.max(300, h - 245);
         const panelX = w - 340, panelY = 86, panelW = 316;
@@ -5799,10 +5865,11 @@
         ctx.fillStyle = "#f4e8b8";
         ctx.font = "bold 21px Trebuchet MS, Arial, sans-serif";
         ctx.fillText("Choose an action", panelX + 18, panelY + 30);
+        const actionStep = actions.length > 8 ? 38 : 43;
         actions.forEach((action, index) => {
-          const y = panelY + 48 + index * 43;
+          const y = panelY + 48 + index * actionStep;
           drawPixelPanel(
-            panelX + 12, y, panelW - 24, 35,
+            panelX + 12, y, panelW - 24, actionStep - 7,
             lifeRuntime.selected === index ? "#287d82" : "#202c42",
             lifeRuntime.selected === index ? "#a9f1d9" : "#34445d"
           );
@@ -5830,11 +5897,14 @@
         ctx.textAlign = "left";
         ctx.fillStyle = "#8bdac9";
         ctx.font = "12px Trebuchet MS, Arial, sans-serif";
-        const role = life.activeMember === 2 ? "Child" : LIFE_RELATIONSHIPS[life.householdRelationship];
-        ctx.fillText(`${role} · ${LIFE_TRAITS[avatar.trait]} · ${LIFE_ASPIRATIONS[avatar.aspiration]}`, 25, 68);
+        const role = avatar.ageType === "child" ? `Child ${LIFE_RELATIONSHIPS[life.householdRelationship]}` : LIFE_RELATIONSHIPS[life.householdRelationship];
+        ctx.fillText(`${LIFE_STATES[avatar.lifeState]} ${role} · ${LIFE_TRAITS[avatar.trait]} · ${LIFE_ASPIRATIONS[avatar.aspiration]}`, 25, 68);
 
         const needsY = h - 120;
-        const needEntries = [["Hunger",needs.hunger],["Energy",needs.energy],["Fun",needs.fun],["Social",needs.social],["Hygiene",needs.hygiene]];
+        const needEntries = Object.entries(visibleNeeds).map(([key, value]) => [
+          key.charAt(0).toUpperCase() + key.slice(1),
+          value
+        ]);
         const needW = Math.max(90, (w - 72) / 5 - 16);
         needEntries.forEach(([label,value], index) => drawLifeNeed(label, value, 24 + index * (needW + 16), needsY, needW));
 
